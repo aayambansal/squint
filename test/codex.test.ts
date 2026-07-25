@@ -9,36 +9,75 @@ describe('codex.buildArgs', () => {
     expect(args).toContain('--sandbox')
     expect(args[args.length - 1]).toBe('fix the header')
   })
+
+  it('resumes a session via exec resume <id>', () => {
+    const args = codex.buildArgs({ prompt: 'continue', cwd: '/tmp', sessionId: 'thread-9' })
+    expect(args.slice(0, 3)).toEqual(['exec', 'resume', 'thread-9'])
+    expect(args[args.length - 1]).toBe('continue')
+  })
 })
 
-describe('codex.parseLine', () => {
-  it('parses the newer item.completed shape', () => {
-    const line = JSON.stringify({
-      type: 'item.completed',
-      item: { type: 'agent_message', text: 'All set.' },
-    })
-    expect(codex.parseLine!(line)).toEqual([{ type: 'text', text: 'All set.' }])
+describe('codex parser', () => {
+  it('captures thread id and attaches it to the result', () => {
+    const parse = codex.createParser!()
+    expect(parse(JSON.stringify({ type: 'thread.started', thread_id: 't-1' }))).toEqual([
+      { type: 'status', text: 'codex ready' },
+    ])
+    expect(parse(JSON.stringify({ type: 'turn.completed', usage: {} }))).toEqual([
+      { type: 'result', ok: true, sessionId: 't-1' },
+    ])
   })
 
-  it('parses legacy agent_message events', () => {
-    const line = JSON.stringify({ id: '1', msg: { type: 'agent_message', message: 'Hi.' } })
-    expect(codex.parseLine!(line)).toEqual([{ type: 'text', text: 'Hi.' }])
+  it('parses item events: message on completion, command on start', () => {
+    const parse = codex.createParser!()
+    expect(
+      parse(
+        JSON.stringify({
+          type: 'item.started',
+          item: { type: 'command_execution', command: 'npm test' },
+        }),
+      ),
+    ).toEqual([{ type: 'tool', name: 'shell', detail: 'npm test' }])
+    expect(
+      parse(JSON.stringify({ type: 'item.completed', item: { type: 'agent_message', text: 'All set.' } })),
+    ).toEqual([{ type: 'text', text: 'All set.' }])
+    // No duplicate message from item.started
+    expect(
+      parse(JSON.stringify({ type: 'item.started', item: { type: 'agent_message', text: 'All set.' } })),
+    ).toEqual([])
   })
 
-  it('parses legacy command execution as a tool event', () => {
-    const line = JSON.stringify({
-      id: '2',
-      msg: { type: 'exec_command_begin', command: ['npm', 'test'] },
-    })
-    expect(codex.parseLine!(line)).toEqual([{ type: 'tool', name: 'shell', detail: 'npm test' }])
+  it('parses file changes', () => {
+    const parse = codex.createParser!()
+    expect(
+      parse(
+        JSON.stringify({
+          type: 'item.completed',
+          item: { type: 'file_change', changes: [{ path: 'src/App.tsx', kind: 'edit' }] },
+        }),
+      ),
+    ).toEqual([{ type: 'tool', name: 'edit', detail: 'src/App.tsx' }])
   })
 
-  it('maps task_complete to a result', () => {
-    const line = JSON.stringify({ id: '3', msg: { type: 'task_complete', last_agent_message: 'ok' } })
-    expect(codex.parseLine!(line)).toEqual([{ type: 'result', ok: true, summary: 'ok' }])
+  it('parses legacy agent_message and task_complete events', () => {
+    const parse = codex.createParser!()
+    expect(parse(JSON.stringify({ id: '1', msg: { type: 'agent_message', message: 'Hi.' } }))).toEqual([
+      { type: 'text', text: 'Hi.' },
+    ])
+    expect(
+      parse(JSON.stringify({ id: '3', msg: { type: 'task_complete', last_agent_message: 'ok' } })),
+    ).toEqual([{ type: 'result', ok: true, summary: 'ok' }])
+  })
+
+  it('maps turn.failed to a failed result', () => {
+    const parse = codex.createParser!()
+    expect(parse(JSON.stringify({ type: 'turn.failed', error: { message: 'boom' } }))).toEqual([
+      { type: 'result', ok: false, summary: 'boom', sessionId: undefined },
+    ])
   })
 
   it('returns raw for unknown json shapes', () => {
-    expect(codex.parseLine!('{"weird": true}')).toEqual([{ type: 'raw', data: { weird: true } }])
+    const parse = codex.createParser!()
+    expect(parse('{"weird": true}')).toEqual([{ type: 'raw', data: { weird: true } }])
   })
 })

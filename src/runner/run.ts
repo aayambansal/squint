@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process'
-import { findBinary } from '../engines/registry.js'
+import { findEngineBinary } from '../engines/registry.js'
 import type { AgentEvent, AgentResult, Engine, RunOptions } from '../engines/types.js'
 import { lineSplitter, truncate } from '../util/stream.js'
 
@@ -14,7 +14,7 @@ export function runAgent(
   onEvent: (event: AgentEvent) => void,
 ): Promise<AgentResult> {
   return new Promise((resolve) => {
-    const binaryPath = findBinary(engine.binary)
+    const binaryPath = findEngineBinary(engine)
     if (!binaryPath) {
       const error = `${engine.name} not found on PATH. Install it: ${engine.install}`
       onEvent({ type: 'error', text: error })
@@ -44,9 +44,10 @@ export function runAgent(
       onEvent(event)
     }
 
+    const parse = engine.createParser?.()
     const stdout = lineSplitter((line) => {
-      if (engine.parseLine) {
-        for (const event of engine.parseLine(line)) emit(event)
+      if (parse) {
+        for (const event of parse(line)) emit(event)
       } else {
         emit({ type: 'text', text: line })
       }

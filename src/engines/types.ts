@@ -1,7 +1,14 @@
 /** Normalized event stream every engine adapter translates into. */
 export type AgentEvent =
   | { type: 'status'; text: string }
-  | { type: 'text'; text: string }
+  /** Streaming fragment of in-progress assistant text. */
+  | { type: 'delta'; text: string }
+  /**
+   * Complete assistant text block. `streamed` marks blocks whose content
+   * already arrived as deltas, so renderers can dedupe.
+   */
+  | { type: 'text'; text: string; streamed?: boolean }
+  | { type: 'thinking'; text: string }
   | { type: 'tool'; name: string; detail?: string }
   | {
       type: 'result'
@@ -22,20 +29,25 @@ export interface RunOptions {
   sessionId?: string
 }
 
+/** Stateful per-run line parser: one instance per spawned process. */
+export type LineParser = (line: string) => AgentEvent[]
+
 export interface Engine {
   id: string
   name: string
   /** Binary looked up on PATH. */
   binary: string
+  /** Alternate binary names to try when `binary` is absent. */
+  altBinaries?: string[]
   /** How to install it, shown by `squint doctor`. */
   install: string
   supportsResume: boolean
   buildArgs(opts: RunOptions): string[]
   /**
-   * Parse one stdout line into events. Engines that emit plain text leave
-   * this undefined and the runner forwards lines as `text` events.
+   * Create a parser for one run. Engines that emit plain text leave this
+   * undefined and the runner forwards stdout lines as `text` events.
    */
-  parseLine?(line: string): AgentEvent[]
+  createParser?(): LineParser
 }
 
 export interface AgentResult {

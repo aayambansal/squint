@@ -8,7 +8,7 @@ import { runAgent } from '../runner/run.js'
 import { theme } from './theme.js'
 
 interface Message {
-  role: 'user' | 'assistant' | 'status' | 'tool' | 'error'
+  role: 'user' | 'assistant' | 'status' | 'tool' | 'error' | 'thinking'
   text: string
 }
 
@@ -37,6 +37,8 @@ export function App({ cwd, initialEngine, initialModel }: AppProps) {
   const [running, setRunning] = useState(false)
   const [engineId, setEngineId] = useState(initialEngine)
   const [model, setModel] = useState<string | undefined>(initialModel)
+  const [liveText, setLiveText] = useState('')
+  const liveRef = useRef('')
   const sessionRef = useRef<string | undefined>(undefined)
 
   const push = useCallback((message: Message) => {
@@ -53,14 +55,33 @@ export function App({ cwd, initialEngine, initialModel }: AppProps) {
     })
   }, [])
 
+  const clearLive = useCallback(() => {
+    liveRef.current = ''
+    setLiveText('')
+  }, [])
+
   const handleEvent = useCallback(
     (event: AgentEvent) => {
       switch (event.type) {
         case 'status':
           push({ role: 'status', text: event.text })
           break
+        case 'delta':
+          liveRef.current += event.text
+          setLiveText(liveRef.current)
+          break
         case 'text':
-          appendAssistant(event.text)
+          // Streamed blocks were already shown live; commit the complete
+          // block to the transcript and reset the live buffer.
+          if (event.streamed) {
+            clearLive()
+            push({ role: 'assistant', text: event.text })
+          } else {
+            appendAssistant(event.text)
+          }
+          break
+        case 'thinking':
+          push({ role: 'thinking', text: event.text })
           break
         case 'tool':
           push({ role: 'tool', text: event.detail ? `${event.name} · ${event.detail}` : event.name })
@@ -75,7 +96,7 @@ export function App({ cwd, initialEngine, initialModel }: AppProps) {
           break
       }
     },
-    [push, appendAssistant],
+    [push, appendAssistant, clearLive],
   )
 
   const submit = useCallback(
@@ -97,6 +118,11 @@ export function App({ cwd, initialEngine, initialModel }: AppProps) {
         },
         handleEvent,
       )
+      // Flush any live text the engine never finalized into a block.
+      if (liveRef.current.length > 0) {
+        push({ role: 'assistant', text: liveRef.current })
+        clearLive()
+      }
       if (result.ok) {
         const cost = result.costUsd !== undefined ? ` · $${result.costUsd.toFixed(2)}` : ''
         const secs = result.durationMs !== undefined ? ` · ${(result.durationMs / 1000).toFixed(0)}s` : ''
@@ -211,6 +237,11 @@ export function App({ cwd, initialEngine, initialModel }: AppProps) {
               ⚙ {message.text}
             </Text>
           )}
+          {message.role === 'thinking' && (
+            <Text color={theme.dim} italic wrap="wrap">
+              {message.text}
+            </Text>
+          )}
           {message.role === 'error' && (
             <Text color={theme.error} wrap="wrap">
               ✗ {message.text}
@@ -218,6 +249,12 @@ export function App({ cwd, initialEngine, initialModel }: AppProps) {
           )}
         </Box>
       ))}
+
+      {liveText.length > 0 && (
+        <Box>
+          <Text wrap="wrap">{liveText}</Text>
+        </Box>
+      )}
 
       <Box marginTop={1}>
         {running ? (

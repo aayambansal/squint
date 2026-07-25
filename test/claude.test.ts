@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { claude } from '../src/engines/claude.js'
 
 describe('claude.buildArgs', () => {
-  it('builds a headless stream-json invocation', () => {
+  it('builds a headless stream-json invocation with partial messages', () => {
     const args = claude.buildArgs({ prompt: 'build a navbar', cwd: '/tmp' })
     expect(args).toEqual([
       '-p',
@@ -10,6 +10,7 @@ describe('claude.buildArgs', () => {
       '--output-format',
       'stream-json',
       '--verbose',
+      '--include-partial-messages',
       '--permission-mode',
       'acceptEdits',
     ])
@@ -29,42 +30,73 @@ describe('claude.buildArgs', () => {
   })
 })
 
-describe('claude.parseLine', () => {
+describe('claude parser', () => {
   it('normalizes assistant text blocks', () => {
+    const parse = claude.createParser!()
     const line = JSON.stringify({
       type: 'assistant',
       message: { content: [{ type: 'text', text: 'Working on it.' }] },
     })
-    expect(claude.parseLine!(line)).toEqual([{ type: 'text', text: 'Working on it.' }])
+    expect(parse(line)).toEqual([{ type: 'text', text: 'Working on it.' }])
+  })
+
+  it('streams text deltas and flags the final block as streamed', () => {
+    const parse = claude.createParser!()
+    const delta = JSON.stringify({
+      type: 'stream_event',
+      event: { type: 'content_block_delta', delta: { type: 'text_delta', text: 'Hel' } },
+    })
+    expect(parse(delta)).toEqual([{ type: 'delta', text: 'Hel' }])
+
+    const full = JSON.stringify({
+      type: 'assistant',
+      message: { content: [{ type: 'text', text: 'Hello.' }] },
+    })
+    expect(parse(full)).toEqual([{ type: 'text', text: 'Hello.', streamed: true }])
+
+    // Next block without deltas is not flagged.
+    expect(parse(full)).toEqual([{ type: 'text', text: 'Hello.' }])
   })
 
   it('normalizes tool_use blocks with a helpful detail', () => {
+    const parse = claude.createParser!()
     const line = JSON.stringify({
       type: 'assistant',
       message: {
         content: [{ type: 'tool_use', name: 'Edit', input: { file_path: '/app/src/App.tsx' } }],
       },
     })
-    expect(claude.parseLine!(line)).toEqual([
-      { type: 'tool', name: 'Edit', detail: '/app/src/App.tsx' },
-    ])
+    expect(parse(line)).toEqual([{ type: 'tool', name: 'Edit', detail: '/app/src/App.tsx' }])
+  })
+
+  it('skips subagent messages', () => {
+    const parse = claude.createParser!()
+    const line = JSON.stringify({
+      type: 'assistant',
+      parent_tool_use_id: 'toolu_123',
+      message: { content: [{ type: 'text', text: 'subagent chatter' }] },
+    })
+    expect(parse(line)).toEqual([])
   })
 
   it('extracts session id and cost from result events', () => {
+    const parse = claude.createParser!()
     const line = JSON.stringify({
       type: 'result',
       subtype: 'success',
+      is_error: false,
       result: 'Done.',
       session_id: 's-1',
       total_cost_usd: 0.42,
       duration_ms: 9000,
     })
-    expect(claude.parseLine!(line)).toEqual([
+    expect(parse(line)).toEqual([
       { type: 'result', ok: true, summary: 'Done.', sessionId: 's-1', costUsd: 0.42, durationMs: 9000 },
     ])
   })
 
   it('treats non-json lines as text instead of crashing', () => {
-    expect(claude.parseLine!('plain output')).toEqual([{ type: 'text', text: 'plain output' }])
+    const parse = claude.createParser!()
+    expect(parse('plain output')).toEqual([{ type: 'text', text: 'plain output' }])
   })
 })

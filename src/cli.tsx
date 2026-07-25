@@ -40,7 +40,7 @@ program
     const prompt = composePrompt(ask, { cwd, noBrief: !options.brief })
 
     console.log(pc.dim(`squint · ${engine.id}${model ? ` · ${model}` : ''}`))
-    const result = await runAgent(engine, { prompt, cwd, model }, printEvent)
+    const result = await runAgent(engine, { prompt, cwd, model }, createPrinter())
     if (result.ok) {
       const cost = result.costUsd !== undefined ? ` · $${result.costUsd.toFixed(2)}` : ''
       const secs = result.durationMs !== undefined ? ` · ${(result.durationMs / 1000).toFixed(0)}s` : ''
@@ -125,23 +125,43 @@ program.action(() => {
   render(<App cwd={cwd} initialEngine={engineId} initialModel={model} />)
 })
 
-function printEvent(event: AgentEvent): void {
-  switch (event.type) {
-    case 'status':
-      console.log(pc.dim(`· ${event.text}`))
-      break
-    case 'text':
-      console.log(event.text)
-      break
-    case 'tool':
-      console.log(pc.cyan(`⚙ ${event.name}${event.detail ? ` · ${event.detail}` : ''}`))
-      break
-    case 'error':
-      console.error(pc.red(`✗ ${event.text}`))
-      break
-    case 'result':
-    case 'raw':
-      break
+/** Stateful printer: streams deltas live, skips the duplicate final block. */
+function createPrinter(): (event: AgentEvent) => void {
+  let streaming = false
+  return (event) => {
+    switch (event.type) {
+      case 'status':
+        console.log(pc.dim(`· ${event.text}`))
+        break
+      case 'delta':
+        streaming = true
+        process.stdout.write(event.text)
+        break
+      case 'text':
+        if (event.streamed && streaming) {
+          process.stdout.write('\n')
+        } else {
+          console.log(event.text)
+        }
+        streaming = false
+        break
+      case 'thinking':
+        console.log(pc.dim(pc.italic(event.text)))
+        break
+      case 'tool':
+        if (streaming) {
+          process.stdout.write('\n')
+          streaming = false
+        }
+        console.log(pc.cyan(`⚙ ${event.name}${event.detail ? ` · ${event.detail}` : ''}`))
+        break
+      case 'error':
+        console.error(pc.red(`✗ ${event.text}`))
+        break
+      case 'result':
+      case 'raw':
+        break
+    }
   }
 }
 
