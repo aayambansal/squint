@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.6 — 2026-07-26
+
+- Gemini adapter streams events (stream-json, defensively parsed)
+- Dev server auto-restarts once after a crash; manual stops never restart
+- Engines table shows streaming/resume traits; /engines works inside the TUI
+
 ## 0.2.5 — 2026-07-26
 
 - Modes mapped on all eight engines (opencode plan agent, aider --dry-run, copilot approval drop, amp yolo)
