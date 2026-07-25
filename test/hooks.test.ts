@@ -26,7 +26,11 @@ describe('runHook', () => {
     fs.chmodSync(path.join(hooksDir, 'on-turn-end'), 0o755)
 
     expect(runHook(dir, 'on-turn-end', { cost: '0.42', stat: '3 files +10 −2' })).toBe(true)
-    await new Promise((resolve) => setTimeout(resolve, 400))
+    // Fire-and-forget means no completion signal; poll under suite load.
+    const deadline = Date.now() + 5000
+    while (!fs.existsSync(marker) && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 100))
+    }
     expect(fs.readFileSync(marker, 'utf8').trim()).toBe('on-turn-end 0.42 3 files +10 −2')
 
     // Missing hook: silent no-op.
