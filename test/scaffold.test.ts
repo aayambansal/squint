@@ -26,6 +26,12 @@ describe('templateFiles', () => {
     expect(pkg.scripts.dev).toBe('vite')
   })
 
+  it('ships a starter flow so /flows works from birth', () => {
+    const files = templateFiles('x')
+    expect(files['.squint/flows/home.flow']).toContain('goto /')
+    expect(files['.squint/flows/home.flow']).toContain('expect Ready')
+  })
+
   it('keeps the design system token-first', () => {
     const files = templateFiles('x')
     expect(files['src/index.css']).toContain('@theme')
