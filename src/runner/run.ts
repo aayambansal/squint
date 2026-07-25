@@ -12,6 +12,7 @@ export function runAgent(
   engine: Engine,
   opts: RunOptions,
   onEvent: (event: AgentEvent) => void,
+  signal?: AbortSignal,
 ): Promise<AgentResult> {
   return new Promise((resolve) => {
     const binaryPath = findEngineBinary(engine)
@@ -60,14 +61,24 @@ export function runAgent(
       stderrTail = truncate(stderrTail + chunk, 2000)
     })
 
+    const onAbort = () => child.kill('SIGTERM')
+    signal?.addEventListener('abort', onAbort, { once: true })
+
     child.on('error', (err) => {
+      signal?.removeEventListener('abort', onAbort)
       const error = `Failed to start ${engine.name}: ${err.message}`
       onEvent({ type: 'error', text: error })
       resolve({ ok: false, error })
     })
 
     child.on('close', (code) => {
+      signal?.removeEventListener('abort', onAbort)
       stdout.flush()
+      if (signal?.aborted) {
+        onEvent({ type: 'status', text: 'interrupted' })
+        resolve({ ok: false, error: 'interrupted', durationMs: Date.now() - startedAt })
+        return
+      }
       if (result) {
         resolve({ ...result, durationMs: result.durationMs ?? Date.now() - startedAt })
         return
