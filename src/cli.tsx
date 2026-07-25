@@ -7,7 +7,8 @@ import { registerRun } from './cli/run.js'
 import { registerScaffold } from './cli/scaffold.js'
 import { registerTui } from './cli/tui.js'
 
-const VERSION = '0.2.8'
+declare const __SQUINT_VERSION__: string
+const VERSION = typeof __SQUINT_VERSION__ !== 'undefined' ? __SQUINT_VERSION__ : '0.0.0-dev'
 
 const program = new Command()
 
