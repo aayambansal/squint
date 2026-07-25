@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.2.0 — 2026-07-26
+
+The architecture release: squint rebuilt around a framework-free session core, informed by deep research into gemini-cli, opencode, crush, dyad, Cline, and friends (docs/research/).
+
+- Session core extracted from the TUI: transcript, turn orchestration, fix loops, commands, and totals in one tested engine; the Ink app is a thin view
+- Real line editor: cursor movement, word jumps (alt+arrows), ctrl+a/e/k/u/w, mid-line editing, block cursor
+- Prompt queue: keep typing while the agent works; asks dispatch in order; /queue clear
+- Run modes: plan / safe / yolo, per-engine mapping, shift+tab cycling, footer badge
+- autoCheck: typecheck+lint run after every turn and auto-fix (capped) before any browser feedback
+- Checkpoint stack: /undo pops, /restore <n> rewinds, /checkpoints lists
+- Markdown transcript rendering (headings, lists, quotes, fenced code) — streaming-forgiving
+- Themes: amber/ocean/moss/rose/mono, /theme, NO_COLOR support
+- Per-turn telemetry (edits · cost · seconds in the done line), session totals in the footer, completion bell
+- Two-step ctrl+c with a session summary; per-tool glyphs; rotating working phrases
+- CI hardening: Chrome flake-proofing; every PR merges only on green
+
 ## 0.1.3 — 2026-07-26
 
 - New README banner
