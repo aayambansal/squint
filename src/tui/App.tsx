@@ -19,7 +19,8 @@ import {
   wordRight,
 } from './lineEditor.js'
 import { MessageLine, WorkingLine } from './messages.js'
-import { theme } from './theme.js'
+import { resolveTheme, THEMES } from './theme.js'
+import { ThemeProvider } from './themeContext.js'
 
 export interface AppProps {
   cwd: string
@@ -28,6 +29,7 @@ export interface AppProps {
   autoDev?: boolean
   autoFix?: boolean
   autoProbe?: boolean
+  initialTheme?: string
 }
 
 /**
@@ -35,8 +37,10 @@ export interface AppProps {
  * the Static scrollback, the live region below it, and owns nothing but
  * input editing and key routing.
  */
-export function App({ cwd, initialEngine, initialModel, autoDev, autoFix, autoProbe }: AppProps) {
+export function App({ cwd, initialEngine, initialModel, autoDev, autoFix, autoProbe, initialTheme }: AppProps) {
   const { exit } = useApp()
+  const [themeName, setThemeName] = useState(() => resolveTheme(initialTheme).name)
+  const theme = resolveTheme(themeName)
   const sessionRef = useRef<Session | null>(null)
   if (!sessionRef.current) {
     sessionRef.current = new Session({
@@ -75,6 +79,19 @@ export function App({ cwd, initialEngine, initialModel, autoDev, autoFix, autoPr
       historyIndexRef.current = -1
       if (!value) return
       historyRef.current.push(value)
+      // Presentation-level command: themes belong to the view, not the core.
+      if (value === '/theme' || value.startsWith('/theme ')) {
+        const requested = value.slice('/theme'.length).trim()
+        if (!requested) {
+          session.note(`themes: ${Object.keys(THEMES).join(', ')} — /theme <name>`)
+        } else if (THEMES[requested]) {
+          setThemeName(requested)
+          session.note(`theme → ${requested}`)
+        } else {
+          session.note(`unknown theme "${requested}" — themes: ${Object.keys(THEMES).join(', ')}`)
+        }
+        return
+      }
       session.input(value)
       return
     }
@@ -153,6 +170,7 @@ export function App({ cwd, initialEngine, initialModel, autoDev, autoFix, autoPr
       : ''
 
   return (
+    <ThemeProvider value={theme}>
     <Box flexDirection="column" paddingX={1}>
       <Static items={state.items}>
         {(item) => (
@@ -196,5 +214,6 @@ export function App({ cwd, initialEngine, initialModel, autoDev, autoFix, autoPr
         </Text>
       </Box>
     </Box>
+    </ThemeProvider>
   )
 }
