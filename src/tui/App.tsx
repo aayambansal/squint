@@ -5,7 +5,13 @@ import { buildFixPrompt, DevServer, type DevServerState, detectDevCommand } from
 import { engines, getEngine } from '../engines/registry.js'
 import type { AgentEvent } from '../engines/types.js'
 import { buildGatePrompt, detectGates, runGates } from '../gates/gates.js'
-import { buildReviewPrompt, captureViewports } from '../preview/preview.js'
+import {
+  buildReviewPrompt,
+  buildRuntimeFixPrompt,
+  type CaptureResult,
+  captureViewports,
+  runtimeSummary,
+} from '../preview/preview.js'
 import { composePrompt } from '../prompt/brief.js'
 import { runAgent } from '../runner/run.js'
 import { clearState, loadState, saveState } from '../state/state.js'
@@ -273,8 +279,8 @@ export function App({ cwd, initialEngine, initialModel, autoDev, autoFix }: AppP
     [cwd, engineId, model, push, handleEvent, commitLive, autoFix, devUrl],
   )
 
-  /** Screenshot the running app at the review viewports. */
-  const capture = useCallback(async (): Promise<{ name: string; path: string }[] | null> => {
+  /** Screenshot the running app (and watch its runtime where CDP is available). */
+  const capture = useCallback(async (): Promise<CaptureResult | null> => {
     if (!devUrl) {
       push('error', 'dev server not running — /dev first')
       return null
@@ -289,7 +295,20 @@ export function App({ cwd, initialEngine, initialModel, autoDev, autoFix }: AppP
     if (result.shots.length > 0) {
       push('status', `captured ${result.shots.map((s) => s.name).join(', ')} → ${path.dirname(result.shots[0]!.path)}`)
     }
-    return result.shots.length > 0 ? result.shots : null
+    if (result.runtime) {
+      const summary = runtimeSummary(result.runtime)
+      if (summary) {
+        push('error', `runtime: ${summary}`)
+        pendingFixRef.current = {
+          prompt: buildRuntimeFixPrompt(result.runtime),
+          display: '⛑ fix runtime errors',
+        }
+        push('status', 'type /fix to send them to the engine')
+      } else {
+        push('status', 'runtime clean — no console errors, exceptions, or failed requests')
+      }
+    }
+    return result.shots.length > 0 ? result : null
   }, [cwd, devUrl, push])
 
   const submit = useCallback(
@@ -385,9 +404,12 @@ export function App({ cwd, initialEngine, initialModel, autoDev, autoFix }: AppP
           break
         case 'review':
           void (async () => {
-            const shots = await capture()
-            if (shots) {
-              await runTurn(buildReviewPrompt(shots, arg || undefined), `👁 review rendered UI${arg ? ` · ${arg}` : ''}`)
+            const result = await capture()
+            if (result) {
+              await runTurn(
+                buildReviewPrompt(result.shots, arg || undefined, result.runtime),
+                `👁 review rendered UI${arg ? ` · ${arg}` : ''}`,
+              )
             }
           })()
           break
