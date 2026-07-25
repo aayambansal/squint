@@ -21,6 +21,31 @@ export interface CaptureResult {
   a11y?: string[]
 }
 
+/**
+ * Routes to review beyond the root: .squint/routes, one path per line
+ * (# comments). The root is always included and always first.
+ */
+export function loadRoutes(cwd: string): string[] {
+  let lines: string[] = []
+  try {
+    lines = fs
+      .readFileSync(path.join(cwd, '.squint', 'routes'), 'utf8')
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0 && !l.startsWith('#'))
+  } catch {
+    // no routes file — root only
+  }
+  const routes = ['/', ...lines.filter((l) => l !== '/')]
+  return routes.slice(0, 6).map((r) => (r.startsWith('/') ? r : `/${r}`))
+}
+
+/** File-safe shot name for a route: "/" → root, "/pricing/plans" → pricing-plans. */
+export function routeShotName(route: string): string {
+  const clean = route.replace(/^\/+|\/+$/g, '').replace(/[^a-zA-Z0-9]+/g, '-')
+  return clean.length > 0 ? clean : 'root'
+}
+
 /** Screenshot dir lives under .squint/ and stays out of git. */
 export function previewDir(cwd: string): string {
   const dir = path.join(cwd, '.squint', 'preview')
@@ -38,11 +63,29 @@ export async function captureViewports(cwd: string, url: string): Promise<Captur
   const chrome = findChrome()
   if (!chrome) return null
   const dir = previewDir(cwd)
+  const routes = loadRoutes(cwd)
+  const base = url.replace(/\/+$/, '')
 
   if (hasWebSocket()) {
     try {
+      // Root gets the full viewport trio + runtime watch + a11y sweep;
+      // additional routes get one desktop shot each.
       const { report, shots, a11y } = await cdpCapture(chrome, url, dir, VIEWPORTS, 2500, true)
-      return { shots, errors: [], runtime: report, a11y }
+      const errors: string[] = []
+      for (const route of routes.slice(1)) {
+        try {
+          const routeCapture = await cdpCapture(chrome, `${base}${route}`, dir, [
+            { name: routeShotName(route), width: 1440, height: 900 },
+          ])
+          shots.push(...routeCapture.shots)
+          for (const err of routeCapture.report.pageErrors.slice(0, 3)) {
+            errors.push(`${route}: ${err.split('\n')[0]}`)
+          }
+        } catch {
+          errors.push(`${route}: capture failed`)
+        }
+      }
+      return { shots, errors, runtime: report, a11y }
     } catch {
       // fall through to the one-shot path
     }
