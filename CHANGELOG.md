@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.7 — 2026-07-26
+
+- Detachable sessions: `squint serve` owns the session on a unix socket; `squint attach` joins with the full TUI (`--plain` for line mode) — first client drives, later attaches observe, the oldest observer inherits on detach; crash-proof and ssh-friendly
+- WebMCP tracking: the recorder shims both `document.modelContext` (the July spec relocation; Chrome 150 deprecates navigator) and the old location
+
 ## 0.4.6 — 2026-07-26
 
 - Agent-authored persistent checks: engines persist page assertions as `.squint/checks/*.js` (taught on every ask); squint replays them against the live page after every turn and files failures as problems with orders to fix the page, not weaken the assertion
