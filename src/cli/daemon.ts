@@ -48,6 +48,14 @@ export function registerDaemon(program: Command): void {
     })
 
   program
+    .command('mcp')
+    .description('serve the gates as MCP tools over stdio (check, shot, flows, context)')
+    .action(async () => {
+      const { runMcpServer } = await import('../mcp/server.js')
+      runMcpServer(process.cwd())
+    })
+
+  program
     .command('attach')
     .description('attach this terminal to a running squint daemon (full TUI; --plain for line mode)')
     .option('--plain', 'line-mode attach instead of the full TUI')
