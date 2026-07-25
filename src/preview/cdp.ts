@@ -248,6 +248,71 @@ const describe = (value: any): string => {
  * emulating device metrics. Chrome is fully cleaned up afterward.
  */
 /**
+ * Replay one declared flow headlessly. Returns the failing step (1-based)
+ * with detail, or the shots captured along the way.
+ */
+export async function runFlow(
+  chromePath: string,
+  baseUrl: string,
+  flow: import('./flows.js').Flow,
+  outDir: string,
+): Promise<{ ok: boolean; failedStep?: number; detail?: string; shots: string[] }> {
+  const { stepExpression } = await import('./flows.js')
+  const { child, wsUrl, profileDir } = await launchChrome(chromePath)
+  const shots: string[] = []
+  let connection: CdpConnection | null = null
+  try {
+    connection = await CdpConnection.connect(wsUrl, 10000)
+    const { targetId } = await connection.send('Target.createTarget', { url: 'about:blank' })
+    const { sessionId } = await connection.send('Target.attachToTarget', { targetId, flatten: true })
+    await connection.send('Page.enable', {}, sessionId)
+    await connection.send(
+      'Emulation.setDeviceMetricsOverride',
+      { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false },
+      sessionId,
+    )
+    const base = baseUrl.replace(/\/+$/, '')
+    let stepNumber = 0
+    for (const step of flow.steps) {
+      stepNumber += 1
+      if (step.kind === 'goto') {
+        // "/" means the base itself (also keeps file:// bases working).
+        const url = step.route === '/' ? base : `${base}${step.route}`
+        await connection.send('Page.navigate', { url }, sessionId)
+        await new Promise((resolve) => setTimeout(resolve, 1800))
+        continue
+      }
+      if (step.kind === 'shot') {
+        const { data } = await connection.send('Page.captureScreenshot', { format: 'png' }, sessionId)
+        const outPath = path.join(outDir, `flow-${flow.name}-${step.name}.png`)
+        fs.writeFileSync(outPath, Buffer.from(data, 'base64'))
+        shots.push(outPath)
+        continue
+      }
+      const expression = stepExpression(step)
+      if (!expression) continue
+      const { result } = await connection.send(
+        'Runtime.evaluate',
+        { expression, returnByValue: true },
+        sessionId,
+      )
+      const value = result?.value as { ok: boolean; detail?: string } | undefined
+      if (!value?.ok) {
+        return { ok: false, failedStep: stepNumber, detail: value?.detail ?? 'step failed', shots }
+      }
+      await new Promise((resolve) => setTimeout(resolve, 300))
+    }
+    return { ok: true, shots }
+  } catch (err) {
+    return { ok: false, detail: err instanceof Error ? err.message : String(err), shots }
+  } finally {
+    connection?.close()
+    child.kill('SIGKILL')
+    setTimeout(() => fs.rmSync(profileDir, { recursive: true, force: true }), 500).unref?.()
+  }
+}
+
+/**
  * Percentage of pixels that differ between two PNGs, computed inside
  * Chrome via canvas (no image dependency in Node). Samples every other
  * pixel; returns null when either image fails to decode.
