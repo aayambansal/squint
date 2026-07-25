@@ -92,6 +92,10 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
         const fiberHero = { type: Hero, return: fiberApp };
         const h1 = document.querySelector('h1');
         h1['__reactFiber$squint'] = { type: 'h1', return: fiberHero };
+        navigator.modelContext.provideContext({
+          tools: [{ name: 'add-todo', description: 'Adds a todo item', execute: () => {} }],
+        });
+        navigator.modelContext.registerTool({ name: 'clear-done' });
       </script>
       </body></html>`,
     )
@@ -131,6 +135,7 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
     expect(phantoms).not.toContain('real-thing')
 
     expect(result.components).toEqual(['h1 — Hero < App'])
+    expect(result.webmcp).toEqual(['add-todo — Adds a todo item', 'clear-done'])
 
     const vt = result.viewTransitions.join('\n')
     expect(vt).toContain('duplicate view-transition-name "hero-card" on 2 elements')
