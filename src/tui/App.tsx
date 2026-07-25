@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { buildFixPrompt, DevServer, type DevServerState, detectDevCommand } from '../devserver/devserver.js'
 import { engines, getEngine } from '../engines/registry.js'
 import type { AgentEvent } from '../engines/types.js'
+import { buildGatePrompt, detectGates, runGates } from '../gates/gates.js'
 import { buildReviewPrompt, captureViewports } from '../preview/preview.js'
 import { composePrompt } from '../prompt/brief.js'
 import { runAgent } from '../runner/run.js'
@@ -102,7 +103,7 @@ export function App({ cwd, initialEngine, initialModel, autoDev, autoFix }: AppP
   const sessionRef = useRef<string | undefined>(undefined)
   const devRef = useRef<DevServer | null>(null)
   const abortRef = useRef<AbortController | null>(null)
-  const pendingErrorsRef = useRef<string[]>([])
+  const pendingFixRef = useRef<{ prompt: string; display: string } | null>(null)
   const fixAttemptsRef = useRef(0)
   const reviewTipShownRef = useRef(false)
   const historyRef = useRef<string[]>([])
@@ -222,18 +223,21 @@ export function App({ cwd, initialEngine, initialModel, autoDev, autoFix }: AppP
         await delay(1500)
         const errors = dev.errorsSince(runStart)
         if (errors.length > 0) {
-          pendingErrorsRef.current = errors
+          pendingFixRef.current = {
+            prompt: buildFixPrompt(errors, dev.tail(30)),
+            display: '⛑ fix dev server errors',
+          }
           push('error', `dev server: ${errors.length} error line(s)\n${errors.slice(-5).join('\n')}`)
           if (autoFix && fixAttemptsRef.current < MAX_AUTO_FIX_ATTEMPTS) {
             fixAttemptsRef.current += 1
             push('status', `auto-fix attempt ${fixAttemptsRef.current}/${MAX_AUTO_FIX_ATTEMPTS}`)
             setRunning(false)
-            await runTurn(buildFixPrompt(errors, dev.tail(30)), '⛑ fix dev server errors')
+            await runTurn(pendingFixRef.current.prompt, pendingFixRef.current.display)
             return
           }
           push('status', 'type /fix to send them to the engine')
         } else {
-          pendingErrorsRef.current = []
+          pendingFixRef.current = null
           if (!reviewTipShownRef.current && devUrl) {
             reviewTipShownRef.current = true
             push('status', 'tip: /review screenshots the app and has the engine critique its own work')
@@ -317,12 +321,40 @@ export function App({ cwd, initialEngine, initialModel, autoDev, autoFix }: AppP
           break
         }
         case 'fix':
-          if (pendingErrorsRef.current.length === 0) {
-            push('status', 'no captured dev server errors')
+          if (!pendingFixRef.current) {
+            push('status', 'nothing to fix — no captured errors or failed gates')
           } else {
-            const dev = getDevServer()
-            void runTurn(buildFixPrompt(pendingErrorsRef.current, dev.tail(30)), '⛑ fix dev server errors')
+            void runTurn(pendingFixRef.current.prompt, pendingFixRef.current.display)
           }
+          break
+        case 'check':
+          void (async () => {
+            const gates = detectGates(cwd)
+            if (gates.length === 0) {
+              push('status', 'no gates detected in this project')
+              return
+            }
+            push('status', `running gates: ${gates.map((g) => g.id).join(' → ')}`)
+            setRunning(true)
+            setRunStartedAt(Date.now())
+            const results = await runGates(cwd, gates, (result) => {
+              push(
+                result.ok ? 'status' : 'error',
+                `${result.ok ? '✓' : '✗'} ${result.gate.id} · ${(result.durationMs / 1000).toFixed(1)}s`,
+              )
+            })
+            setRunning(false)
+            const failures = results.filter((r) => !r.ok)
+            if (failures.length > 0) {
+              pendingFixRef.current = {
+                prompt: buildGatePrompt(failures),
+                display: `⛑ fix failing gates: ${failures.map((f) => f.gate.id).join(', ')}`,
+              }
+              push('status', 'type /fix to send failures to the engine')
+            } else {
+              push('status', 'all gates passed')
+            }
+          })()
           break
         case 'shot':
           void capture()
@@ -342,7 +374,7 @@ export function App({ cwd, initialEngine, initialModel, autoDev, autoFix }: AppP
         case 'help':
           push(
             'status',
-            '/engine <id> · /model <name> · /dev (start/stop server) · /fix (send errors) · /shot (screenshots) · /review [focus] (visual self-critique) · /clear (new session) · /quit',
+            '/engine <id> · /model <name> · /dev (start/stop server) · /check (quality gates) · /fix (send failures) · /shot (screenshots) · /review [focus] (visual self-critique) · /clear (new session) · /quit',
           )
           break
         case 'quit':
