@@ -12,6 +12,15 @@ describe('TAGGER_SOURCE', () => {
     // Only host elements get stamped — never component refs.
     expect(TAGGER_SOURCE).toContain('typeof type === "string"')
   })
+
+  it('ships multi-pin annotations: pins, notes, numbered compile', () => {
+    expect(TAGGER_SOURCE).toContain('const pins = []')
+    expect(TAGGER_SOURCE).toContain('note for this pin')
+    expect(TAGGER_SOURCE).toContain('__squintCompile')
+    expect(TAGGER_SOURCE).toContain("' — ' + p.note")
+    // Single un-noted pin degrades to the plain reference format.
+    expect(TAGGER_SOURCE).toContain('pins.length === 1')
+  })
 })
 
 describe('patchViteConfig', () => {
