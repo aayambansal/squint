@@ -35,6 +35,7 @@ export const COMMANDS: CommandSpec[] = [
   { name: 'restore', args: '<n>', group: 'explore', description: 'rewind files to before ask n' },
 
   { name: 'theme', args: '[name]', group: 'session', description: 'switch the TUI theme', viewLevel: true },
+  { name: 'btw', args: '<question>', group: 'session', description: 'read-only side question; the main thread is untouched' },
   { name: 'copy', group: 'session', description: 'copy the last reply to the clipboard' },
   { name: 'save', group: 'session', description: 'export the transcript to .squint/transcripts/' },
   { name: 'resume', group: 'session', description: 'pick up the previous session for this repo' },
