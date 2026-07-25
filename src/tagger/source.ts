@@ -85,10 +85,11 @@ const PICKER = \`(() => {
   addEventListener('keydown', (e) => {
     if (e.altKey && (e.key === 's' || e.key === 'S' || e.code === 'KeyS')) {
       active = !active;
-      if (!active) { box.style.display = 'none'; tip.style.display = 'none'; }
-      else toast('squint picker on — click an element (esc to cancel)');
+      if (!active) { window.__squintFinishNote?.(true); window.__squintCompile?.(); box.style.display = 'none'; tip.style.display = 'none'; }
+      else toast('squint picker on — click elements to pin, alt+enter copies all (esc cancels)');
     } else if (e.key === 'Escape' && active) {
-      active = false; box.style.display = 'none'; tip.style.display = 'none';
+      active = false; window.__squintFinishNote?.(false); window.__squintClearPins?.();
+      box.style.display = 'none'; tip.style.display = 'none';
     }
   });
   addEventListener('mousemove', (e) => {
@@ -103,16 +104,65 @@ const PICKER = \`(() => {
     tip.style.top = Math.max(r.top - 26, 2) + 'px';
     tip.textContent = '<' + s.tag + '> ' + rel(s.file);
   }, true);
-  addEventListener('click', (e) => {
-    if (!active) return;
-    e.preventDefault(); e.stopPropagation();
-    const el = find(e.target); if (!el) return;
-    const ref = describe(el);
-    window.__squintLastPick = ref;
-    const done = () => toast('copied — paste into squint: ' + ref);
-    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(ref).then(done, done);
+  // Multi-pin annotations: each click drops a numbered pin with a note;
+  // alt+enter (or toggling the picker off) compiles them into one blob.
+  const pins = [];
+  const badges = [];
+  const noteBox = document.createElement('input');
+  noteBox.style.cssText = 'position:fixed;z-index:2147483647;background:#1b1b1b;color:#fff;border:2px solid #e8a33d;border-radius:3px;padding:4px 8px;font:12px ui-monospace,monospace;display:none;width:280px;outline:none;';
+  noteBox.placeholder = 'note for this pin — enter to keep, esc to drop';
+  document.documentElement.append(noteBox);
+  let pending = null;
+  const addBadge = (el, n) => {
+    const r = el.getBoundingClientRect();
+    const b = document.createElement('div');
+    b.textContent = String(n);
+    b.style.cssText = 'position:fixed;z-index:2147483647;background:#e8a33d;color:#1b1b1b;font:bold 11px ui-monospace,monospace;border-radius:8px;min-width:16px;height:16px;text-align:center;line-height:16px;pointer-events:none;';
+    b.style.left = Math.max(r.left - 6, 2) + 'px';
+    b.style.top = Math.max(r.top - 6, 2) + 'px';
+    document.documentElement.append(b);
+    badges.push(b);
+  };
+  const clearPins = () => { pins.length = 0; badges.forEach((b) => b.remove()); badges.length = 0; };
+  const compile = () => {
+    if (pins.length === 0) return;
+    const blob = pins.length === 1 && !pins[0].note
+      ? pins[0].ref
+      : pins.map((p, i) => (i + 1) + '. ' + p.ref + (p.note ? ' — ' + p.note : '')).join('\\\\n');
+    window.__squintLastPick = blob;
+    const count = pins.length;
+    clearPins();
+    const done = () => toast('copied ' + count + ' annotation' + (count === 1 ? '' : 's') + ' — paste into squint');
+    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(blob).then(done, done);
     else done();
-    active = false; box.style.display = 'none';
+  };
+  const finishNote = (keep) => {
+    if (!pending) return;
+    if (keep) { pins.push({ ref: pending.ref, note: noteBox.value.trim() }); addBadge(pending.el, pins.length); }
+    pending = null; noteBox.value = ''; noteBox.style.display = 'none';
+  };
+  noteBox.addEventListener('keydown', (e) => {
+    e.stopPropagation();
+    if (e.key === 'Enter') { finishNote(true); if (e.altKey) { compile(); active = false; box.style.display = 'none'; } }
+    else if (e.key === 'Escape') finishNote(false);
+  });
+  window.__squintFinishNote = finishNote;
+  window.__squintCompile = compile;
+  window.__squintClearPins = clearPins;
+  addEventListener('keydown', (e) => {
+    if (active && e.altKey && e.key === 'Enter') { finishNote(true); compile(); active = false; box.style.display = 'none'; tip.style.display = 'none'; }
+  });
+  addEventListener('click', (e) => {
+    if (!active || e.target === noteBox) return;
+    e.preventDefault(); e.stopPropagation();
+    finishNote(true);
+    const el = find(e.target); if (!el) return;
+    pending = { el, ref: describe(el) };
+    const r = el.getBoundingClientRect();
+    noteBox.style.display = 'block';
+    noteBox.style.left = Math.min(r.left, innerWidth - 310) + 'px';
+    noteBox.style.top = Math.min(r.bottom + 4, innerHeight - 34) + 'px';
+    noteBox.focus();
   }, true);
 })();\`
 `
