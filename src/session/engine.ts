@@ -15,7 +15,10 @@ import { composePrompt } from '../prompt/brief.js'
 import { enrich } from '../prompt/skills.js'
 import { runAgent } from '../runner/run.js'
 import { clearState, loadState, saveState } from '../state/state.js'
-import { restoreSnapshot, type Snapshot, takeSnapshot } from '../vcs/snapshot.js'
+import { isGitRepo, restoreSnapshot, type Snapshot, takeSnapshot } from '../vcs/snapshot.js'
+import { applyVariant, cleanVariants, listVariants, runVariants } from '../variants/variants.js'
+import { screenshotVariants } from '../variants/shots.js'
+import { findChrome } from '../preview/chrome.js'
 
 export type TranscriptRole = 'user' | 'assistant' | 'status' | 'tool' | 'error' | 'thinking'
 
@@ -643,6 +646,70 @@ export class Session {
         this.push('status', `resumed ${saved.engine} session${saved.lastAsk ? ` · "${saved.lastAsk}"` : ''}`)
         break
       }
+      case 'variants': {
+        const [sub, ...subRest] = arg.split(/\s+/)
+        if (sub === 'apply') {
+          const id = subRest[0]
+          if (!id) {
+            this.push('status', 'usage: /variants apply <id>')
+            break
+          }
+          const applied = applyVariant(this.opts.cwd, id)
+          if (applied.ok) {
+            cleanVariants(this.opts.cwd)
+            this.push('status', `applied ${id} to the working tree — review with git diff`)
+          } else {
+            this.push('error', applied.detail ?? 'apply failed')
+          }
+          break
+        }
+        if (sub === 'clean') {
+          this.push('status', `removed ${cleanVariants(this.opts.cwd)} variant(s)`)
+          break
+        }
+        if (sub === 'list') {
+          const ids = listVariants(this.opts.cwd)
+          this.push('status', ids.length > 0 ? ids.join(' · ') : 'no variants — /variants <2-4> <ask>')
+          break
+        }
+        const n = Number.parseInt(sub ?? '', 10)
+        const ask = subRest.join(' ').trim()
+        if (!Number.isInteger(n) || n < 2 || n > 4 || ask.length === 0) {
+          this.push('status', 'usage: /variants <2-4> <ask> · /variants apply <id> · list · clean')
+          break
+        }
+        if (!isGitRepo(this.opts.cwd)) {
+          this.push('error', 'variants need a git repo with at least one commit')
+          break
+        }
+        void (async () => {
+          cleanVariants(this.opts.cwd)
+          this.push('status', `generating ${n} directions in parallel — this runs ${n} engine sessions`)
+          this.notify({ running: true, runStartedAt: Date.now() })
+          const engine = getEngine(this.state.engineId)
+          const runs = await runVariants(this.opts.cwd, ask, n, engine, this.state.model, (familyId, text) =>
+            this.push('status', `[${familyId}] ${text}`),
+          )
+          const succeeded = runs.filter((r) => r.result.ok)
+          if (succeeded.length > 0 && findChrome() && detectDevCommand(this.opts.cwd)) {
+            this.push('status', 'capturing one screenshot per variant…')
+            const shots = await screenshotVariants(this.opts.cwd, succeeded.map((r) => r.variant))
+            for (const shot of shots) {
+              this.push(
+                shot.path ? 'status' : 'error',
+                `[${shot.familyId}] ${shot.path ?? shot.error ?? 'screenshot failed'}`,
+              )
+            }
+          }
+          this.notify({ running: false })
+          this.push(
+            succeeded.length > 0 ? 'status' : 'error',
+            `${succeeded.length}/${runs.length} variants ready — /variants apply <id> keeps one, /variants clean discards`,
+          )
+          this.drainQueue()
+        })()
+        break
+      }
       case 'clear':
         this.sessionId = undefined
         clearState(this.opts.cwd)
@@ -651,7 +718,7 @@ export class Session {
       case 'help':
         this.push(
           'status',
-          '/engine <id> · /model <name> · /dev (start/stop server) · /check (quality gates) · /fix (send failures) · /shot (screenshots) · /review [focus] (visual self-critique) · /undo (revert last ask) · /checkpoints · /restore <n> · /resume (last session) · /clear (new session) · /quit',
+          '/engine <id> · /model <name> · /mode plan|safe|yolo · /dev · /check (gates) · /fix · /shot · /review [focus] · /variants <2-4> <ask> · /undo · /checkpoints · /restore <n> · /resume · /clear · /quit',
         )
         break
       case 'quit':
