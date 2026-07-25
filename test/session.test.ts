@@ -107,6 +107,16 @@ describe('Session', () => {
     session.dispose()
   })
 
+  it('lists engines from the TUI with trait markers', async () => {
+    const session = new Session({ cwd: dir, engineId: 'claude' })
+    session.input('/engines')
+    await waitFor(session, () => session.getState().items.some((i) => i.text.includes('/engine <id> switches')))
+    const listing = session.getState().items.at(-1)!.text
+    expect(listing).toContain('claude — stream · resume')
+    expect(listing).toContain('aider — text')
+    session.dispose()
+  })
+
   it('cycles run modes and accepts /mode', () => {
     const session = new Session({ cwd: dir, engineId: 'claude' })
     expect(session.getState().mode).toBe('safe')

@@ -628,9 +628,22 @@ export class Session {
     const [name, ...rest] = commandLine.slice(1).split(/\s+/)
     const arg = rest.join(' ').trim()
     switch (name) {
+      case 'engines': {
+        void import('../engines/registry.js').then(({ detectEngines }) => {
+          const lines = detectEngines().map(({ engine, path: binaryPath }) => {
+            const mark = binaryPath ? '✓' : '✗'
+            const traits = [engine.createParser ? 'stream' : 'text', engine.supportsResume ? 'resume' : null]
+              .filter(Boolean)
+              .join(' · ')
+            return `${mark} ${engine.id} — ${traits}${binaryPath ? '' : ` · install: ${engine.install}`}`
+          })
+          this.push('status', `${lines.join('\n')}\n/engine <id> switches (new session)`)
+        })
+        break
+      }
       case 'engine':
         if (!arg) {
-          this.push('status', 'usage: /engine <id> — see squint engines')
+          this.command('/engines')
         } else {
           try {
             getEngine(arg)
