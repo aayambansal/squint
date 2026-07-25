@@ -1,0 +1,42 @@
+{
+  "name": "squint",
+  "version": "0.1.0",
+  "description": "Lovable for your terminal — a frontend harness on top of Claude Code, Codex, and other coding agents.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Aayam Bansal <aayambansal@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aayambansal/squint.git"
+  },
+  "bin": {
+    "squint": "dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "check": "npm run typecheck && npm run test && npm run build"
+  },
+  "dependencies": {
+    "commander": "^13.1.0",
+    "ink": "^6.0.0",
+    "picocolors": "^1.1.1",
+    "react": "^19.1.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "@types/react": "^19.1.0",
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.1.0"
+  }
+}
