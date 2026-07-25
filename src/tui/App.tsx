@@ -16,6 +16,7 @@ import {
 import { composePrompt } from '../prompt/brief.js'
 import { runAgent } from '../runner/run.js'
 import { clearState, loadState, saveState } from '../state/state.js'
+import { restoreSnapshot, type Snapshot, takeSnapshot } from '../vcs/snapshot.js'
 import { theme } from './theme.js'
 
 interface Message {
@@ -114,6 +115,7 @@ export function App({ cwd, initialEngine, initialModel, autoDev, autoFix, autoPr
   const devRef = useRef<DevServer | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const pendingFixRef = useRef<{ prompt: string; display: string } | null>(null)
+  const snapshotRef = useRef<Snapshot | null>(null)
   const fixAttemptsRef = useRef(0)
   const reviewTipShownRef = useRef(false)
   const historyRef = useRef<string[]>([])
@@ -338,6 +340,8 @@ export function App({ cwd, initialEngine, initialModel, autoDev, autoFix, autoPr
   const submit = useCallback(
     async (ask: string) => {
       fixAttemptsRef.current = 0
+      // Whole-ask undo: the snapshot covers this turn plus any auto-fixes.
+      snapshotRef.current = takeSnapshot(cwd)
       // Resumable engines keep the brief in session context, so follow-up
       // turns send the raw ask; non-resumable engines get it every turn.
       const isFirstTurn = sessionRef.current === undefined
@@ -437,6 +441,24 @@ export function App({ cwd, initialEngine, initialModel, autoDev, autoFix, autoPr
             }
           })()
           break
+        case 'undo': {
+          const snapshot = snapshotRef.current
+          if (!snapshot) {
+            push('status', 'nothing to undo — no ask this session, or not a git repo with commits')
+            break
+          }
+          const result = restoreSnapshot(cwd, snapshot)
+          if (result.restored) {
+            snapshotRef.current = null
+            push(
+              'status',
+              `reverted the last ask${result.deletedFiles > 0 ? ` · removed ${result.deletedFiles} created file(s)` : ''}`,
+            )
+          } else {
+            push('error', `undo failed: ${result.detail ?? 'unknown error'}`)
+          }
+          break
+        }
         case 'resume': {
           const saved = loadState(cwd)
           if (!saved) {
@@ -466,7 +488,7 @@ export function App({ cwd, initialEngine, initialModel, autoDev, autoFix, autoPr
         case 'help':
           push(
             'status',
-            '/engine <id> · /model <name> · /dev (start/stop server) · /check (quality gates) · /fix (send failures) · /shot (screenshots) · /review [focus] (visual self-critique) · /resume (last session) · /clear (new session) · /quit',
+            '/engine <id> · /model <name> · /dev (start/stop server) · /check (quality gates) · /fix (send failures) · /shot (screenshots) · /review [focus] (visual self-critique) · /undo (revert last ask) · /resume (last session) · /clear (new session) · /quit',
           )
           break
         case 'quit':
