@@ -15,6 +15,9 @@ export const opencode: Engine = {
 
   buildArgs(opts: RunOptions): string[] {
     const args = ['run', '--format', 'json']
+    // plan maps to opencode's read-only plan agent; yolo auto-approves.
+    if (opts.mode === 'plan') args.push('--agent', 'plan')
+    if (opts.mode === 'yolo') args.push('--auto')
     if (opts.model) args.push('--model', opts.model)
     if (opts.sessionId) args.push('--session', opts.sessionId)
     args.push(opts.prompt)
