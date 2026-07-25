@@ -84,6 +84,23 @@ program
     }
   })
 
+program
+  .command('shot')
+  .description('Screenshot a running app at mobile/tablet/desktop viewports')
+  .argument('<url>', 'URL of the running app (e.g. http://localhost:5173)')
+  .action(async (url: string) => {
+    const { captureViewports } = await import('./preview/preview.js')
+    const result = await captureViewports(process.cwd(), url)
+    if (!result) {
+      console.error(pc.red('✗ no Chrome/Chromium found'))
+      process.exitCode = 1
+      return
+    }
+    for (const shot of result.shots) console.log(`${pc.green('✓')} ${shot.name.padEnd(8)} ${shot.path}`)
+    for (const error of result.errors) console.error(pc.red(`✗ ${error}`))
+    if (result.shots.length === 0) process.exitCode = 1
+  })
+
 const configCommand = program.command('config').description('Read or change squint configuration')
 
 configCommand
