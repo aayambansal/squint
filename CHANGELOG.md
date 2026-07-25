@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.2 — 2026-07-26
+
+- Contact routes through GitHub (private vulnerability reporting, profile) instead of a raw email address
+- Major dependency refresh: zod 4, ink 7, commander 15, TypeScript 7, vitest 4; Node floor is now ≥ 22
+
 ## 0.1.1 — 2026-07-26
 
 - Accessibility sweep in the capture pass: dependency-free in-page audit (alt text, accessible names, label association, document lang/title, heading order, tap-target size, positive tabindex) surfaced by `/shot` and folded into `/review`

@@ -6,6 +6,7 @@ The short version: be respectful, assume good faith, critique code not people, a
 this a place where anyone can contribute regardless of who they are. Harassment,
 discrimination, and sustained disruption are not tolerated.
 
-Report conduct issues privately to **aayambansal@gmail.com**. Reports are handled
+Report conduct issues privately — email me (contact details are on
+[my GitHub profile](https://github.com/aayambansal)). Reports are handled
 confidentially. Maintainers may remove, edit, or reject contributions and contributors
 that violate this code.
