@@ -266,6 +266,45 @@ describe('Session', () => {
     session.dispose()
   }, 40000)
 
+  it('drives variants from the TUI: gen, list, apply, clean', async () => {
+    const { execFileSync } = await import('node:child_process')
+    const git = (...args: string[]) => execFileSync('git', args, { cwd: dir, stdio: 'ignore' })
+    git('init', '-q')
+    git('config', 'user.email', 't@e.com')
+    git('config', 'user.name', 'T')
+    fs.writeFileSync(path.join(dir, 'base.txt'), 'base\n')
+    git('add', '-A')
+    git('commit', '-qm', 'base')
+
+    vi.spyOn(registry, 'getEngine').mockReturnValue(
+      fakeEngine("require('fs').writeFileSync('variant-mark.txt', process.cwd())"),
+    )
+    const session = new Session({ cwd: dir, engineId: 'fake' })
+    session.input('/variants 2 make it distinctive')
+    await waitFor(
+      session,
+      () => !session.getState().running && session.getState().items.some((i) => i.text.includes('variants ready')),
+      30000,
+    )
+    const texts = session.getState().items.map((i) => i.text)
+    expect(texts.some((t) => t.includes('2/2 variants ready'))).toBe(true)
+
+    session.input('/variants list')
+    const listed = session.getState().items.at(-1)!.text
+    const firstId = listed.split(' · ')[0]!
+    expect(firstId.length).toBeGreaterThan(0)
+
+    session.input(`/variants apply ${firstId}`)
+    expect(session.getState().items.at(-1)?.text).toContain('applied')
+    expect(fs.existsSync(path.join(dir, 'variant-mark.txt'))).toBe(true)
+    session.input('/variants list')
+    expect(session.getState().items.at(-1)?.text).toContain('no variants')
+
+    session.input('/variants nonsense')
+    expect(session.getState().items.at(-1)?.text).toContain('usage: /variants')
+    session.dispose()
+  }, 40000)
+
   it('reports interrupted runs without counting a turn', async () => {
     vi.spyOn(registry, 'getEngine').mockReturnValue(
       fakeEngine("setInterval(() => console.log('tick'), 100)"),
