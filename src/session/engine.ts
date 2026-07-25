@@ -621,6 +621,21 @@ export class Session {
     if (result.error !== 'interrupted' && dev && (dev.state === 'running' || dev.state === 'starting')) {
       await delay(1500)
       const errors = dev.errorsSince(runStart)
+      // Next 16+ publishes its own structured channel on the dev server;
+      // framework-reported errors beat log scraping when both exist.
+      if (this.state.devUrl) {
+        try {
+          const { hasNextMcp, probeNextMcp } = await import('../preview/nextMcp.js')
+          if (hasNextMcp(this.execCwd())) {
+            const mcp = await probeNextMcp(this.state.devUrl)
+            if (mcp.available && mcp.errors.length > 0) {
+              for (const err of mcp.errors) errors.push(`[next mcp] ${err}`)
+            }
+          }
+        } catch {
+          // the channel is a bonus, never a blocker
+        }
+      }
       if (errors.length > 0) {
         this.addProblem(
           'dev',
