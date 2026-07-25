@@ -27,13 +27,23 @@ program
   .command('run')
   .description('Run one prompt headlessly and stream the result')
   .argument('<prompt...>', 'what to build or change')
-  .option('-e, --engine <id>', 'engine to use (claude, codex, gemini, opencode)')
+  .option('-e, --engine <id>', 'engine to use (see squint engines)')
   .option('-m, --model <name>', 'model override for the engine')
+  .option('--mode <mode>', 'plan (read-only) · safe (default) · yolo (no friction)')
   .option('--no-brief', 'send the prompt without the squint design brief')
   .option('--json', 'emit normalized agent events as ndjson')
   .action(
-    async (promptWords: string[], options: { engine?: string; model?: string; brief: boolean; json?: boolean }) => {
+    async (
+      promptWords: string[],
+      options: { engine?: string; model?: string; mode?: string; brief: boolean; json?: boolean },
+    ) => {
       const cwd = process.cwd()
+      if (options.mode && !['plan', 'safe', 'yolo'].includes(options.mode)) {
+        console.error(pc.red('✗ --mode must be plan, safe, or yolo'))
+        process.exitCode = 1
+        return
+      }
+      const mode = options.mode as 'plan' | 'safe' | 'yolo' | undefined
       const config = loadConfig(defaultPaths(cwd))
       const engineId = resolveEngineId(config, options.engine)
       const engine = getEngine(engineId)
@@ -46,8 +56,9 @@ program
             if (event.type !== 'delta') console.log(JSON.stringify(event))
           }
         : createPrinter()
-      if (!options.json) console.log(pc.dim(`squint · ${engine.id}${model ? ` · ${model}` : ''}`))
-      const result = await runAgent(engine, { prompt, cwd, model }, onEvent)
+      if (!options.json)
+        console.log(pc.dim(`squint · ${engine.id}${model ? ` · ${model}` : ''}${mode && mode !== 'safe' ? ` · ${mode}` : ''}`))
+      const result = await runAgent(engine, { prompt, cwd, model, mode }, onEvent)
       if (options.json) {
         console.log(JSON.stringify({ type: 'summary', ...result }))
       } else if (result.ok) {
