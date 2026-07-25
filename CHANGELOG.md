@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1 — 2026-07-26
+
+- Accessibility sweep in the capture pass: dependency-free in-page audit (alt text, accessible names, label association, document lang/title, heading order, tap-target size, positive tabindex) surfaced by `/shot` and folded into `/review`
+- README rebuilt with the ASCII banner + full diagrams; CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, issue/PR templates, CODEOWNERS, dependabot
+
 ## 0.1.0 — 2026-07-26
 
 First release. `npm i -g @aayambansal/squint` or `npx @aayambansal/squint`.
