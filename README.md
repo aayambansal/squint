@@ -226,6 +226,7 @@ All product behavior lives in the harness, so a new engine is ~80 lines.
 ## Docs
 
 - [Engine setup guide](./docs/engines.md) — install + auth for all eight, and how to choose
+- [Configuration](./docs/configuration.md) — every key, every `.squint/` file
 - [Architecture](./docs/design/2026-07-25-architecture.md)
 - [How Lovable works under the hood](./docs/research/lovable.md)
 - [Making agents produce excellent frontend work](./docs/research/frontend-quality.md)
