@@ -67,6 +67,17 @@ causes rather than weaken checks. Manually: `/problems` lists, `/fix` sends all,
   probes — into a shadow worktree until you `apply` or `discard`.
 - `budgetUsd` flags runaway session cost; Esc interrupts any turn instantly.
 
+## Flows and the score
+
+`.squint/flows/<name>.flow` declares a user journey in readable lines (`goto /signup`,
+`click Sign up`, `fill #email me@x.com`, `press Enter`, `expect Check your inbox`,
+`shot done`). `/flows` replays every journey headlessly — passes show step counts and
+screenshots inline; a failing step names its exact position and joins the problems list.
+Ask the engine to write flows for you.
+
+`/score` composes a deterministic 0-5 snapshot from what squint measures (open problems,
+a11y findings, distinctiveness tells, runtime state, LCP). Judgment stays with `/review`.
+
 ## Hooks
 
 Drop executables in `.squint/hooks/` and squint fires them (SQUINT_* env, 10s cap,

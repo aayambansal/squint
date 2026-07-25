@@ -148,7 +148,10 @@ squint doctor --probe             # run every engine end to end, verify auth act
   order; `/queue clear` drops them. `Esc` interrupts the current turn.
 - **Editing**: a real line editor — arrows move, `alt+←/→` jump words, `ctrl+a/e/k/u/w`,
   `↑/↓` history. `ctrl+c` twice exits with a session summary.
-- **Problems**: findings from gates, the dev server, the runtime probe, and a11y sweeps
+- **Flows**: declare user journeys as six readable lines in `.squint/flows/`; `/flows`
+  replays them headlessly and failing steps join the fix loop. `/score` snapshots quality
+  deterministically.
+- **Problems**: findings from gates, the dev server, the runtime probe, a11y sweeps, and flows
   collect into a list — `/problems` shows it, `/fix` sends everything as one turn,
   `/fix <n>` targets one. The footer counts what's open.
 - **Sandbox**: `/sandbox on` and asks accumulate in a shadow worktree — the dev server,
