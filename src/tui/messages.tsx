@@ -1,5 +1,6 @@
 import { Text } from 'ink'
 import { useEffect, useState } from 'react'
+import { Markdown } from './markdown.js'
 import { useTheme } from './themeContext.js'
 
 export interface Message {
@@ -42,7 +43,7 @@ export function MessageLine({ message }: { message: Message }) {
         </Text>
       )
     case 'assistant':
-      return <Text wrap="wrap">{message.text}</Text>
+      return <Markdown text={message.text} />
     case 'status':
       return (
         <Text color={theme.dim} wrap="wrap">
