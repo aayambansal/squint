@@ -23,6 +23,8 @@ export function sandboxExists(cwd: string): boolean {
 /** Create (or reuse) the sandbox worktree from HEAD; symlink node_modules. */
 export function openSandbox(cwd: string): { dir: string; reused: boolean } {
   const dir = sandboxDir(cwd)
+  // Keep the worktree (and apply patches) out of the main repo's status.
+  void import('../state/state.js').then(({ ensureSquintIgnore }) => ensureSquintIgnore(cwd)).catch(() => {})
   if (sandboxExists(cwd)) return { dir, reused: true }
   fs.rmSync(dir, { recursive: true, force: true })
   fs.mkdirSync(path.dirname(dir), { recursive: true })

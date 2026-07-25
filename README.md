@@ -150,6 +150,9 @@ squint doctor --probe             # run every engine end to end, verify auth act
 - **Problems**: findings from gates, the dev server, the runtime probe, and a11y sweeps
   collect into a list — `/problems` shows it, `/fix` sends everything as one turn,
   `/fix <n>` targets one. The footer counts what's open.
+- **Sandbox**: `/sandbox on` and asks accumulate in a shadow worktree — the dev server,
+  gates, and probes all run there; `/sandbox diff` shows what is staged, `apply` lands it
+  as one diff, `discard` walks away with the real tree untouched.
 - **Variants without leaving**: `/variants 3 <ask>` runs parallel explorations with
   streaming per-family status; `/variants apply <id>` keeps the winner.
 - **Commands**: type `/` and matching commands appear with descriptions; tab completes.
