@@ -1,5 +1,6 @@
 import { Command } from 'commander'
 import { registerConfig } from './cli/configCmd.js'
+import { registerDaemon } from './cli/daemon.js'
 import { registerEnv } from './cli/env.js'
 import { registerProject } from './cli/project.js'
 import { registerQuality } from './cli/quality.js'
@@ -23,6 +24,7 @@ registerScaffold(program)
 registerProject(program)
 registerQuality(program)
 registerConfig(program)
+registerDaemon(program)
 registerTui(program)
 
 program.parseAsync(process.argv)

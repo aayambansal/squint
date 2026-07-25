@@ -17,7 +17,7 @@ export interface ProjectState {
   at: number
 }
 
-const IGNORED = ['preview/', 'state.json', 'variants/', 'sandbox/', 'sandbox.patch', 'transcripts/']
+const IGNORED = ['preview/', 'state.json', 'variants/', 'sandbox/', 'sandbox.patch', 'transcripts/', 'daemon.sock']
 
 /** Keep .squint/ working files out of the project's git history. */
 export function ensureSquintIgnore(cwd: string): void {
