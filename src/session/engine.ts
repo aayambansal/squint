@@ -45,7 +45,7 @@ export interface SessionTotals {
   turns: number
 }
 
-export type ProblemSource = 'gates' | 'dev' | 'runtime' | 'a11y'
+export type ProblemSource = 'gates' | 'dev' | 'runtime' | 'a11y' | 'flow'
 
 export interface Problem {
   id: number
@@ -982,6 +982,52 @@ export class Session {
           lines.push('', `> ${this.summary()}`)
           fs.writeFileSync(file, lines.join('\n') + '\n')
           this.push('status', `saved transcript → ${path.relative(this.opts.cwd, file)}`)
+        })()
+        break
+      }
+      case 'flows': {
+        if (!this.state.devUrl) {
+          this.push('error', 'dev server not running — /dev first')
+          break
+        }
+        void (async () => {
+          const { loadFlows } = await import('../preview/flows.js')
+          const flows = loadFlows(this.opts.cwd)
+          if (flows.length === 0) {
+            this.push('status', 'no flows — add .squint/flows/<name>.flow (goto/click/fill/press/expect/shot lines), or ask the engine to write one')
+            return
+          }
+          const chrome = findChrome()
+          if (!chrome) {
+            this.push('error', 'no Chrome/Chromium found for flows')
+            return
+          }
+          const { runFlow } = await import('../preview/cdp.js')
+          const { previewDir } = await import('../preview/preview.js')
+          this.push('status', `replaying ${flows.length} flow(s)…`)
+          this.notify({ running: true, runStartedAt: Date.now() })
+          const failures: string[] = []
+          for (const flow of flows) {
+            const wanted = arg.trim()
+            if (wanted && flow.name !== wanted) continue
+            const result = await runFlow(chrome, this.state.devUrl!, flow, previewDir(this.opts.cwd))
+            if (result.ok) {
+              this.push('status', `✓ flow ${flow.name} · ${flow.steps.length} steps${result.shots.length > 0 ? ` · ${result.shots.length} shot(s)` : ''}`)
+              for (const shot of result.shots) this.push('image', shot)
+            } else {
+              const where = result.failedStep ? ` at step ${result.failedStep}` : ''
+              this.push('error', `✗ flow ${flow.name}${where}: ${result.detail}`)
+              failures.push(`Flow "${flow.name}" fails${where}: ${result.detail}. The flow file is .squint/flows/${flow.name}.flow — fix the app (or the flow if the UI legitimately changed).`)
+            }
+          }
+          this.notify({ running: false })
+          if (failures.length > 0) {
+            this.addProblem('flow', `${failures.length} flow(s) failing`, failures.join('\n\n'))
+            this.push('status', '/fix sends open problems to the engine · /problems lists them')
+          } else {
+            this.clearProblems('flow')
+          }
+          this.drainQueue()
         })()
         break
       }
