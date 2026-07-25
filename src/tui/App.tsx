@@ -18,6 +18,7 @@ import {
   wordLeft,
   wordRight,
 } from './lineEditor.js'
+import { Markdown } from './markdown.js'
 import { MessageLine, WorkingLine } from './messages.js'
 import { resolveTheme, THEMES } from './theme.js'
 import { ThemeProvider } from './themeContext.js'
@@ -193,7 +194,7 @@ export function App({
 
       {state.liveText.length > 0 && (
         <Box>
-          <Text wrap="wrap">{state.liveText}</Text>
+          <Markdown text={state.liveText} />
         </Box>
       )}
 
