@@ -467,6 +467,7 @@ export class Session {
           sessionId: this.sessionId,
           model: this.state.model,
           lastAsk: display.length > 80 ? `${display.slice(0, 79)}…` : display,
+          totals: this.state.totals,
           at: Date.now(),
         })
       }
@@ -917,7 +918,11 @@ export class Session {
           break
         }
         this.sessionId = saved.sessionId
-        this.notify({ engineId: saved.engine, model: saved.model ?? this.state.model })
+        this.notify({
+          engineId: saved.engine,
+          model: saved.model ?? this.state.model,
+          totals: saved.totals ?? this.state.totals,
+        })
         this.push('status', `resumed ${saved.engine} session${saved.lastAsk ? ` · "${saved.lastAsk}"` : ''}`)
         break
       }

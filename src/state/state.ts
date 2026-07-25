@@ -11,6 +11,8 @@ export interface ProjectState {
   model?: string
   /** Truncated last ask, for the resume hint. */
   lastAsk?: string
+  /** Running totals, restored on /resume for continuity. */
+  totals?: { costUsd: number; turns: number }
   /** ms epoch of the last completed turn. */
   at: number
 }

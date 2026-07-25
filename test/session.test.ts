@@ -225,12 +225,19 @@ describe('Session', () => {
     fs.mkdirSync(path.join(dir, '.squint'), { recursive: true })
     fs.writeFileSync(
       path.join(dir, '.squint', 'state.json'),
-      JSON.stringify({ engine: 'claude', sessionId: 's-9', lastAsk: 'old ask', at: Date.now() - 120000 }),
+      JSON.stringify({
+        engine: 'claude',
+        sessionId: 's-9',
+        lastAsk: 'old ask',
+        totals: { costUsd: 1.25, turns: 4 },
+        at: Date.now() - 120000,
+      }),
     )
     const session = new Session({ cwd: dir, engineId: 'claude' })
     expect(session.getState().items[0]?.text).toContain('/resume to continue')
     session.input('/resume')
     expect(session.getState().items.at(-1)?.text).toContain('resumed claude session')
+    expect(session.getState().totals).toEqual({ costUsd: 1.25, turns: 4 })
     session.dispose()
   })
 
