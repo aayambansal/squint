@@ -13,7 +13,7 @@ import path from 'node:path'
 export interface DesignDecision {
   ts: string
   decision: string
-  source: 'decide' | 'variant' | 'restore' | 'sandbox'
+  source: 'decide' | 'variant' | 'restore' | 'sandbox' | 'approval'
   screenshot?: string
 }
 

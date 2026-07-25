@@ -1,3 +1,4 @@
+import fs from 'node:fs'
 import path from 'node:path'
 import { buildFixPrompt, DevServer, type DevServerState, detectDevCommand } from '../devserver/devserver.js'
 import { getEngine } from '../engines/registry.js'
@@ -117,6 +118,7 @@ export class Session {
   private checkpoints: Array<{ snapshot: Snapshot; label: string; at: number }> = []
   private fixAttempts = 0
   private reviewTipShown = false
+  private pendingApproval: string | null = null
   private lastPulse: Buffer | null = null
   private lastPerf: { lcpMs?: number; cls?: number; transferBytes?: number } | null = null
   private autoReviewedThisAsk = false
@@ -522,6 +524,23 @@ export class Session {
             ? ` · ${this.turnTools} tool call${this.turnTools === 1 ? '' : 's'}`
             : ''
       this.push('status', `done${secs}${cost}${work}`)
+      // Agent-initiated blocking approval: the engine wrote a request
+      // file and ended its turn; render it and wait for a human verdict.
+      try {
+        const reqPath = path.join(this.opts.cwd, '.squint', 'approval-request.json')
+        if (fs.existsSync(reqPath)) {
+          const req = JSON.parse(fs.readFileSync(reqPath, 'utf8'))
+          fs.rmSync(reqPath, { force: true })
+          if (typeof req?.summary === 'string' && req.summary.length > 0) {
+            this.pendingApproval = req.summary
+            const shot = typeof req.screenshot === 'string' ? path.resolve(this.execCwd(), req.screenshot) : null
+            if (shot && fs.existsSync(shot)) this.push('image', shot)
+            this.push('status', `⏸ approval requested: ${req.summary}\n/yes approves · /no rejects · or type feedback`)
+          }
+        }
+      } catch {
+        // malformed requests are ignored
+      }
       // Token drift guard: hardcoded colors in this turn's additions get
       // pointed at the nearest existing token. Style pressure, not a gate.
       if (checkpoint) {
@@ -971,6 +990,27 @@ export class Session {
           .catch((error: unknown) => {
             this.push('status', `context report failed: ${error instanceof Error ? error.message : String(error)}`)
           })
+        break
+      }
+      case 'yes':
+      case 'no': {
+        if (!this.pendingApproval) {
+          this.push('status', `nothing awaiting approval — /${name} answers an engine's approval request`)
+          break
+        }
+        const summary = this.pendingApproval
+        this.pendingApproval = null
+        const approved = name === 'yes'
+        appendDecision(this.opts.cwd, {
+          decision: `${approved ? 'approved' : 'rejected'}: ${summary}${arg ? ` — ${arg}` : ''}`,
+          source: 'approval',
+        })
+        void this.runTurn(
+          approved
+            ? `Approved: "${summary}". Proceed.${arg ? ` Note from the user: ${arg}` : ''}`
+            : `Rejected: "${summary}". Do not proceed with it.${arg ? ` The user says: ${arg}` : ' Stop and await direction.'}`,
+          approved ? `✓ approved${arg ? ` — ${arg}` : ''}` : `✗ rejected${arg ? ` — ${arg}` : ''}`,
+        )
         break
       }
       case 'decide': {

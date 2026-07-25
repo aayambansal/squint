@@ -67,7 +67,7 @@ describe('enrich', () => {
     expect(noMatch.sections).not.toContain('Project notes')
 
     expect(loadRules(os.tmpdir())).toBeNull()
-    expect(enrich(os.tmpdir(), 'x').sections).toBe('')
+    expect(enrich(os.tmpdir(), 'x').sections).toContain('Requesting visual approval')
   })
 
   it('injects the shadcn component inventory when components.json exists', () => {
