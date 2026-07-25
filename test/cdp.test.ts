@@ -107,5 +107,10 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
     const slop = result.slop.join('\n')
     expect(slop).toContain('generic font stack: arial')
     expect(slop).toContain('emoji-bulleted')
+
+    const narration = result.narration.join('\n')
+    expect(narration).toContain('heading 1: "squint cdp"')
+    expect(narration).toContain('button (no accessible name)')
+    expect(narration).toContain('textbox (no accessible name)')
   })
 })

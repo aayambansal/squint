@@ -41,6 +41,8 @@ export interface CdpCaptureResult {
   slop: string[]
   /** Load performance snapshot for the primary navigation. */
   perf: PerfMetrics
+  /** "What a screen reader would say": linearized AX tree (when audited). */
+  narration: string[]
 }
 
 /** In-page collection of web-vitals-adjacent numbers via PerformanceObserver. */
@@ -364,6 +366,7 @@ export async function cdpCapture(
   let a11y: string[] = []
   let slop: string[] = []
   let perf: PerfMetrics = {}
+  let narration: string[] = []
   const requests = new Map<string, string>()
   let connection: CdpConnection | null = null
 
@@ -446,6 +449,28 @@ export async function cdpCapture(
       } catch {
         // best-effort
       }
+      try {
+        await connection.send('Accessibility.enable', {}, sessionId)
+        const { nodes } = await connection.send('Accessibility.getFullAXTree', {}, sessionId)
+        const interesting = new Set([
+          'heading', 'link', 'button', 'textbox', 'checkbox', 'radio', 'combobox', 'listbox',
+          'img', 'image', 'navigation', 'main', 'banner', 'contentinfo', 'form', 'search',
+          'tab', 'menuitem', 'switch', 'slider', 'alert', 'dialog', 'list',
+        ])
+        if (Array.isArray(nodes)) {
+          for (const node of nodes) {
+            if (node.ignored) continue
+            const role = node.role?.value
+            if (!role || !interesting.has(role)) continue
+            const name = (node.name?.value ?? '').toString().trim().replace(/\s+/g, ' ').slice(0, 80)
+            const level = node.properties?.find((p: any) => p.name === 'level')?.value?.value
+            narration.push(`${role}${level ? ` ${level}` : ''}${name ? `: "${name}"` : ' (no accessible name)'}`)
+            if (narration.length >= 80) break
+          }
+        }
+      } catch {
+        // narration is best-effort
+      }
     }
 
     for (const viewport of viewports) {
@@ -471,5 +496,5 @@ export async function cdpCapture(
     setTimeout(() => fs.rmSync(profileDir, { recursive: true, force: true }), 500).unref?.()
   }
 
-  return { report, shots, a11y, slop, perf }
+  return { report, shots, a11y, slop, perf, narration }
 }
