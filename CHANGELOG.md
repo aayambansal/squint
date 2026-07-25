@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.1 — 2026-07-26
+
+- Perf pulse: LCP/CLS/transfer/request deltas per clean turn — bundle bloat shows the turn it happens
+- Token drift guard: hardcoded colors in a turn's additions get pointed at the nearest existing token (deterministic, per turn)
+- /btw <question>: read-only side questions; the main thread's context is untouched
+
 ## 0.3.0 — 2026-07-26
 
 The harness that sees, now in the terminal:
