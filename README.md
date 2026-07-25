@@ -170,7 +170,9 @@ squint doctor --probe             # run every engine end to end, verify auth act
   distinctiveness debt in `/review`. The phantom-class check diffs every DOM class
   against the compiled CSS — hallucinated utilities surface as named problems instead
   of silently unstyled elements — and version-aware rule-packs catch Tailwind v3
-  muscle memory in v4 projects at gate time, rename in hand. `/context` itemizes
+  muscle memory in v4 projects at gate time, rename in hand. view-transition breakage (duplicate names, missing reduced-motion handling) is
+  flagged from the live page, and on Next 16+ the framework's own `/_next/mcp`
+  channel feeds structured errors straight into the fix loop. `/context` itemizes
   the injected-context bill per source, with staleness warnings.
 - **The design ledger**: `/decide` (plus chosen variants, rollbacks, accepted
   sandboxes) appends to a committed `.squint/design-log.jsonl`; recent decisions ride
