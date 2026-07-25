@@ -23,6 +23,9 @@ export type FlowStep =
   | { kind: 'press'; key: string }
   | { kind: 'expect'; text: string }
   | { kind: 'shot'; name: string }
+  | { kind: 'hover'; target: string }
+  | { kind: 'scroll'; target: string }
+  | { kind: 'wait'; ms: number }
 
 export interface Flow {
   name: string
@@ -58,6 +61,18 @@ export function parseFlow(name: string, text: string): Flow | null {
       case 'shot':
         steps.push({ kind: 'shot', name: arg.replace(/[^a-zA-Z0-9-]/g, '-') })
         break
+      case 'hover':
+        steps.push({ kind: 'hover', target: arg })
+        break
+      case 'scroll':
+        steps.push({ kind: 'scroll', target: arg || 'bottom' })
+        break
+      case 'wait': {
+        const ms = Number.parseInt(arg, 10)
+        if (!Number.isInteger(ms) || ms < 0 || ms > 10000) return null
+        steps.push({ kind: 'wait', ms })
+        break
+      }
       default:
         return null // unknown verbs invalidate the flow loudly, not silently
     }
@@ -126,8 +141,35 @@ export function stepExpression(step: FlowStep): string | null {
         }
         return { ok: true };
       })()`
+    case 'hover':
+      return `(() => {
+        const target = ${JSON.stringify(step.target)};
+        let el = null;
+        try { el = document.querySelector(target); } catch {}
+        if (!el) {
+          const all = [...document.querySelectorAll('*')];
+          el = all.find((e) => e.children.length === 0 && (e.textContent || '').trim().toLowerCase().includes(target.toLowerCase()));
+        }
+        if (!el) return { ok: false, detail: 'no element matching ' + target };
+        for (const type of ['pointerover', 'mouseover', 'mouseenter']) {
+          el.dispatchEvent(new MouseEvent(type, { bubbles: type !== 'mouseenter' }));
+        }
+        return { ok: true };
+      })()`
+    case 'scroll':
+      return `(() => {
+        const target = ${JSON.stringify(step.target)};
+        if (target === 'bottom') { window.scrollTo(0, document.body.scrollHeight); return { ok: true }; }
+        if (target === 'top') { window.scrollTo(0, 0); return { ok: true }; }
+        let el = null;
+        try { el = document.querySelector(target); } catch {}
+        if (!el) return { ok: false, detail: 'no element matching ' + target };
+        el.scrollIntoView({ block: 'center' });
+        return { ok: true };
+      })()`
     case 'goto':
     case 'shot':
+    case 'wait':
       return null // handled by the runner, not in-page
   }
 }
