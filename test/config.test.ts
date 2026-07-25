@@ -77,6 +77,15 @@ describe('setConfigValue', () => {
     expect(() => setConfigValue(file, 'autoDev', 'yes')).toThrow(/must be true or false/)
   })
 
+  it('parses budgetUsd as a positive number', () => {
+    const file = path.join(dir, 'c.json')
+    setConfigValue(file, 'budgetUsd', '2.5')
+    const config = loadConfig({ globalFile: file, projectFile: path.join(dir, 'none.json') })
+    expect(config.budgetUsd).toBe(2.5)
+    expect(() => setConfigValue(file, 'budgetUsd', 'lots')).toThrow(/positive number/)
+    expect(() => setConfigValue(file, 'budgetUsd', '-1')).toThrow(/positive number/)
+  })
+
   it('rejects unknown keys', () => {
     expect(() => setConfigValue(path.join(dir, 'c.json'), 'nope', 'x')).toThrow(/Unknown config key/)
   })
