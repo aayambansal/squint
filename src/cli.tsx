@@ -452,11 +452,18 @@ configCommand
   })
 
 // No subcommand → launch the TUI.
-program.action(() => {
+program.action(async () => {
   const cwd = process.cwd()
   const config = loadConfig(defaultPaths(cwd))
   const engineId = resolveEngineId(config)
   const model = resolveModel(config, engineId)
+  // Detect the terminal background before Ink attaches, so the OSC reply
+  // never leaks into the input line. User-chosen themes always win.
+  let theme = config.theme
+  if (!theme && !process.env.NO_COLOR) {
+    const { detectBackground } = await import('./tui/background.js')
+    if ((await detectBackground()) === 'light') theme = 'light'
+  }
   render(
     <App
       cwd={cwd}
@@ -468,7 +475,7 @@ program.action(() => {
       autoCheck={config.autoCheck}
       bell={config.bell}
       budgetUsd={config.budgetUsd}
-      initialTheme={config.theme}
+      initialTheme={theme}
     />,
   )
 })
