@@ -634,13 +634,14 @@ export class Session {
   }
 
   /** Screenshot the running app (and watch its runtime where CDP is available). */
-  private async capture(): Promise<CaptureResult | null> {
-    if (!this.state.devUrl) {
-      this.push('error', 'dev server not running — /dev first')
+  private async capture(urlOverride?: string): Promise<CaptureResult | null> {
+    const url = urlOverride || this.state.devUrl
+    if (!url) {
+      this.push('error', 'dev server not running — /dev first, or /shot <url>')
       return null
     }
     this.push('status', 'capturing screenshots…')
-    const result = await captureViewports(this.opts.cwd, this.state.devUrl)
+    const result = await captureViewports(this.opts.cwd, url)
     if (!result) {
       this.push('error', 'no Chrome/Chromium found for screenshots')
       return null
@@ -860,7 +861,7 @@ export class Session {
         })()
         break
       case 'shot':
-        void this.capture()
+        void this.capture(arg || undefined)
         break
       case 'review':
         void (async () => {
