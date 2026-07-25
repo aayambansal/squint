@@ -65,11 +65,12 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
     const page = path.join(dir, 'page.html')
     fs.writeFileSync(
       page,
-      `<!doctype html><html><head><title>t</title></head><body><h1>squint cdp</h1>
+      `<!doctype html><html><head><title>t</title></head><body style="font-family: Arial, sans-serif"><h1>squint cdp</h1>
       <h4>skipped levels</h4>
       <img src="definitely-missing.png" />
       <button></button>
       <input type="text" />
+      <ul><li>🚀 fast</li><li>✨ shiny</li><li>🔥 hot</li></ul>
       <script>
         console.error('console-boom');
         setTimeout(() => { throw new Error('uncaught-boom') }, 100);
@@ -102,5 +103,9 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
     expect(findings).toContain('button without accessible name')
     expect(findings).toContain('form control without label')
     expect(findings).toContain('heading order jumps h1 → h4')
+
+    const slop = result.slop.join('\n')
+    expect(slop).toContain('generic font stack: arial')
+    expect(slop).toContain('emoji-bulleted')
   })
 })
