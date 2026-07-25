@@ -187,6 +187,46 @@ describe('Session', () => {
     session.dispose()
   })
 
+  it('keeps a checkpoint per ask: /undo pops, /restore rewinds deeper', async () => {
+    const { execFileSync } = await import('node:child_process')
+    const git = (...args: string[]) => execFileSync('git', args, { cwd: dir, stdio: 'ignore' })
+    git('init', '-q')
+    git('config', 'user.email', 't@e.com')
+    git('config', 'user.name', 'T')
+    fs.writeFileSync(path.join(dir, 'base.txt'), 'base\n')
+    git('add', '-A')
+    git('commit', '-qm', 'base')
+
+    // Engine creates one new file per turn: f0, then f1.
+    vi.spyOn(registry, 'getEngine').mockReturnValue(
+      fakeEngine(
+        "const fs=require('fs');fs.writeFileSync('f'+fs.readdirSync('.').filter(n=>n.startsWith('f')).length,'x')",
+      ),
+    )
+    const session = new Session({ cwd: dir, engineId: 'fake' })
+    session.input('first ask')
+    await waitFor(session, () => session.getState().totals.turns === 1, 15000)
+    session.input('second ask')
+    await waitFor(session, () => session.getState().totals.turns === 2, 15000)
+    expect(fs.existsSync(path.join(dir, 'f0'))).toBe(true)
+    expect(fs.existsSync(path.join(dir, 'f1'))).toBe(true)
+
+    session.input('/checkpoints')
+    expect(session.getState().items.at(-1)?.text).toContain('1. first ask')
+    expect(session.getState().items.at(-1)?.text).toContain('2. second ask')
+
+    session.input('/undo')
+    expect(fs.existsSync(path.join(dir, 'f1'))).toBe(false)
+    expect(fs.existsSync(path.join(dir, 'f0'))).toBe(true)
+
+    session.input('/restore 1')
+    expect(fs.existsSync(path.join(dir, 'f0'))).toBe(false)
+    expect(fs.readFileSync(path.join(dir, 'base.txt'), 'utf8')).toBe('base\n')
+    session.input('/undo')
+    expect(session.getState().items.at(-1)?.text).toContain('nothing to undo')
+    session.dispose()
+  }, 40000)
+
   it('reports interrupted runs without counting a turn', async () => {
     vi.spyOn(registry, 'getEngine').mockReturnValue(
       fakeEngine("setInterval(() => console.log('tick'), 100)"),
