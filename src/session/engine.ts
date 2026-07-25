@@ -936,12 +936,13 @@ export class Session {
         break
       }
       case 'context': {
-        try {
-          const { contextReport, formatContextReport } = await import('../quality/contextDoctor.js')
-          this.push('status', formatContextReport(contextReport(this.execCwd())))
-        } catch (error) {
-          this.push('status', `context report failed: ${error instanceof Error ? error.message : String(error)}`)
-        }
+        import('../quality/contextDoctor.js')
+          .then(({ contextReport, formatContextReport }) => {
+            this.push('status', formatContextReport(contextReport(this.execCwd())))
+          })
+          .catch((error: unknown) => {
+            this.push('status', `context report failed: ${error instanceof Error ? error.message : String(error)}`)
+          })
         break
       }
       case 'decide': {
