@@ -7,7 +7,7 @@ const ConfigSchema = z.object({
   /** Default engine id (claude, codex, gemini, opencode, amp, cursor, copilot, aider). */
   engine: z.string().optional(),
   /** Per-engine model overrides, e.g. { claude: "claude-sonnet-5" }. */
-  models: z.record(z.string()).optional(),
+  models: z.record(z.string(), z.string()).optional(),
   /** Start the project's dev server automatically when the TUI opens. */
   autoDev: z.boolean().optional(),
   /** Automatically send dev-server errors back to the engine (max 2 attempts). */

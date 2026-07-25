@@ -20,7 +20,7 @@ npm run build && node dist/cli.js doctor
 # or: npm link  → `squint` everywhere
 ```
 
-Node ≥ 20 (≥ 22 for the CDP runtime tests — they auto-skip otherwise). Chrome-dependent
+Node ≥ 22. Chrome-dependent
 tests skip when no Chrome/Chromium is found.
 
 ## Workflow
