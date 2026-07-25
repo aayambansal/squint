@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.1 — 2026-07-26
+
+- Flow verbs: hover (selector or visible text), scroll (bottom/top/selector), wait (capped, validated)
+- squint init ships a starter flow so /flows verifies new apps from the first turn
+
 ## 0.4.0 — 2026-07-26
 
 The verification release — wave 2 complete:
