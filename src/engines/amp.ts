@@ -14,10 +14,12 @@ export const amp: Engine = {
   supportsResume: true,
 
   buildArgs(opts: RunOptions): string[] {
-    if (opts.sessionId) {
-      return ['threads', 'continue', '--execute', opts.prompt, '--stream-json']
-    }
-    return ['-x', opts.prompt, '--stream-json']
+    const args = opts.sessionId
+      ? ['threads', 'continue', '--execute', opts.prompt, '--stream-json']
+      : ['-x', opts.prompt, '--stream-json']
+    // Amp exposes one blunt dial; only yolo turns it.
+    if (opts.mode === 'yolo') args.push('--dangerously-allow-all')
+    return args
   },
 
   createParser: () => createClaudeStreamParser('amp'),

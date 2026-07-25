@@ -13,6 +13,8 @@ export const aider: Engine = {
 
   buildArgs(opts: RunOptions): string[] {
     const args = ['--message', opts.prompt, '--yes-always', '--no-auto-commits']
+    // plan = aider's dry-run: proposes edits without applying them.
+    if (opts.mode === 'plan') args.push('--dry-run')
     if (opts.model) args.push('--model', opts.model)
     return args
   },

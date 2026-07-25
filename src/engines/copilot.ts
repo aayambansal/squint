@@ -12,7 +12,10 @@ export const copilot: Engine = {
   supportsResume: false,
 
   buildArgs(opts: RunOptions): string[] {
-    const args = ['-p', opts.prompt, '-s', '--allow-all-tools']
+    const args = ['-p', opts.prompt, '-s']
+    // plan runs without tool approval (read/answer only); safe and yolo
+    // both need --allow-all-tools since copilot has no finer headless dial.
+    if (opts.mode !== 'plan') args.push('--allow-all-tools')
     if (opts.model) args.push('--model', opts.model)
     return args
   },

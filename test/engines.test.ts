@@ -39,6 +39,21 @@ describe('run modes', () => {
     expect(cursorPlan).toContain('--mode')
     expect(cursorPlan).not.toContain('--force')
     expect(cursor.buildArgs({ ...base })).toContain('--force')
+
+    expect(opencode.buildArgs({ ...base, mode: 'plan' })).toContain('--agent')
+    expect(opencode.buildArgs({ ...base, mode: 'yolo' })).toContain('--auto')
+    expect(opencode.buildArgs({ ...base })).not.toContain('--auto')
+
+    const { copilot } = await import('../src/engines/copilot.js')
+    expect(copilot.buildArgs({ ...base, mode: 'plan' })).not.toContain('--allow-all-tools')
+    expect(copilot.buildArgs({ ...base })).toContain('--allow-all-tools')
+
+    const { aider } = await import('../src/engines/aider.js')
+    expect(aider.buildArgs({ ...base, mode: 'plan' })).toContain('--dry-run')
+    expect(aider.buildArgs({ ...base })).not.toContain('--dry-run')
+
+    expect(amp.buildArgs({ ...base, mode: 'yolo' })).toContain('--dangerously-allow-all')
+    expect(amp.buildArgs({ ...base })).not.toContain('--dangerously-allow-all')
   })
 })
 
