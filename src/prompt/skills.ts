@@ -19,7 +19,9 @@ export function parseSkill(name: string, raw: string): Skill | null {
   const match = FRONTMATTER_RE.exec(raw)
   if (!match) return null
   const body = raw.slice(match[0].length).trim()
-  const triggersLine = /(^|\n)triggers:\s*(.*)/.exec(match[1]!)
+  // Horizontal whitespace only: \s would swallow the newline and turn
+  // the YAML-list form into a bogus inline value.
+  const triggersLine = /(^|\n)triggers:[ \t]*(.*)/.exec(match[1]!)
   if (!triggersLine) return null
   let triggers: string[]
   const inline = triggersLine[2]!.trim()
