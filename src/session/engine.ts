@@ -623,6 +623,27 @@ export class Session {
         }
         break
       }
+      case 'copy': {
+        const last = this.state.items.findLast((i) => i.role === 'assistant')
+        if (!last) {
+          this.push('status', 'nothing to copy yet')
+          break
+        }
+        void import('node:child_process').then(({ spawn }) => {
+          const cmd =
+            process.platform === 'darwin'
+              ? spawn('pbcopy')
+              : process.platform === 'win32'
+                ? spawn('clip')
+                : spawn('xclip', ['-selection', 'clipboard'])
+          cmd.on('error', () => this.push('error', 'no clipboard tool found'))
+          cmd.on('close', (code) => {
+            if (code === 0) this.push('status', `copied last reply (${last.text.length} chars)`)
+          })
+          cmd.stdin?.end(last.text)
+        })
+        break
+      }
       case 'problems':
         if (this.state.problems.length === 0) {
           this.push('status', 'no open problems')
@@ -791,7 +812,7 @@ export class Session {
       case 'help':
         this.push(
           'status',
-          '/engine <id> · /model <name> · /mode plan|safe|yolo · /dev · /check (gates) · /problems · /fix [n] · /shot · /review [focus] · /variants <2-4> <ask> · /undo · /checkpoints · /restore <n> · /resume · /clear · /quit',
+          '/engine <id> · /model <name> · /mode plan|safe|yolo · /dev · /check (gates) · /problems · /fix [n] · /shot · /review [focus] · /variants <2-4> <ask> · /undo · /checkpoints · /restore <n> · /copy (last reply) · /resume · /clear · /quit',
         )
         break
       case 'quit':
