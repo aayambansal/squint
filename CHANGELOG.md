@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.3 — 2026-07-26
+
+- Version-aware rule-packs: v3-era Tailwind written into a v4 project (and retired Vite idioms) caught at gate time with the exact rename as the fix prompt; renamed-scale traps (shadow-sm and friends) surface as advisory verify-intent pressure
+- /context — the injection bill itemized: every context source costed in tokens with when it fires, plus warnings for stale locks, near-universal skill triggers, and oversized always-on context
+
 ## 0.4.2 — 2026-07-26
 
 - Phantom-class check: DOM class tokens with no CSS rule are elements silently unstyled — the deterministic catch for hallucinated/version-mismatched utilities; filed as problems with element pointers
