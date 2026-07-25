@@ -281,6 +281,7 @@ export function App({
           >
             [{state.mode}]
           </Text>
+          {state.sandbox && <Text color={theme.accent} bold> [sandbox]</Text>}
           {' '}
           {state.engineId}
           {state.model ? ` · ${state.model}` : ''} · {path.basename(cwd)}

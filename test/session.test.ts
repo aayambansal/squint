@@ -307,6 +307,47 @@ describe('Session', () => {
     session.dispose()
   }, 40000)
 
+  it('sandbox mode: asks accumulate in the worktree, apply lands them, discard never touches main', async () => {
+    const { execFileSync } = await import('node:child_process')
+    const git = (...args: string[]) => execFileSync('git', args, { cwd: dir, stdio: 'ignore' })
+    git('init', '-q')
+    git('config', 'user.email', 't@e.com')
+    git('config', 'user.name', 'T')
+    fs.writeFileSync(path.join(dir, 'base.txt'), 'base\n')
+    git('add', '-A')
+    git('commit', '-qm', 'base')
+
+    vi.spyOn(registry, 'getEngine').mockReturnValue(
+      fakeEngine("require('fs').writeFileSync('sandboxed.txt', 'from sandbox')"),
+    )
+    const session = new Session({ cwd: dir, engineId: 'fake' })
+    session.input('/sandbox on')
+    expect(session.getState().sandbox).toBe(true)
+
+    session.input('make a thing')
+    await waitFor(session, () => !session.getState().running && session.getState().totals.turns === 1, 15000)
+    // The engine wrote into the sandbox, not the real tree.
+    expect(fs.existsSync(path.join(dir, '.squint', 'sandbox', 'sandboxed.txt'))).toBe(true)
+    expect(fs.existsSync(path.join(dir, 'sandboxed.txt'))).toBe(false)
+
+    session.input('/sandbox diff')
+    expect(session.getState().items.at(-1)?.text).toContain('sandboxed.txt')
+
+    session.input('/sandbox apply')
+    expect(fs.readFileSync(path.join(dir, 'sandboxed.txt'), 'utf8')).toBe('from sandbox')
+    expect(session.getState().sandbox).toBe(false)
+    expect(fs.existsSync(path.join(dir, '.squint', 'sandbox'))).toBe(false)
+
+    // Round two: discard leaves the real tree untouched.
+    session.input('/sandbox on')
+    session.input('another thing')
+    await waitFor(session, () => !session.getState().running && session.getState().totals.turns === 2, 15000)
+    session.input('/sandbox discard')
+    expect(session.getState().sandbox).toBe(false)
+    expect(fs.readFileSync(path.join(dir, 'sandboxed.txt'), 'utf8')).toBe('from sandbox')
+    session.dispose()
+  }, 45000)
+
   it('drives variants from the TUI: gen, list, apply, clean', async () => {
     const { execFileSync } = await import('node:child_process')
     const git = (...args: string[]) => execFileSync('git', args, { cwd: dir, stdio: 'ignore' })

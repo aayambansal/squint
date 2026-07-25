@@ -19,6 +19,7 @@ export const COMMANDS: CommandSpec[] = [
   { name: 'shot', description: 'screenshot the app at mobile/tablet/desktop' },
   { name: 'review', args: '[focus]', description: 'screenshots + the engine critiques its own rendered work' },
   { name: 'variants', args: '<2-4> <ask>', description: 'parallel design explorations; apply/list/clean' },
+  { name: 'sandbox', args: '[on|diff|apply|discard]', description: 'asks accumulate in a shadow worktree until you apply' },
   { name: 'undo', description: 'revert the last ask (files only)' },
   { name: 'checkpoints', description: 'list per-ask checkpoints' },
   { name: 'restore', args: '<n>', description: 'rewind files to before ask n' },

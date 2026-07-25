@@ -16,6 +16,15 @@ import { composePrompt } from '../prompt/brief.js'
 import { enrich } from '../prompt/skills.js'
 import { runAgent } from '../runner/run.js'
 import { clearState, loadState, saveState } from '../state/state.js'
+import {
+  applySandbox,
+  discardSandbox,
+  openSandbox,
+  sandboxDiffStat,
+  sandboxDir,
+  sandboxExists,
+  sandboxFiles,
+} from '../vcs/sandbox.js'
 import { diffStatSince, isGitRepo, restoreSnapshot, type Snapshot, takeSnapshot } from '../vcs/snapshot.js'
 import { applyVariant, cleanVariants, listVariants, runVariants } from '../variants/variants.js'
 import { screenshotVariants } from '../variants/shots.js'
@@ -58,6 +67,8 @@ export interface SessionState {
   mode: RunMode
   /** Open findings from gates, the dev server, the runtime, and a11y sweeps. */
   problems: Problem[]
+  /** Asks accumulate in a shadow worktree until /sandbox apply. */
+  sandbox: boolean
 }
 
 export interface SessionOptions {
@@ -119,6 +130,7 @@ export class Session {
       queue: [],
       mode: 'safe',
       problems: [],
+      sandbox: false,
     }
     if (opts.autoDev && detectDevCommand(opts.cwd)) {
       this.devServer().start()
@@ -298,14 +310,34 @@ export class Session {
     }
   }
 
+  /** Where engines run and servers start: the sandbox worktree when on. */
+  private execCwd(): string {
+    return this.state.sandbox ? sandboxDir(this.opts.cwd) : this.opts.cwd
+  }
+
   private devServer(): DevServer {
     if (!this.dev) {
-      this.dev = new DevServer(this.opts.cwd, {
+      this.dev = new DevServer(this.execCwd(), {
         onStateChange: (devState) => this.notify({ devState }),
         onUrl: (url) => this.notify({ devUrl: url }),
       })
     }
     return this.dev
+  }
+
+  /** Rebind the dev server after the execution tree changes. */
+  private resetDevServer(): void {
+    const wasRunning = this.dev && this.dev.state !== 'stopped'
+    this.dev?.stop()
+    this.dev = null
+    this.notify({ devUrl: null, devState: 'stopped' })
+    if (wasRunning) {
+      const command = detectDevCommand(this.execCwd())
+      if (command) {
+        this.devServer().start(command)
+        this.push('status', `dev server restarting in ${this.state.sandbox ? 'the sandbox' : 'the real tree'}`)
+      }
+    }
   }
 
   private turnEdits = 0
@@ -389,7 +421,7 @@ export class Session {
       engine,
       {
         prompt,
-        cwd: this.opts.cwd,
+        cwd: this.execCwd(),
         model: this.state.model,
         mode: this.state.mode,
         sessionId: engine.supportsResume ? this.sessionId : undefined,
@@ -443,9 +475,9 @@ export class Session {
     // Fastest verifier first: deterministic compile/lint checks on every
     // turn (the dyad pre-loop), before any browser-level feedback.
     if (result.ok && this.opts.autoCheck !== false) {
-      const fastGates = detectFastGates(this.opts.cwd)
+      const fastGates = detectFastGates(this.execCwd())
       if (fastGates.length > 0) {
-        const gateResults = await runGates(this.opts.cwd, fastGates)
+        const gateResults = await runGates(this.execCwd(), fastGates)
         const failures = gateResults.filter((r) => !r.ok)
         if (failures.length > 0) {
           this.addProblem(
@@ -528,7 +560,8 @@ export class Session {
     this.fixAttempts = 0
     this.autoReviewedThisAsk = false
     // Checkpoint per ask: the snapshot covers this turn plus its fixes.
-    const snapshot = takeSnapshot(this.opts.cwd)
+    // In sandbox mode the worktree IS the safety net; discard is the undo.
+    const snapshot = this.state.sandbox ? null : takeSnapshot(this.opts.cwd)
     if (snapshot) {
       this.checkpoints.push({
         snapshot,
@@ -885,6 +918,56 @@ export class Session {
         this.sessionId = saved.sessionId
         this.notify({ engineId: saved.engine, model: saved.model ?? this.state.model })
         this.push('status', `resumed ${saved.engine} session${saved.lastAsk ? ` · "${saved.lastAsk}"` : ''}`)
+        break
+      }
+      case 'sandbox': {
+        if (this.state.running) {
+          this.push('status', 'wait for the current turn before changing sandbox state')
+          break
+        }
+        if (arg === 'diff') {
+          const stat = sandboxDiffStat(this.opts.cwd)
+          if (!stat) {
+            this.push('status', sandboxExists(this.opts.cwd) ? 'sandbox is clean' : 'no sandbox open — /sandbox on')
+          } else {
+            this.push('status', `${stat}\n${sandboxFiles(this.opts.cwd).join('\n')}`)
+          }
+          break
+        }
+        if (arg === 'apply') {
+          const applied = applySandbox(this.opts.cwd)
+          if (applied.ok) {
+            discardSandbox(this.opts.cwd)
+            this.notify({ sandbox: false })
+            this.resetDevServer()
+            this.push('status', 'sandbox applied to the real tree — review with git diff')
+          } else {
+            this.push('error', applied.detail ?? 'apply failed')
+          }
+          break
+        }
+        if (arg === 'discard' || arg === 'off') {
+          const had = discardSandbox(this.opts.cwd)
+          this.notify({ sandbox: false })
+          this.resetDevServer()
+          this.push('status', had ? 'sandbox discarded — the real tree was never touched' : 'no sandbox open')
+          break
+        }
+        if (arg === 'on' || arg === '') {
+          if (!isGitRepo(this.opts.cwd)) {
+            this.push('error', 'sandbox needs a git repo with at least one commit')
+            break
+          }
+          const { reused } = openSandbox(this.opts.cwd)
+          this.notify({ sandbox: true })
+          this.resetDevServer()
+          this.push(
+            'status',
+            `${reused ? 'rejoined the open sandbox' : 'sandbox opened'} — asks now accumulate in a shadow worktree; /sandbox diff · apply · discard`,
+          )
+          break
+        }
+        this.push('status', 'usage: /sandbox [on] · diff · apply · discard')
         break
       }
       case 'variants': {
