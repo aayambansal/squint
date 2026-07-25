@@ -70,6 +70,9 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
         .c1{color:#111}.c2{color:#222}.c3{color:#333}.c4{color:#444}.c5{color:#555}
         .c6{color:#666}.c7{color:#777}.c8{color:#888}.c9{color:#999}.c10{color:#aaa}
         .real-thing{font-weight:bold}
+        .card-a{view-transition-name:hero-card}
+        .card-b{view-transition-name:hero-card}
+        ::view-transition-old(hero-card){animation-duration:.3s}
       </style>
       </head><body style="font-family: Arial, sans-serif"><h1 class="real-thing bg-linear-to-r">squint cdp</h1>
       <h4>skipped levels</h4>
@@ -77,6 +80,7 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
       <button></button>
       <input type="text" />
       <ul><li>🚀 fast</li><li>✨ shiny</li><li>🔥 hot</li></ul>
+      <div class="card-a">a</div><div class="card-b">b</div>
       <script>
         console.error('console-boom');
         setTimeout(() => { throw new Error('uncaught-boom') }, 100);
@@ -117,6 +121,10 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
     const phantoms = result.phantoms.join('\n')
     expect(phantoms).toContain('bg-linear-to-r (on <h1>)')
     expect(phantoms).not.toContain('real-thing')
+
+    const vt = result.viewTransitions.join('\n')
+    expect(vt).toContain('duplicate view-transition-name "hero-card" on 2 elements')
+    expect(vt).toContain('no prefers-reduced-motion')
 
     const narration = result.narration.join('\n')
     expect(narration).toContain('heading 1: "squint cdp"')

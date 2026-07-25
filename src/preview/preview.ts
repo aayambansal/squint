@@ -25,6 +25,7 @@ export interface CaptureResult {
   narration?: string[]
   /** DOM class tokens with no matching CSS rule — silently unstyled. */
   phantoms?: string[]
+  viewTransitions?: string[]
 }
 
 /**
@@ -76,7 +77,7 @@ export async function captureViewports(cwd: string, url: string): Promise<Captur
     try {
       // Root gets the full viewport trio + runtime watch + a11y sweep;
       // additional routes get one desktop shot each.
-      const { report, shots, a11y, slop, narration, phantoms } = await cdpCapture(chrome, url, dir, VIEWPORTS, 2500, true)
+      const { report, shots, a11y, slop, narration, phantoms, viewTransitions } = await cdpCapture(chrome, url, dir, VIEWPORTS, 2500, true)
       const errors: string[] = []
       for (const route of routes.slice(1)) {
         try {
@@ -91,7 +92,7 @@ export async function captureViewports(cwd: string, url: string): Promise<Captur
           errors.push(`${route}: capture failed`)
         }
       }
-      return { shots, errors, runtime: report, a11y, slop, narration, phantoms }
+      return { shots, errors, runtime: report, a11y, slop, narration, phantoms, viewTransitions }
     } catch {
       // fall through to the one-shot path
     }
@@ -196,6 +197,11 @@ function narrationSection(narration: string[] | undefined): string {
   return `\n\n## What a screen reader would say (accessibility tree, in order)\n\n${narration.join('\n')}\n\nJudge this narration as an experience: does the reading order make sense? do names actually describe their targets? is anything announced as "(no accessible name)"? Fix real incoherence — this is how non-visual users meet the page.`
 }
 
+function vtSection(viewTransitions: string[] | undefined): string {
+  if (!viewTransitions || viewTransitions.length === 0) return ''
+  return `\n\n## View-transition findings\n\n${viewTransitions.join('\n')}\n\nDuplicate names abort the whole transition at runtime; missing reduced-motion handling animates for users who opted out. Fix the names / add the media query rather than removing the transitions.`
+}
+
 function phantomSection(phantoms: string[] | undefined): string {
   if (!phantoms || phantoms.length === 0) return ''
   return `\n\n## Phantom classes (in the DOM, absent from the CSS)\n\n${phantoms.join('\n')}\n\nEach of these is an element silently unstyled — usually a misspelled or version-mismatched utility (Tailwind v3 spellings in a v4 project) or a concatenated class the scanner never compiled. Fix the class names or define the styles.`
@@ -214,11 +220,12 @@ export function buildReviewPrompt(
   slop?: string[],
   narration?: string[],
   phantoms?: string[],
+  viewTransitions?: string[],
 ): string {
   const list = shots.map((s) => `- ${s.name}: ${s.path}`).join('\n')
   return `Screenshots of the running app were just captured:
 
 ${list}
 
-Read each screenshot and review the rendered UI against the design standards you were given. Check: visual hierarchy and spacing rhythm, typography, color and contrast, alignment, empty-looking or broken regions, and whether the mobile capture shows horizontal overflow or cramped layout. List the concrete issues you can SEE (not hypothetical ones), ranked by visual impact${extra ? `, with special attention to: ${extra}` : ''}. Then fix them and verify the app still builds.${runtimeSection(runtime)}${a11ySection(a11y)}${slopSection(slop)}${narrationSection(narration)}${phantomSection(phantoms)}`
+Read each screenshot and review the rendered UI against the design standards you were given. Check: visual hierarchy and spacing rhythm, typography, color and contrast, alignment, empty-looking or broken regions, and whether the mobile capture shows horizontal overflow or cramped layout. List the concrete issues you can SEE (not hypothetical ones), ranked by visual impact${extra ? `, with special attention to: ${extra}` : ''}. Then fix them and verify the app still builds.${runtimeSection(runtime)}${a11ySection(a11y)}${slopSection(slop)}${narrationSection(narration)}${phantomSection(phantoms)}${vtSection(viewTransitions)}`
 }

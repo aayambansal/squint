@@ -45,6 +45,7 @@ export interface CdpCaptureResult {
   narration: string[]
   /** Class tokens in the DOM with no matching CSS rule (when audited). */
   phantoms: string[]
+  viewTransitions: string[]
 }
 
 /** In-page collection of web-vitals-adjacent numbers via PerformanceObserver. */
@@ -461,6 +462,54 @@ const PHANTOM_AUDIT = `(() => {
   return out;
 })()`
 
+/**
+ * View-transitions correctness: duplicate view-transition-name values on
+ * simultaneously rendered elements make the browser skip the whole
+ * transition (a console error nobody reads); ::view-transition CSS with
+ * no prefers-reduced-motion guard animates for the users who asked it
+ * not to. Nobody else checks this category.
+ */
+const VT_AUDIT = `(() => {
+  const findings = [];
+  const names = new Map();
+  for (const el of document.querySelectorAll('*')) {
+    const name = getComputedStyle(el).viewTransitionName;
+    if (name && name !== 'none' && name !== 'auto') {
+      const label = el.tagName.toLowerCase() + (el.id ? '#' + el.id : '');
+      const list = names.get(name) || [];
+      list.push(label);
+      names.set(name, list);
+    }
+  }
+  for (const [name, els] of names) {
+    if (els.length > 1) {
+      findings.push('duplicate view-transition-name "' + name + '" on ' + els.length + ' elements (' + els.slice(0, 3).join(', ') + ') — the browser skips the entire transition');
+    }
+  }
+  let vtCss = false;
+  let reducedGuard = false;
+  const walk = (list, inReduced) => {
+    for (const rule of list) {
+      const media = rule.media && rule.media.mediaText || '';
+      const nowReduced = inReduced || /prefers-reduced-motion/.test(media);
+      if (rule.cssText && rule.cssText.includes('::view-transition')) {
+        vtCss = true;
+        if (nowReduced) reducedGuard = true;
+      }
+      if (nowReduced && rule.cssText && /animation|transition/.test(rule.cssText)) reducedGuard = true;
+      if (rule.cssRules) walk(rule.cssRules, nowReduced);
+    }
+  };
+  for (const sheet of document.styleSheets) {
+    let rules; try { rules = sheet.cssRules; } catch { continue; }
+    try { walk(rules, false); } catch {}
+  }
+  if ((names.size > 0 || vtCss) && !reducedGuard) {
+    findings.push('view transitions declared with no prefers-reduced-motion handling anywhere in the CSS — motion-sensitive users get the full animation');
+  }
+  return findings;
+})()`
+
 export async function cdpCapture(
   chromePath: string,
   url: string,
@@ -477,6 +526,7 @@ export async function cdpCapture(
   let perf: PerfMetrics = {}
   let narration: string[] = []
   let phantoms: string[] = []
+  let viewTransitions: string[] = []
   const requests = new Map<string, string>()
   let connection: CdpConnection | null = null
 
@@ -570,6 +620,16 @@ export async function cdpCapture(
         // best-effort
       }
       try {
+        const { result } = await connection.send(
+          'Runtime.evaluate',
+          { expression: VT_AUDIT, returnByValue: true },
+          sessionId,
+        )
+        if (Array.isArray(result?.value)) viewTransitions = result.value.map(String)
+      } catch {
+        // best-effort
+      }
+      try {
         await connection.send('Accessibility.enable', {}, sessionId)
         const { nodes } = await connection.send('Accessibility.getFullAXTree', {}, sessionId)
         const interesting = new Set([
@@ -616,5 +676,5 @@ export async function cdpCapture(
     setTimeout(() => fs.rmSync(profileDir, { recursive: true, force: true }), 500).unref?.()
   }
 
-  return { report, shots, a11y, slop, perf, narration, phantoms }
+  return { report, shots, a11y, slop, perf, narration, phantoms, viewTransitions }
 }
