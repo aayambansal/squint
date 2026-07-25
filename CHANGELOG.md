@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.3 — 2026-07-26
+
+- New README banner
+
 ## 0.1.2 — 2026-07-26
 
 - Contact routes through GitHub (private vulnerability reporting, profile) instead of a raw email address
