@@ -27,6 +27,7 @@ export function registerTui(program: Command): void {
         autoProbe={config.autoProbe}
         autoCheck={config.autoCheck}
         autoReview={config.autoReview}
+        fixModel={config.fixModel}
         bell={config.bell}
         budgetUsd={config.budgetUsd}
         initialTheme={theme}

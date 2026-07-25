@@ -34,6 +34,7 @@ export interface AppProps {
   autoProbe?: boolean
   autoCheck?: boolean
   autoReview?: boolean
+  fixModel?: string
   bell?: boolean
   budgetUsd?: number
   initialTheme?: string
@@ -53,6 +54,7 @@ export function App({
   autoProbe,
   autoCheck,
   autoReview,
+  fixModel,
   bell,
   budgetUsd,
   initialTheme,
@@ -71,6 +73,7 @@ export function App({
       autoProbe,
       autoCheck,
       autoReview,
+      fixModel,
       budgetUsd,
       // Delay lets the goodbye summary land in the Static scrollback.
       onQuit: () => setTimeout(() => exit(), 60),

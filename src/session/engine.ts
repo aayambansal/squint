@@ -86,6 +86,8 @@ export interface SessionOptions {
   budgetUsd?: number
   /** Auto-run /review when the visual pulse shows a big change. */
   autoReview?: boolean
+  /** Cheaper model for fix turns (the mechanical tier). */
+  fixModel?: string
   /** Called when a /quit-style command asks the frontend to close. */
   onQuit?: () => void
 }
@@ -207,10 +209,11 @@ export class Session {
   private dispatchFix(problems: Problem[]): void {
     if (problems.length === 0) return
     const prompt = this.combinedFixPrompt(problems)
-    const display = `⛑ fix: ${problems.map((p) => p.source).join(' + ')}`
+    const fixModel = this.opts.fixModel
+    const display = `⛑ fix: ${problems.map((p) => p.source).join(' + ')}${fixModel ? ` · ${fixModel}` : ''}`
     for (const problem of problems) this.problemPrompts.delete(problem.id)
     this.notify({ problems: this.state.problems.filter((p) => !problems.includes(p)) })
-    void this.runTurn(prompt, display)
+    void this.runTurn(prompt, display, fixModel)
   }
 
   /** Launch a capped auto-fix turn over all open problems. Returns true if launched. */
@@ -480,7 +483,7 @@ export class Session {
   }
 
   /** Run one engine turn. `display` is what the transcript shows as the ask. */
-  private async runTurn(prompt: string, display: string): Promise<void> {
+  private async runTurn(prompt: string, display: string, modelOverride?: string): Promise<void> {
     this.push('user', display)
     this.turnEdits = 0
     this.turnTools = 0
@@ -493,7 +496,7 @@ export class Session {
       {
         prompt,
         cwd: this.execCwd(),
-        model: this.state.model,
+        model: modelOverride ?? this.state.model,
         mode: this.state.mode,
         sessionId: engine.supportsResume ? this.sessionId : undefined,
       },

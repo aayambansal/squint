@@ -190,6 +190,31 @@ describe('Session', () => {
     session.dispose()
   })
 
+  it('routes fix turns to the cheaper fixModel tier', async () => {
+    fs.writeFileSync(
+      path.join(dir, 'package.json'),
+      JSON.stringify({ scripts: { typecheck: 'node -e "process.exit(1)"' } }),
+    )
+    const models: Array<string | undefined> = []
+    vi.spyOn(registry, 'getEngine').mockReturnValue({
+      ...fakeEngine("console.log('work')"),
+      buildArgs: (opts) => {
+        models.push(opts.model)
+        return ['-e', "console.log('work')"]
+      },
+    })
+    const session = new Session({ cwd: dir, engineId: 'fake', autoFix: true, fixModel: 'cheap-tier' })
+    session.input('build it')
+    await waitFor(
+      session,
+      () => !session.getState().running && session.getState().items.some((i) => i.text.includes('/fix sends open problems')),
+      30000,
+    )
+    expect(models[0]).toBeUndefined() // the main ask uses the session model
+    expect(models.slice(1)).toEqual(['cheap-tier', 'cheap-tier']) // both fix attempts route cheap
+    session.dispose()
+  }, 35000)
+
   it('runs fast gates after each turn and auto-fixes with a hard cap', async () => {
     // A project whose typecheck always fails: the fix cycle must stop at 2.
     fs.writeFileSync(
