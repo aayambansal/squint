@@ -9,7 +9,7 @@ import path from 'node:path'
  * squint's hooks fire on quality events no engine emits: pulse diffs,
  * problems, budget crossings.
  */
-export type HookEvent = 'on-turn-end' | 'on-pulse-diff' | 'on-problem' | 'on-budget'
+export type HookEvent = 'on-turn-end' | 'on-pulse-diff' | 'on-problem' | 'on-budget' | 'on-sentinel'
 
 export function runHook(cwd: string, event: HookEvent, payload: Record<string, string>): boolean {
   const script = path.join(cwd, '.squint', 'hooks', event)

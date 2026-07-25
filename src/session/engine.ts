@@ -554,6 +554,18 @@ export class Session {
         } catch {
           // never blocks the loop
         }
+        // The sentinel watches what the engine DID: gate evasion surfaces
+        // loudly for the human and never enters auto-fix.
+        try {
+          const { scanEvasion, sentinelSummary } = await import('../quality/sentinel.js')
+          const evasions = scanEvasion(this.execCwd(), checkpoint.snapshot.stashHash ?? 'HEAD')
+          if (evasions.length > 0) {
+            this.push('error', `⚠ sentinel: ${evasions.length} gate-evasion pattern(s) this turn\n${sentinelSummary(evasions)}\nReview before trusting green — /undo rolls the turn back.`)
+            runHook(this.opts.cwd, 'on-sentinel', { count: String(evasions.length), summary: sentinelSummary(evasions) })
+          }
+        } catch {
+          // never blocks the loop
+        }
         // Version-aware rule-packs: v3-era Tailwind in a v4 project (and
         // retired Vite idioms) caught at gate time with the rename in hand.
         try {
