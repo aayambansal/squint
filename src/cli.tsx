@@ -387,6 +387,7 @@ program.action(() => {
       autoDev={config.autoDev}
       autoFix={config.autoFix}
       autoProbe={config.autoProbe}
+      autoCheck={config.autoCheck}
       initialTheme={config.theme}
     />,
   )

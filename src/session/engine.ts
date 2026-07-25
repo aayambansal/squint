@@ -2,7 +2,7 @@ import path from 'node:path'
 import { buildFixPrompt, DevServer, type DevServerState, detectDevCommand } from '../devserver/devserver.js'
 import { getEngine } from '../engines/registry.js'
 import type { AgentEvent } from '../engines/types.js'
-import { buildGatePrompt, detectGates, runGates } from '../gates/gates.js'
+import { buildGatePrompt, detectFastGates, detectGates, runGates } from '../gates/gates.js'
 import {
   buildReviewPrompt,
   buildRuntimeFixPrompt,
@@ -50,6 +50,8 @@ export interface SessionOptions {
   autoDev?: boolean
   autoFix?: boolean
   autoProbe?: boolean
+  /** Run typecheck+lint after every turn (default on where detected). */
+  autoCheck?: boolean
   /** Called when a /quit-style command asks the frontend to close. */
   onQuit?: () => void
 }
@@ -281,6 +283,37 @@ export class Session {
           lastAsk: display.length > 80 ? `${display.slice(0, 79)}…` : display,
           at: Date.now(),
         })
+      }
+    }
+
+    // Fastest verifier first: deterministic compile/lint checks on every
+    // turn (the dyad pre-loop), before any browser-level feedback.
+    if (result.ok && this.opts.autoCheck !== false) {
+      const fastGates = detectFastGates(this.opts.cwd)
+      if (fastGates.length > 0) {
+        const gateResults = await runGates(this.opts.cwd, fastGates)
+        const failures = gateResults.filter((r) => !r.ok)
+        if (failures.length > 0) {
+          this.pendingFix = {
+            prompt: buildGatePrompt(failures),
+            display: `⛑ fix ${failures.map((f) => f.gate.id).join(' + ')} errors`,
+          }
+          this.push(
+            'error',
+            failures.map((f) => `✗ ${f.gate.id} · ${f.outputTail.split('\n').slice(-3).join('\n')}`).join('\n'),
+          )
+          if (this.opts.autoFix && this.fixAttempts < MAX_AUTO_FIX_ATTEMPTS) {
+            this.fixAttempts += 1
+            this.push('status', `auto-fix attempt ${this.fixAttempts}/${MAX_AUTO_FIX_ATTEMPTS}`)
+            this.notify({ running: false })
+            await this.runTurn(this.pendingFix.prompt, this.pendingFix.display)
+            return
+          }
+          this.push('status', 'type /fix to send them to the engine')
+          this.notify({ running: false })
+          this.drainQueue()
+          return
+        }
       }
     }
 

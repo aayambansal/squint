@@ -84,6 +84,56 @@ describe('Session', () => {
     session.dispose()
   })
 
+  it('runs fast gates after each turn and auto-fixes with a hard cap', async () => {
+    // A project whose typecheck always fails: the fix cycle must stop at 2.
+    fs.writeFileSync(
+      path.join(dir, 'package.json'),
+      JSON.stringify({ scripts: { typecheck: 'node -e "console.error(String.fromCharCode(98,97,100)); process.exit(1)"' } }),
+    )
+    vi.spyOn(registry, 'getEngine').mockReturnValue(fakeEngine("console.log('tried')"))
+    const session = new Session({ cwd: dir, engineId: 'fake', autoFix: true })
+    session.input('break things')
+    // The terminal state: cap reached, /fix armed for the human.
+    await waitFor(
+      session,
+      () => !session.getState().running && session.getState().items.some((i) => i.text.includes('type /fix')),
+      30000,
+    )
+    const texts = session.getState().items.map((i) => i.text)
+    expect(texts.some((t) => t.includes('✗ typecheck'))).toBe(true)
+    expect(texts.filter((t) => t.startsWith('auto-fix attempt')).length).toBe(2)
+    expect(texts.some((t) => t.includes('type /fix'))).toBe(true)
+    session.dispose()
+  }, 35000)
+
+  it('stays quiet when fast gates pass and honors autoCheck: false', async () => {
+    fs.writeFileSync(
+      path.join(dir, 'package.json'),
+      JSON.stringify({ scripts: { typecheck: 'node -e "process.exit(0)"' } }),
+    )
+    vi.spyOn(registry, 'getEngine').mockReturnValue(fakeEngine("console.log('fine')"))
+    const session = new Session({ cwd: dir, engineId: 'fake' })
+    session.input('do good work')
+    await waitFor(session, () => !session.getState().running && session.getState().totals.turns === 1, 15000)
+    expect(session.getState().items.some((i) => i.role === 'error')).toBe(false)
+    session.dispose()
+
+    const offDir = fs.mkdtempSync(path.join(os.tmpdir(), 'squint-nocheck-'))
+    try {
+      fs.writeFileSync(
+        path.join(offDir, 'package.json'),
+        JSON.stringify({ scripts: { typecheck: 'node -e "process.exit(1)"' } }),
+      )
+      const off = new Session({ cwd: offDir, engineId: 'fake', autoCheck: false })
+      off.input('anything')
+      await waitFor(off, () => !off.getState().running && off.getState().totals.turns === 1, 15000)
+      expect(off.getState().items.some((i) => i.text.includes('typecheck'))).toBe(false)
+      off.dispose()
+    } finally {
+      fs.rmSync(offDir, { recursive: true, force: true })
+    }
+  }, 35000)
+
   it('reports quit through the onQuit callback', () => {
     let quit = false
     const session = new Session({ cwd: dir, engineId: 'claude', onQuit: () => (quit = true) })
