@@ -72,13 +72,19 @@ program
 
 program
   .command('engines')
-  .description('List engines and whether they are installed')
+  .description('List engines: installed, streaming, session resume')
   .action(() => {
+    console.log(pc.dim('   id         name           stream  resume  where'))
     for (const { engine, path: binaryPath } of detectEngines()) {
       const status = binaryPath ? pc.green('✓') : pc.red('✗')
+      const stream = engine.createParser ? pc.green('yes') : pc.dim('text')
+      const resume = engine.supportsResume ? pc.green('yes') : pc.dim('no')
       const location = binaryPath ?? pc.dim(`not found — ${engine.install}`)
-      console.log(`${status} ${engine.id.padEnd(10)} ${engine.name.padEnd(14)} ${location}`)
+      console.log(
+        `${status} ${engine.id.padEnd(10)} ${engine.name.padEnd(14)} ${stream.padEnd(15)} ${resume.padEnd(14)} ${location}`,
+      )
     }
+    console.log(pc.dim('\nplan/safe/yolo modes map onto every engine · squint doctor --probe verifies auth'))
   })
 
 program
