@@ -2,6 +2,16 @@ import { describe, expect, it } from 'vitest'
 import { toolGlyph } from '../src/tui/messages.js'
 import { DEFAULT_THEME, resolveTheme, THEMES } from '../src/tui/theme.js'
 
+describe('parseOsc11', () => {
+  it('classifies terminal backgrounds from OSC 11 replies', async () => {
+    const { parseOsc11 } = await import('../src/tui/background.js')
+    expect(parseOsc11('\x1b]11;rgb:1e1e/2020/2b2b\x07')).toBe('dark')
+    expect(parseOsc11('\x1b]11;rgb:ffff/ffff/ffff\x1b\\')).toBe('light')
+    expect(parseOsc11('\x1b]11;rgb:fd/f6/e3\x07')).toBe('light') // solarized-light, 2-digit
+    expect(parseOsc11('garbage')).toBe('unknown')
+  })
+})
+
 describe('toolGlyph', () => {
   it('maps tool families to distinct glyphs with a generic fallback', () => {
     expect(toolGlyph('Read · src/App.tsx')).toBe('⊙')

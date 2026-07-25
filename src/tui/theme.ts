@@ -49,6 +49,15 @@ export const THEMES: Record<string, Theme> = {
     success: '#31748f',
     tool: '#c4a7e7',
   },
+  light: {
+    name: 'light',
+    accent: '#9a6b1f',
+    dim: '#6b6f76',
+    user: '#2a5db0',
+    error: '#c4322e',
+    success: '#3d7a37',
+    tool: '#0f7b8a',
+  },
   mono: {
     name: 'mono',
     accent: 'white',
