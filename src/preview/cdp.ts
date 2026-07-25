@@ -282,6 +282,10 @@ export async function runFlow(
         await new Promise((resolve) => setTimeout(resolve, 1800))
         continue
       }
+      if (step.kind === 'wait') {
+        await new Promise((resolve) => setTimeout(resolve, step.ms))
+        continue
+      }
       if (step.kind === 'shot') {
         const { data } = await connection.send('Page.captureScreenshot', { format: 'png' }, sessionId)
         const outPath = path.join(outDir, `flow-${flow.name}-${step.name}.png`)

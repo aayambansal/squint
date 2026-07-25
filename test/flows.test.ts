@@ -29,6 +29,17 @@ describe('parseFlow', () => {
     expect(parseFlow('empty', '# only comments\n')).toBeNull()
   })
 
+  it('parses hover, scroll, and wait with validation', () => {
+    const flow = parseFlow('rich', 'goto /\nhover Pricing\nscroll bottom\nscroll #faq\nwait 500\nexpect FAQ')
+    expect(flow?.steps.map((s) => s.kind)).toEqual(['goto', 'hover', 'scroll', 'scroll', 'wait', 'expect'])
+    expect(flow?.steps[4]).toEqual({ kind: 'wait', ms: 500 })
+    expect(parseFlow('bad-wait', 'wait forever')).toBeNull()
+    expect(parseFlow('too-long', 'wait 99999')).toBeNull()
+    expect(stepExpression({ kind: 'hover', target: 'Pricing' })).toContain('mouseover')
+    expect(stepExpression({ kind: 'scroll', target: 'bottom' })).toContain('scrollHeight')
+    expect(stepExpression({ kind: 'wait', ms: 100 })).toBeNull()
+  })
+
   it('loads .flow files from .squint/flows', () => {
     const flowsDir = path.join(dir, '.squint', 'flows')
     fs.mkdirSync(flowsDir, { recursive: true })
