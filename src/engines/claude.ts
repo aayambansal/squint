@@ -13,6 +13,8 @@ export const claude: Engine = {
   supportsResume: true,
 
   buildArgs(opts: RunOptions): string[] {
+    const permissionMode =
+      opts.mode === 'plan' ? 'plan' : opts.mode === 'yolo' ? 'bypassPermissions' : 'acceptEdits'
     const args = [
       '-p',
       opts.prompt,
@@ -21,7 +23,7 @@ export const claude: Engine = {
       '--verbose',
       '--include-partial-messages',
       '--permission-mode',
-      'acceptEdits',
+      permissionMode,
     ]
     if (opts.model) args.push('--model', opts.model)
     if (opts.sessionId) args.push('--resume', opts.sessionId)

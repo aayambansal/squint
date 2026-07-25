@@ -16,6 +16,32 @@ describe('registry', () => {
   })
 })
 
+describe('run modes', () => {
+  it('maps plan/safe/yolo onto each engine dialect', async () => {
+    const { claude } = await import('../src/engines/claude.js')
+    const { codex } = await import('../src/engines/codex.js')
+    const { gemini } = await import('../src/engines/gemini.js')
+
+    const base = { prompt: 'p', cwd: '/tmp' } as const
+    expect(claude.buildArgs({ ...base, mode: 'plan' })).toContain('plan')
+    expect(claude.buildArgs({ ...base })).toContain('acceptEdits')
+    expect(claude.buildArgs({ ...base, mode: 'yolo' })).toContain('bypassPermissions')
+
+    expect(codex.buildArgs({ ...base, mode: 'plan' })).toContain('read-only')
+    expect(codex.buildArgs({ ...base })).toContain('workspace-write')
+    expect(codex.buildArgs({ ...base, mode: 'yolo' })).toContain('danger-full-access')
+
+    expect(gemini.buildArgs({ ...base, mode: 'plan' })).toContain('plan')
+    expect(gemini.buildArgs({ ...base })).toContain('auto_edit')
+    expect(gemini.buildArgs({ ...base, mode: 'yolo' })).toContain('yolo')
+
+    const cursorPlan = cursor.buildArgs({ ...base, mode: 'plan' })
+    expect(cursorPlan).toContain('--mode')
+    expect(cursorPlan).not.toContain('--force')
+    expect(cursor.buildArgs({ ...base })).toContain('--force')
+  })
+})
+
 describe('amp', () => {
   it('runs execute mode fresh and threads continue on resume', () => {
     expect(amp.buildArgs({ prompt: 'hi', cwd: '/tmp' })).toEqual(['-x', 'hi', '--stream-json'])

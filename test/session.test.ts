@@ -79,6 +79,22 @@ describe('Session', () => {
     session.dispose()
   })
 
+  it('cycles run modes and accepts /mode', () => {
+    const session = new Session({ cwd: dir, engineId: 'claude' })
+    expect(session.getState().mode).toBe('safe')
+    session.cycleMode()
+    expect(session.getState().mode).toBe('plan')
+    session.cycleMode()
+    expect(session.getState().mode).toBe('yolo')
+    session.cycleMode()
+    expect(session.getState().mode).toBe('safe')
+    session.input('/mode yolo')
+    expect(session.getState().mode).toBe('yolo')
+    session.input('/mode nonsense')
+    expect(session.getState().items.at(-1)?.text).toContain('usage: /mode')
+    session.dispose()
+  })
+
   it('routes slash commands: engine switch, model, help, unknown', () => {
     const session = new Session({ cwd: dir, engineId: 'claude' })
     session.input('/engine codex')

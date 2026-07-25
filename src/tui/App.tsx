@@ -104,6 +104,10 @@ export function App({
       session.interrupt()
       return
     }
+    if (key.tab && key.shift) {
+      session.cycleMode()
+      return
+    }
     if (key.return) {
       const value = line.text.trim()
       setLine(emptyLine)
@@ -238,10 +242,17 @@ export function App({
 
       <Box>
         <Text color={theme.dim}>
+          <Text
+            color={state.mode === 'yolo' ? theme.error : state.mode === 'plan' ? theme.user : theme.dim}
+            bold={state.mode !== 'safe'}
+          >
+            [{state.mode}]
+          </Text>
+          {' '}
           {state.engineId}
           {state.model ? ` · ${state.model}` : ''} · {path.basename(cwd)}
           {devBadge}
-          {totalsBadge} · /help
+          {totalsBadge} · shift+tab mode · /help
         </Text>
       </Box>
     </Box>

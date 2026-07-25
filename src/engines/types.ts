@@ -21,10 +21,18 @@ export type AgentEvent =
   | { type: 'error'; text: string }
   | { type: 'raw'; data: unknown }
 
+/**
+ * How much the engine may do: plan = read-only investigation,
+ * safe = edits auto-approved inside the workspace (the default),
+ * yolo = no approval friction at all.
+ */
+export type RunMode = 'plan' | 'safe' | 'yolo'
+
 export interface RunOptions {
   prompt: string
   cwd: string
   model?: string
+  mode?: RunMode
   /** Session to resume, for engines that support it. */
   sessionId?: string
 }

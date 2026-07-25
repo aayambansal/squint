@@ -15,9 +15,11 @@ export const codex: Engine = {
   supportsResume: true,
 
   buildArgs(opts: RunOptions): string[] {
+    const sandbox =
+      opts.mode === 'plan' ? 'read-only' : opts.mode === 'yolo' ? 'danger-full-access' : 'workspace-write'
     const args = ['exec']
     if (opts.sessionId) args.push('resume', opts.sessionId)
-    args.push('--json', '--sandbox', 'workspace-write', '--skip-git-repo-check')
+    args.push('--json', '--sandbox', sandbox, '--skip-git-repo-check')
     if (opts.model) args.push('--model', opts.model)
     args.push(opts.prompt)
     return args
