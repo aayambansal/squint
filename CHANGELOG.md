@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.8 — 2026-07-26
+
+- Sandbox mode: /sandbox on accumulates asks in a shadow worktree (engines, gates, dev server all run there); diff / apply / discard
+- With this, every actionable item from the feature-mining research ranked list has shipped
+
 ## 0.2.7 — 2026-07-26
 
 - autoReview: with it on, a clean turn whose visual pulse shows 10%+ change triggers the self-critique review automatically (once per ask)
