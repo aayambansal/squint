@@ -123,9 +123,10 @@ squint check                      # gates: typecheck -> lint -> test -> build
 squint shot http://localhost:5173 # screenshots at 390/768/1440
 squint brief                      # list design directions
 squint brief cinematic-dark       # commit one for this repo
-squint tag                        # add the Alt+S element picker to any Vite app
+squint tag                        # Alt+S element picker: pin elements + notes, alt+enter copies all
 squint variants gen 3 "<ask>"     # 3 parallel design explorations
 squint variants apply terminal    # keep the winner
+squint skills init                # scaffold .squint/rules.md + a trigger-matched skill
 squint config set engine claude
 squint config set models.claude claude-sonnet-5
 squint config set autoDev true    # dev server starts with the TUI
@@ -134,6 +135,7 @@ squint config set autoCheck false # skip the per-turn typecheck+lint pass
 squint config set theme ocean     # amber · ocean · moss · rose · mono
 squint config set bell false      # no bell on turn completion
 squint doctor                     # engines + Chrome + WebSocket check
+squint doctor --probe             # run every engine end to end, verify auth actually works
 ```
 
 **Inside the TUI:**
@@ -144,10 +146,21 @@ squint doctor                     # engines + Chrome + WebSocket check
   order; `/queue clear` drops them. `Esc` interrupts the current turn.
 - **Editing**: a real line editor — arrows move, `alt+←/→` jump words, `ctrl+a/e/k/u/w`,
   `↑/↓` history. `ctrl+c` twice exits with a session summary.
-- **Commands**: `/dev` `/check` `/fix` `/shot` `/review [focus]` `/undo` `/checkpoints`
-  `/restore <n>` `/mode` `/theme` `/resume` `/engine <id>` `/model <name>` `/clear`.
-- Assistant output renders as markdown; the footer tracks session turns and cost; a bell
-  rings when a turn finishes.
+- **Problems**: findings from gates, the dev server, the runtime probe, and a11y sweeps
+  collect into a list — `/problems` shows it, `/fix` sends everything as one turn,
+  `/fix <n>` targets one. The footer counts what's open.
+- **Variants without leaving**: `/variants 3 <ask>` runs parallel explorations with
+  streaming per-family status; `/variants apply <id>` keeps the winner.
+- **Commands**: `/dev` `/check` `/problems` `/fix [n]` `/shot` `/review [focus]`
+  `/variants` `/undo` `/checkpoints` `/restore <n>` `/mode` `/theme` `/resume`
+  `/engine <id>` `/model <name>` `/clear`.
+- Assistant output renders as markdown; the done line measures real work via git
+  (`3 files +42 −7`); the footer tracks session turns and cost; a bell rings when a
+  turn finishes.
+
+**Project knowledge** rides along automatically: `.squint/rules.md` on every ask, and
+`.squint/skills/*.md` (frontmatter `triggers: auth, login`) only when an ask mentions a
+trigger — deterministic context routing, no embeddings.
 
 ## Design directions
 
