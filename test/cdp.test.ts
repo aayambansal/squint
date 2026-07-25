@@ -65,7 +65,13 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
     const page = path.join(dir, 'page.html')
     fs.writeFileSync(
       page,
-      `<!doctype html><html><head><title>t</title></head><body style="font-family: Arial, sans-serif"><h1>squint cdp</h1>
+      `<!doctype html><html><head><title>t</title>
+      <style>
+        .c1{color:#111}.c2{color:#222}.c3{color:#333}.c4{color:#444}.c5{color:#555}
+        .c6{color:#666}.c7{color:#777}.c8{color:#888}.c9{color:#999}.c10{color:#aaa}
+        .real-thing{font-weight:bold}
+      </style>
+      </head><body style="font-family: Arial, sans-serif"><h1 class="real-thing bg-linear-to-r">squint cdp</h1>
       <h4>skipped levels</h4>
       <img src="definitely-missing.png" />
       <button></button>
@@ -107,6 +113,10 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
     const slop = result.slop.join('\n')
     expect(slop).toContain('generic font stack: arial')
     expect(slop).toContain('emoji-bulleted')
+
+    const phantoms = result.phantoms.join('\n')
+    expect(phantoms).toContain('bg-linear-to-r (on <h1>)')
+    expect(phantoms).not.toContain('real-thing')
 
     const narration = result.narration.join('\n')
     expect(narration).toContain('heading 1: "squint cdp"')
