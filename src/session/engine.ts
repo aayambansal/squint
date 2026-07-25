@@ -653,6 +653,38 @@ export class Session {
         }
         break
       }
+      case 'save': {
+        void (async () => {
+          const fs = await import('node:fs')
+          const path = await import('node:path')
+          const dir = path.join(this.opts.cwd, '.squint', 'transcripts')
+          fs.mkdirSync(dir, { recursive: true })
+          const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+          const file = path.join(dir, `${stamp}.md`)
+          const lines: string[] = [`# squint session — ${new Date().toISOString().slice(0, 16)}`, '']
+          for (const item of this.state.items) {
+            switch (item.role) {
+              case 'user':
+                lines.push(`## ❯ ${item.text}`, '')
+                break
+              case 'assistant':
+                lines.push(item.text, '')
+                break
+              case 'tool':
+                lines.push(`- ⚙ ${item.text}`)
+                break
+              case 'thinking':
+                break
+              default:
+                lines.push(`> ${item.role === 'error' ? '✗ ' : ''}${item.text.split('\n').join('\n> ')}`)
+            }
+          }
+          lines.push('', `> ${this.summary()}`)
+          fs.writeFileSync(file, lines.join('\n') + '\n')
+          this.push('status', `saved transcript → ${path.relative(this.opts.cwd, file)}`)
+        })()
+        break
+      }
       case 'copy': {
         const last = this.state.items.findLast((i) => i.role === 'assistant')
         if (!last) {

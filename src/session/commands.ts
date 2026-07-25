@@ -27,6 +27,7 @@ export const COMMANDS: CommandSpec[] = [
   { name: 'model', args: '[name]', description: 'model override for the engine' },
   { name: 'theme', args: '[name]', description: 'switch the TUI theme', viewLevel: true },
   { name: 'copy', description: 'copy the last reply to the clipboard' },
+  { name: 'save', description: 'export the transcript to .squint/transcripts/' },
   { name: 'queue', args: 'clear', description: 'drop queued asks' },
   { name: 'resume', description: 'pick up the previous session for this repo' },
   { name: 'clear', description: 'new session (transcript, totals, persisted state)' },
