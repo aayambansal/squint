@@ -47,6 +47,26 @@ describe('viewports', () => {
   })
 })
 
+describe('routes', () => {
+  it('always includes root first, normalizes and caps extra routes', async () => {
+    const { loadRoutes, routeShotName } = await import('../src/preview/preview.js')
+    expect(loadRoutes(dir)).toEqual(['/'])
+    fs.mkdirSync(path.join(dir, '.squint'), { recursive: true })
+    fs.writeFileSync(
+      path.join(dir, '.squint', 'routes'),
+      '# review these\n/pricing\nabout\n/\n/a\n/b\n/c\n/d\n/e\n',
+    )
+    const routes = loadRoutes(dir)
+    expect(routes[0]).toBe('/')
+    expect(routes).toContain('/pricing')
+    expect(routes).toContain('/about')
+    expect(routes.length).toBe(6) // capped
+
+    expect(routeShotName('/')).toBe('root')
+    expect(routeShotName('/pricing/plans')).toBe('pricing-plans')
+  })
+})
+
 const chrome = findChrome()
 
 describe.skipIf(!chrome)('screenshot (requires Chrome)', () => {
