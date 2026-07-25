@@ -93,6 +93,54 @@ export function registerProject(program: Command): void {
       console.log(pc.dim('every squint ask in this repo now holds this direction — edit the file to remix'))
     })
 
+  const sandboxCommand = program
+    .command('sandbox')
+    .description('Cumulative diff worktree — asks accumulate until you apply')
+
+  sandboxCommand
+    .command('diff')
+    .description('Show accumulated sandbox changes')
+    .action(async () => {
+      const { sandboxDiffStat, sandboxExists, sandboxFiles } = await import('../vcs/sandbox.js')
+      const cwd = process.cwd()
+      if (!sandboxExists(cwd)) {
+        console.log(pc.dim('no sandbox open — /sandbox on inside the TUI'))
+        return
+      }
+      const stat = sandboxDiffStat(cwd)
+      if (!stat) {
+        console.log(pc.dim('sandbox is clean'))
+        return
+      }
+      console.log(stat)
+      for (const line of sandboxFiles(cwd)) console.log(pc.dim(line))
+    })
+
+  sandboxCommand
+    .command('apply')
+    .description('Land the sandbox diff on the real tree and close it')
+    .action(async () => {
+      const { applySandbox, discardSandbox } = await import('../vcs/sandbox.js')
+      const cwd = process.cwd()
+      const result = applySandbox(cwd)
+      if (!result.ok) {
+        console.error(pc.red(`✗ ${result.detail}`))
+        process.exitCode = 1
+        return
+      }
+      discardSandbox(cwd)
+      console.log(pc.green('✓ sandbox applied to the real tree') + pc.dim(' — review with git diff'))
+    })
+
+  sandboxCommand
+    .command('discard')
+    .description('Close the sandbox without touching the real tree')
+    .action(async () => {
+      const { discardSandbox } = await import('../vcs/sandbox.js')
+      const had = discardSandbox(process.cwd())
+      console.log(pc.dim(had ? 'sandbox discarded' : 'no sandbox open'))
+    })
+
   const variantsCommand = program
     .command('variants')
     .description('Parallel design explorations — one aesthetic family each, pick with your eyes')
