@@ -45,6 +45,13 @@ backend) for the two shapes. The contract (`src/engines/types.ts`):
 If the tool speaks the Claude stream-json dialect (Amp does, Cursor approximately), reuse
 `createClaudeStreamParser` and you're nearly done.
 
+## Other prize contributions
+
+- **A flow verb** (src/preview/flows.ts): the declared-flow language is six verbs today; hover, scroll, and waitFor are natural next ones — parser case + in-page executor + fixture test.
+- **An aesthetic family** (src/prompt/families.ts): a committed direction with a real avoid-list, not a vibe.
+- **A slop tell** (SLOP_AUDIT in src/preview/cdp.ts): deterministic, checkable, with a fixture.
+- **A hook event** (src/session/hooks.ts): find the quality moment nothing else emits.
+
 ## Testing philosophy
 
 Tests here run the real thing: real temp git repos, real spawned processes, real headless
