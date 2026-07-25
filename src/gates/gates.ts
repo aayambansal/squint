@@ -63,6 +63,21 @@ export function detectGates(cwd: string): Gate[] {
     gates.push({ id: 'lint', command: 'npx', args: ['eslint', '.', '--max-warnings', '0'], display: 'eslint .' })
   }
 
+  const hasPrettier = [
+    '.prettierrc',
+    '.prettierrc.json',
+    '.prettierrc.js',
+    '.prettierrc.yaml',
+    '.prettierrc.yml',
+    'prettier.config.js',
+    'prettier.config.mjs',
+  ].some((file) => fs.existsSync(path.join(cwd, file)))
+  if (scripts.format && /--check|-c\b/.test(scripts.format)) {
+    gates.push({ id: 'format', ...npmRun('format') })
+  } else if (hasPrettier) {
+    gates.push({ id: 'format', command: 'npx', args: ['prettier', '--check', '.'], display: 'prettier --check .' })
+  }
+
   const testScript = scripts.test
   if (testScript && !/no test specified/i.test(testScript)) {
     gates.push({ id: 'test', ...npmRun('test') })
