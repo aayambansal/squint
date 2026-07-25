@@ -10,6 +10,7 @@ import {
   buildRuntimeFixPrompt,
   type CaptureResult,
   captureViewports,
+  probeRuntime,
   runtimeSummary,
 } from '../preview/preview.js'
 import { composePrompt } from '../prompt/brief.js'
@@ -92,9 +93,11 @@ export interface AppProps {
   initialModel?: string
   autoDev?: boolean
   autoFix?: boolean
+  /** Post-turn runtime probe; defaults on. */
+  autoProbe?: boolean
 }
 
-export function App({ cwd, initialEngine, initialModel, autoDev, autoFix }: AppProps) {
+export function App({ cwd, initialEngine, initialModel, autoDev, autoFix, autoProbe }: AppProps) {
   const { exit } = useApp()
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -268,6 +271,27 @@ export function App({ cwd, initialEngine, initialModel, autoDev, autoFix }: AppP
           push('status', 'type /fix to send them to the engine')
         } else {
           pendingFixRef.current = null
+          // Build output is clean — probe the page itself for client-side
+          // breakage the server never sees (blank page, exceptions, 404s).
+          if (autoProbe !== false && devUrl) {
+            const report = await probeRuntime(devUrl)
+            const summary = report ? runtimeSummary(report) : null
+            if (report && summary) {
+              pendingFixRef.current = {
+                prompt: buildRuntimeFixPrompt(report),
+                display: '⛑ fix runtime errors',
+              }
+              push('error', `runtime: ${summary}`)
+              if (autoFix && fixAttemptsRef.current < MAX_AUTO_FIX_ATTEMPTS) {
+                fixAttemptsRef.current += 1
+                push('status', `auto-fix attempt ${fixAttemptsRef.current}/${MAX_AUTO_FIX_ATTEMPTS}`)
+                setRunning(false)
+                await runTurn(pendingFixRef.current.prompt, pendingFixRef.current.display)
+                return
+              }
+              push('status', 'type /fix to send them to the engine')
+            }
+          }
           if (!reviewTipShownRef.current && devUrl) {
             reviewTipShownRef.current = true
             push('status', 'tip: /review screenshots the app and has the engine critique its own work')
@@ -276,7 +300,7 @@ export function App({ cwd, initialEngine, initialModel, autoDev, autoFix }: AppP
       }
       setRunning(false)
     },
-    [cwd, engineId, model, push, handleEvent, commitLive, autoFix, devUrl],
+    [cwd, engineId, model, push, handleEvent, commitLive, autoFix, autoProbe, devUrl],
   )
 
   /** Screenshot the running app (and watch its runtime where CDP is available). */
