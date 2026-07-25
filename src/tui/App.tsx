@@ -1,6 +1,7 @@
 import { Box, Text, useApp, useInput, useStdout } from 'ink'
 import path from 'node:path'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { buildFixPrompt, DevServer, type DevServerState, detectDevCommand } from '../devserver/devserver.js'
 import { engines, getEngine } from '../engines/registry.js'
 import type { AgentEvent } from '../engines/types.js'
 import { composePrompt } from '../prompt/brief.js'
@@ -13,6 +14,7 @@ interface Message {
 }
 
 const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+const MAX_AUTO_FIX_ATTEMPTS = 2
 
 function Spinner() {
   const [frame, setFrame] = useState(0)
@@ -23,13 +25,17 @@ function Spinner() {
   return <Text color={theme.accent}>{SPINNER_FRAMES[frame]}</Text>
 }
 
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
 export interface AppProps {
   cwd: string
   initialEngine: string
   initialModel?: string
+  autoDev?: boolean
+  autoFix?: boolean
 }
 
-export function App({ cwd, initialEngine, initialModel }: AppProps) {
+export function App({ cwd, initialEngine, initialModel, autoDev, autoFix }: AppProps) {
   const { exit } = useApp()
   const { stdout } = useStdout()
   const [messages, setMessages] = useState<Message[]>([])
@@ -38,8 +44,13 @@ export function App({ cwd, initialEngine, initialModel }: AppProps) {
   const [engineId, setEngineId] = useState(initialEngine)
   const [model, setModel] = useState<string | undefined>(initialModel)
   const [liveText, setLiveText] = useState('')
+  const [devState, setDevState] = useState<DevServerState>('stopped')
+  const [devUrl, setDevUrl] = useState<string | null>(null)
   const liveRef = useRef('')
   const sessionRef = useRef<string | undefined>(undefined)
+  const devRef = useRef<DevServer | null>(null)
+  const pendingErrorsRef = useRef<string[]>([])
+  const fixAttemptsRef = useRef(0)
 
   const push = useCallback((message: Message) => {
     setMessages((prev) => [...prev, message])
@@ -59,6 +70,23 @@ export function App({ cwd, initialEngine, initialModel }: AppProps) {
     liveRef.current = ''
     setLiveText('')
   }, [])
+
+  const getDevServer = useCallback((): DevServer => {
+    if (!devRef.current) {
+      devRef.current = new DevServer(cwd, {
+        onStateChange: setDevState,
+        onUrl: setDevUrl,
+      })
+    }
+    return devRef.current
+  }, [cwd])
+
+  useEffect(() => {
+    if (autoDev && detectDevCommand(cwd)) {
+      getDevServer().start()
+    }
+    return () => devRef.current?.stop()
+  }, [autoDev, cwd, getDevServer])
 
   const handleEvent = useCallback(
     (event: AgentEvent) => {
@@ -99,15 +127,13 @@ export function App({ cwd, initialEngine, initialModel }: AppProps) {
     [push, appendAssistant, clearLive],
   )
 
-  const submit = useCallback(
-    async (ask: string) => {
-      push({ role: 'user', text: ask })
+  /** Run one engine turn. `display` is what the transcript shows as the ask. */
+  const runTurn = useCallback(
+    async (prompt: string, display: string) => {
+      push({ role: 'user', text: display })
       setRunning(true)
+      const runStart = Date.now()
       const engine = getEngine(engineId)
-      // Resumable engines keep the brief in session context, so follow-up
-      // turns send the raw ask; non-resumable engines get it every turn.
-      const isFirstTurn = sessionRef.current === undefined
-      const prompt = isFirstTurn ? composePrompt(ask, { cwd, firstTurn: true }) : ask
       const result = await runAgent(
         engine,
         {
@@ -128,9 +154,43 @@ export function App({ cwd, initialEngine, initialModel }: AppProps) {
         const secs = result.durationMs !== undefined ? ` · ${(result.durationMs / 1000).toFixed(0)}s` : ''
         push({ role: 'status', text: `done${secs}${cost}` })
       }
+
+      // The Lovable loop: give the dev server a moment to rebuild, then
+      // sweep for fresh errors and route them back to the engine.
+      const dev = devRef.current
+      if (dev && (dev.state === 'running' || dev.state === 'starting')) {
+        await delay(1500)
+        const errors = dev.errorsSince(runStart)
+        if (errors.length > 0) {
+          pendingErrorsRef.current = errors
+          push({ role: 'error', text: `dev server: ${errors.length} error line(s)\n${errors.slice(-5).join('\n')}` })
+          if (autoFix && fixAttemptsRef.current < MAX_AUTO_FIX_ATTEMPTS) {
+            fixAttemptsRef.current += 1
+            push({ role: 'status', text: `auto-fix attempt ${fixAttemptsRef.current}/${MAX_AUTO_FIX_ATTEMPTS}` })
+            setRunning(false)
+            await runTurn(buildFixPrompt(errors, dev.tail(30)), '⛑ fix dev server errors')
+            return
+          }
+          push({ role: 'status', text: 'type /fix to send them to the engine' })
+        } else {
+          pendingErrorsRef.current = []
+        }
+      }
       setRunning(false)
     },
-    [cwd, engineId, model, push, handleEvent],
+    [cwd, engineId, model, push, handleEvent, clearLive, autoFix],
+  )
+
+  const submit = useCallback(
+    async (ask: string) => {
+      fixAttemptsRef.current = 0
+      // Resumable engines keep the brief in session context, so follow-up
+      // turns send the raw ask; non-resumable engines get it every turn.
+      const isFirstTurn = sessionRef.current === undefined
+      const prompt = isFirstTurn ? composePrompt(ask, { cwd, firstTurn: true }) : ask
+      await runTurn(prompt, ask)
+    },
+    [cwd, runTurn],
   )
 
   const handleCommand = useCallback(
@@ -156,6 +216,31 @@ export function App({ cwd, initialEngine, initialModel }: AppProps) {
           setModel(arg || undefined)
           push({ role: 'status', text: arg ? `model → ${arg}` : 'model → engine default' })
           break
+        case 'dev': {
+          const dev = getDevServer()
+          if (dev.state === 'stopped' || dev.state === 'crashed') {
+            const command = detectDevCommand(cwd)
+            if (!command) {
+              push({ role: 'error', text: 'no dev/start script found in package.json' })
+            } else {
+              dev.start(command)
+              push({ role: 'status', text: `dev server starting · ${command.display}` })
+            }
+          } else {
+            dev.stop()
+            setDevUrl(null)
+            push({ role: 'status', text: 'dev server stopped' })
+          }
+          break
+        }
+        case 'fix':
+          if (pendingErrorsRef.current.length === 0) {
+            push({ role: 'status', text: 'no captured dev server errors' })
+          } else {
+            const dev = getDevServer()
+            void runTurn(buildFixPrompt(pendingErrorsRef.current, dev.tail(30)), '⛑ fix dev server errors')
+          }
+          break
         case 'clear':
           setMessages([])
           sessionRef.current = undefined
@@ -163,22 +248,24 @@ export function App({ cwd, initialEngine, initialModel }: AppProps) {
         case 'help':
           push({
             role: 'status',
-            text: '/engine <id> · /model <name> · /clear (new session) · /quit',
+            text: '/engine <id> · /model <name> · /dev (start/stop server) · /fix (send errors) · /clear (new session) · /quit',
           })
           break
         case 'quit':
         case 'exit':
+          devRef.current?.stop()
           exit()
           break
         default:
           push({ role: 'error', text: `unknown command /${name} — try /help` })
       }
     },
-    [push, exit],
+    [push, exit, cwd, getDevServer, runTurn],
   )
 
   useInput((char, key) => {
     if (key.ctrl && char === 'c') {
+      devRef.current?.stop()
       exit()
       return
     }
@@ -205,6 +292,14 @@ export function App({ cwd, initialEngine, initialModel }: AppProps) {
 
   const rows = stdout?.rows ?? 24
   const visible = messages.slice(-(Math.max(rows - 8, 4)))
+  const devBadge =
+    devState === 'running'
+      ? ` · ${devUrl ?? 'dev running'}`
+      : devState === 'starting'
+        ? ' · dev starting…'
+        : devState === 'crashed'
+          ? ' · dev crashed'
+          : ''
 
   return (
     <Box flexDirection="column" paddingX={1}>
@@ -216,6 +311,7 @@ export function App({ cwd, initialEngine, initialModel }: AppProps) {
           {'  '}
           {engineId}
           {model ? ` · ${model}` : ''} · {path.basename(cwd)}
+          {devBadge}
         </Text>
       </Box>
 
