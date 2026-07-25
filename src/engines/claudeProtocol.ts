@@ -68,9 +68,22 @@ export function createClaudeStreamParser(readyLabel: string): LineParser {
           },
         ]
 
-      case 'user':
-        // Tool results echoed back to the model; not useful in the transcript.
-        return []
+      case 'user': {
+        // Tool results echoed back to the model are noise — except failures,
+        // which explain why the agent is retrying or changing course.
+        if (data.parent_tool_use_id) return []
+        const events: AgentEvent[] = []
+        for (const block of data.message?.content ?? []) {
+          if (block.type === 'tool_result' && block.is_error === true) {
+            const raw = Array.isArray(block.content)
+              ? block.content.map((c: any) => c?.text ?? '').join(' ')
+              : String(block.content ?? '')
+            const text = raw.trim().split('\n').at(-1) ?? ''
+            if (text) events.push({ type: 'status', text: `⚠ tool error · ${truncate(text, 100)}` })
+          }
+        }
+        return events
+      }
 
       case 'rate_limit_event':
         // Housekeeping noise, not conversation.
