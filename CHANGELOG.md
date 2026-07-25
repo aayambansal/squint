@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.5 — 2026-07-26
+
+- React fiber probe: landmark elements resolve to their owning component chains (`h1 — Hero < App`) via `__reactFiber$` keys, no build-time tagger required; the component map rides into `/review`
+- request_visual_approval: engines can write `.squint/approval-request.json` and end their turn instead of making a contested visual change alone; `/yes [note]` / `/no [note]` send the verdict back, screenshot renders inline, and the outcome lands in the design ledger
+
 ## 0.4.4 — 2026-07-26
 
 - View-transitions correctness: duplicate view-transition-name values (the browser skips the whole transition) filed as problems with element pointers; declared transitions with no prefers-reduced-motion handling surfaced as advisories

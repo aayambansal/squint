@@ -1,7 +1,7 @@
 {
   "name": "@aayambansal/squint",
-  "version": "0.4.4",
-  "description": "Lovable for your terminal — a frontend harness on top of Claude Code, Codex, and other coding agents.",
+  "version": "0.4.5",
+  "description": "Lovable for your terminal \u2014 a frontend harness on top of Claude Code, Codex, and other coding agents.",
   "type": "module",
   "license": "MIT",
   "author": "Aayam Bansal",
