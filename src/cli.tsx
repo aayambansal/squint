@@ -73,15 +73,43 @@ program
 program
   .command('doctor')
   .description('Check squint prerequisites and engine availability')
-  .action(async () => {
+  .option('--probe', 'run each detected engine with a one-word prompt to verify auth works')
+  .action(async (options: { probe?: boolean }) => {
     const [major] = process.versions.node.split('.')
-    const nodeOk = Number(major) >= 20
-    console.log(`${nodeOk ? pc.green('✓') : pc.red('✗')} node ${process.versions.node}${nodeOk ? '' : ' (need >= 20)'}`)
+    const nodeOk = Number(major) >= 22
+    console.log(`${nodeOk ? pc.green('✓') : pc.red('✗')} node ${process.versions.node}${nodeOk ? '' : ' (need >= 22)'}`)
 
     const detected = detectEngines()
     for (const { engine, path: binaryPath } of detected) {
       const status = binaryPath ? pc.green('✓') : pc.yellow('○')
       console.log(`${status} ${engine.name}${binaryPath ? '' : pc.dim(` — install: ${engine.install}`)}`)
+    }
+
+    if (options.probe) {
+      const { runAgent } = await import('./runner/run.js')
+      console.log(pc.dim('\nprobing engines with a one-word prompt (verifies auth end to end)…'))
+      for (const { engine, path: binaryPath } of detected) {
+        if (!binaryPath) continue
+        const startedAt = Date.now()
+        const abort = new AbortController()
+        const timer = setTimeout(() => abort.abort(), 90000)
+        // Probe the default (safe) invocation — the exact path a real ask takes.
+        const result = await runAgent(
+          engine,
+          { prompt: 'Reply with exactly: ok', cwd: process.cwd() },
+          () => {},
+          abort.signal,
+        )
+        clearTimeout(timer)
+        const secs = ((Date.now() - startedAt) / 1000).toFixed(1)
+        // The last error line is usually the actionable one ("run agent login").
+        const detail = (result.error ?? 'failed').split('\n').filter((l) => l.trim()).at(-1) ?? 'failed'
+        console.log(
+          result.ok
+            ? `${pc.green('✓')} ${engine.id.padEnd(10)} responded in ${secs}s`
+            : `${pc.red('✗')} ${engine.id.padEnd(10)} ${pc.dim(detail.slice(0, 110))}`,
+        )
+      }
     }
 
     const { findChrome } = await import('./preview/chrome.js')
@@ -136,6 +164,56 @@ program
     const cd = result.dir === '.' ? '' : `cd ${result.dir} && `
     console.log(`\nNext: ${pc.bold(`${cd}${options.install ? '' : 'npm install && '}squint`)}`)
     console.log(pc.dim('then describe what to build — /dev starts the preview server'))
+  })
+
+const skillsCommand = program
+  .command('skills')
+  .description('Project knowledge injected into asks (.squint/rules.md + .squint/skills/)')
+
+skillsCommand
+  .command('list')
+  .description('Show always-on rules and trigger-matched skills')
+  .action(async () => {
+    const { loadRules, loadSkills } = await import('./prompt/skills.js')
+    const cwd = process.cwd()
+    const rules = loadRules(cwd)
+    console.log(rules ? `${pc.green('✓')} rules.md ${pc.dim(`(${rules.split('\n').length} lines, always on)`)}` : pc.dim('○ no .squint/rules.md'))
+    const skills = loadSkills(cwd)
+    if (skills.length === 0) {
+      console.log(pc.dim('○ no skills — squint skills init writes an example'))
+      return
+    }
+    for (const skill of skills) {
+      console.log(`${pc.green('✓')} ${skill.name.padEnd(20)} ${pc.dim(`triggers: ${skill.triggers.join(', ')}`)}`)
+    }
+  })
+
+skillsCommand
+  .command('init')
+  .description('Scaffold .squint/rules.md and an example skill')
+  .action(async () => {
+    const fs = await import('node:fs')
+    const nodePath = await import('node:path')
+    const cwd = process.cwd()
+    const skillsDir = nodePath.join(cwd, '.squint', 'skills')
+    fs.mkdirSync(skillsDir, { recursive: true })
+    const rules = nodePath.join(cwd, '.squint', 'rules.md')
+    if (!fs.existsSync(rules)) {
+      fs.writeFileSync(
+        rules,
+        '# Project rules\n\nThese ride along on every squint ask. Keep them short — cut anything that would not cause a mistake if removed.\n',
+      )
+      console.log(pc.green('✓ .squint/rules.md'))
+    }
+    const example = nodePath.join(skillsDir, 'example.md')
+    if (!fs.existsSync(example)) {
+      fs.writeFileSync(
+        example,
+        '---\ntriggers: example, sample\n---\n\nThis note is injected only when an ask mentions one of the triggers above.\nDocument the parts of this repo an agent would otherwise rediscover every time:\nwhere state lives, which helpers to reuse, what not to touch.\n',
+      )
+      console.log(pc.green('✓ .squint/skills/example.md'))
+    }
+    console.log(pc.dim('rules are always-on; skills inject when an ask mentions a trigger'))
   })
 
 program
