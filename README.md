@@ -158,9 +158,15 @@ squint doctor --probe             # run every engine end to end, verify auth act
 - **Commands**: type `/` and matching commands appear with descriptions; tab completes.
   `/dev` `/check` `/problems` `/fix [n]` `/shot` `/review [focus]` `/variants` `/undo`
   `/checkpoints` `/restore <n>` `/mode` `/theme` `/copy` `/save` `/resume` `/clear`.
-- **Visual pulse**: every clean turn is screenshotted and pixel-compared with the last —
-  drift shows up as a number, not a surprise. `.squint/locks` lists paths the engine must
-  never touch; `/save` exports the transcript as markdown.
+- **The harness sees, in your terminal**: on kitty/Ghostty/WezTerm/iTerm2, pulse and
+  capture screenshots render as real pixels inside the transcript. Every clean turn is
+  pixel-compared with the last (drift as a number), load performance is tracked with
+  deltas (`perf: LCP 812ms (+420ms)`), hardcoded colors get pointed at the nearest
+  design token, and the mechanical anti-slop sweep flags generic-AI tells as
+  distinctiveness debt in `/review`.
+- **`/btw <question>`** asks about the codebase read-only without touching the main
+  thread's context. `.squint/locks` lists paths the engine must never touch; `/save`
+  exports the transcript as markdown.
 - Assistant output renders as markdown; the done line measures real work via git
   (`3 files +42 −7`); the footer tracks session turns and cost; a bell rings when a
   turn finishes.
