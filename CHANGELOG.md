@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0 — 2026-07-26
+
+The verification release — wave 2 complete:
+
+- Declared flows: .squint/flows/*.flow user journeys (goto/click/fill/press/expect/shot) replayed headlessly by /flows; failures name the exact step and join the fix loop
+- /score: deterministic quality snapshot (problems, a11y, distinctiveness tells, runtime, LCP)
+- fixModel cheap-tier routing; /find search; screen-reader narration; registry-aware prompts; harness hooks; /polish; /btw; perf pulse; token drift guard; anti-slop detection; inline terminal screenshots
+
 ## 0.3.4 — 2026-07-26
 
 - fixModel: auto-fix and /fix turns route to a cheaper model tier while real asks keep the session model
