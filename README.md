@@ -174,6 +174,9 @@ squint doctor --probe             # run every engine end to end, verify auth act
   flagged from the live page, and on Next 16+ the framework's own `/_next/mcp`
   channel feeds structured errors straight into the fix loop. `/context` itemizes
   the injected-context bill per source, with staleness warnings.
+- **Detachable sessions**: `squint serve` owns the session on a unix socket;
+  `squint attach` joins from any terminal (observer seats for teammates, driver
+  seat inherited on detach). Crash-proof, ssh-friendly, no cloud.
 - **Persistent checks**: assertions the engine verifies once persist as
   `.squint/checks/*.js` and replay against the live page every turn — one-off
   verifications compound into repo-versioned regression checks.

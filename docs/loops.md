@@ -128,6 +128,15 @@ Ask the engine to write flows for you.
 `/score` composes a deterministic 0-5 snapshot from what squint measures (open problems,
 a11y findings, distinctiveness tells, runtime state, LCP). Judgment stays with `/review`.
 
+## The daemon
+
+`squint serve` moves the whole session — engine, loops, dev server — into a daemon on
+a unix socket; `squint attach` joins it from any terminal, or remotely via
+`ssh -L`-forwarded sockets. The first client drives; later attaches observe (they see
+everything, steer nothing) and the oldest observer inherits when the driver detaches.
+A dropped ssh connection or a crashed terminal no longer kills the run. `/detach`
+leaves the session running.
+
 ## Hooks
 
 Drop executables in `.squint/hooks/` and squint fires them (SQUINT_* env, 10s cap,
