@@ -221,6 +221,13 @@ export function App({
         </Box>
       )}
 
+      {state.items.length === 0 && state.liveText.length === 0 && !state.running && (
+        <Box flexDirection="column" marginTop={1}>
+          <Text color={theme.dim}>describe what to build — or try:</Text>
+          <Text color={theme.dim}>  /dev start the preview server · /review after a change · /variants 3 explore wide</Text>
+          <Text color={theme.dim}>  shift+tab cycles plan/safe/yolo · type while the agent works to queue asks</Text>
+        </Box>
+      )}
       {state.running && (
         <Box marginTop={1}>
           <WorkingLine startedAt={state.runStartedAt} />
