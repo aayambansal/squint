@@ -12,7 +12,8 @@ export const gemini: Engine = {
   supportsResume: false,
 
   buildArgs(opts: RunOptions): string[] {
-    const args = ['-p', opts.prompt, '--yolo']
+    const approval = opts.mode === 'plan' ? 'plan' : opts.mode === 'yolo' ? 'yolo' : 'auto_edit'
+    const args = ['-p', opts.prompt, '--approval-mode', approval]
     if (opts.model) args.push('-m', opts.model)
     return args
   },

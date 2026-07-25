@@ -1,7 +1,7 @@
 import path from 'node:path'
 import { buildFixPrompt, DevServer, type DevServerState, detectDevCommand } from '../devserver/devserver.js'
 import { getEngine } from '../engines/registry.js'
-import type { AgentEvent } from '../engines/types.js'
+import type { AgentEvent, RunMode } from '../engines/types.js'
 import { buildGatePrompt, detectFastGates, detectGates, runGates } from '../gates/gates.js'
 import {
   buildReviewPrompt,
@@ -41,6 +41,8 @@ export interface SessionState {
   totals: SessionTotals
   /** Asks typed while a turn runs; dispatched in order afterward. */
   queue: string[]
+  /** How much the engine may do this session. */
+  mode: RunMode
 }
 
 export interface SessionOptions {
@@ -92,6 +94,7 @@ export class Session {
       devUrl: null,
       totals: { costUsd: 0, turns: 0 },
       queue: [],
+      mode: 'safe',
     }
     if (opts.autoDev && detectDevCommand(opts.cwd)) {
       this.devServer().start()
@@ -133,6 +136,23 @@ export class Session {
   /** Frontend-originated status line (view-level commands like /theme). */
   note(text: string): void {
     this.push('status', text)
+  }
+
+  setMode(mode: RunMode): void {
+    this.notify({ mode })
+    const hint =
+      mode === 'plan'
+        ? 'read-only: the engine investigates and proposes, edits nothing'
+        : mode === 'yolo'
+          ? 'no approval friction — the engine can do anything'
+          : 'edits auto-approved inside the workspace'
+    this.push('status', `mode → ${mode} · ${hint}`)
+  }
+
+  cycleMode(): void {
+    const order: RunMode[] = ['safe', 'plan', 'yolo']
+    const next = order[(order.indexOf(this.state.mode) + 1) % order.length]!
+    this.setMode(next)
   }
 
   /** One-line goodbye: what this session amounted to. */
@@ -277,6 +297,7 @@ export class Session {
         prompt,
         cwd: this.opts.cwd,
         model: this.state.model,
+        mode: this.state.mode,
         sessionId: engine.supportsResume ? this.sessionId : undefined,
       },
       this.handleEvent,
@@ -493,6 +514,13 @@ export class Session {
       case 'model':
         this.notify({ model: arg || undefined })
         this.push('status', arg ? `model → ${arg}` : 'model → engine default')
+        break
+      case 'mode':
+        if (arg === 'plan' || arg === 'safe' || arg === 'yolo') {
+          this.setMode(arg)
+        } else {
+          this.push('status', 'usage: /mode plan|safe|yolo — or shift+tab to cycle')
+        }
         break
       case 'dev': {
         const dev = this.devServer()

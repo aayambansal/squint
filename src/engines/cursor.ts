@@ -15,7 +15,9 @@ export const cursor: Engine = {
   supportsResume: true,
 
   buildArgs(opts: RunOptions): string[] {
-    const args = ['-p', opts.prompt, '--output-format', 'stream-json', '--force']
+    const args = ['-p', opts.prompt, '--output-format', 'stream-json']
+    if (opts.mode === 'plan') args.push('--mode', 'plan')
+    else args.push('--force')
     if (opts.model) args.push('--model', opts.model)
     if (opts.sessionId) args.push(`--resume=${opts.sessionId}`)
     return args
