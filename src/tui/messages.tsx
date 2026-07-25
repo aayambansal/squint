@@ -10,6 +10,7 @@ export interface Message {
 }
 
 const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+const PHRASES = ['working', 'thinking', 'squinting', 'crafting', 'still at it']
 
 export function WorkingLine({ startedAt }: { startedAt: number }) {
   const theme = useTheme()
@@ -22,15 +23,29 @@ export function WorkingLine({ startedAt }: { startedAt: number }) {
     }, 80)
     return () => clearInterval(timer)
   }, [startedAt])
+  const phrase = PHRASES[Math.min(Math.floor(elapsed / 8), PHRASES.length - 1)]
   return (
     <Text>
       <Text color={theme.accent}>{SPINNER_FRAMES[frame]}</Text>
       <Text color={theme.dim}>
         {' '}
-        working… {elapsed}s · esc to interrupt
+        {phrase}… {elapsed}s · esc to interrupt
       </Text>
     </Text>
   )
+}
+
+/** Distinct glyph per tool family; ⚙ for the unrecognized rest. */
+export function toolGlyph(text: string): string {
+  const name = text.split(/[\s·]/, 1)[0]?.toLowerCase() ?? ''
+  if (name.includes('read') || name.includes('view') || name.includes('cat')) return '⊙'
+  if (name.includes('edit') || name.includes('write') || name.includes('patch') || name.includes('apply')) return '✎'
+  if (name.includes('bash') || name.includes('shell') || name.includes('exec') || name.includes('command')) return '$'
+  if (name.includes('grep') || name.includes('glob') || name.includes('search') || name.includes('find')) return '⌕'
+  if (name.includes('web') || name.includes('fetch') || name.includes('http')) return '⇣'
+  if (name.includes('task') || name.includes('agent')) return '◇'
+  if (name.includes('todo')) return '☰'
+  return '⚙'
 }
 
 export function MessageLine({ message }: { message: Message }) {
@@ -53,7 +68,7 @@ export function MessageLine({ message }: { message: Message }) {
     case 'tool':
       return (
         <Text color={theme.tool} wrap="wrap">
-          ⚙ {message.text}
+          {toolGlyph(message.text)} {message.text}
         </Text>
       )
     case 'thinking':

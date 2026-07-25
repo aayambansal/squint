@@ -78,6 +78,7 @@ export class Session {
   private checkpoints: Array<{ snapshot: Snapshot; label: string; at: number }> = []
   private fixAttempts = 0
   private reviewTipShown = false
+  private readonly startedAt = Date.now()
 
   constructor(private readonly opts: SessionOptions) {
     this.state = {
@@ -132,6 +133,16 @@ export class Session {
   /** Frontend-originated status line (view-level commands like /theme). */
   note(text: string): void {
     this.push('status', text)
+  }
+
+  /** One-line goodbye: what this session amounted to. */
+  summary(): string {
+    const mins = Math.max(1, Math.round((Date.now() - this.startedAt) / 60000))
+    const { turns, costUsd } = this.state.totals
+    const parts = [`${turns} turn${turns === 1 ? '' : 's'}`]
+    if (costUsd > 0) parts.push(`$${costUsd.toFixed(2)}`)
+    parts.push(`${mins}m`)
+    return `session: ${parts.join(' · ')}`
   }
 
   /**
@@ -596,6 +607,7 @@ export class Session {
         break
       case 'quit':
       case 'exit':
+        this.push('status', this.summary())
         this.dispose()
         this.opts.onQuit?.()
         break

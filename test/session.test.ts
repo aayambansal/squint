@@ -134,11 +134,13 @@ describe('Session', () => {
     }
   }, 35000)
 
-  it('reports quit through the onQuit callback', () => {
+  it('reports quit through the onQuit callback with a session summary', () => {
     let quit = false
     const session = new Session({ cwd: dir, engineId: 'claude', onQuit: () => (quit = true) })
     session.input('/quit')
     expect(quit).toBe(true)
+    expect(session.getState().items.at(-1)?.text).toMatch(/^session: 0 turns · \d+m$/)
+    expect(session.summary()).toContain('0 turns')
   })
 
   it('surfaces a resume hint when previous state exists', () => {
