@@ -47,6 +47,7 @@ export interface CdpCaptureResult {
   phantoms: string[]
   viewTransitions: string[]
   components: string[]
+  checkFailures: string[]
 }
 
 /** In-page collection of web-vitals-adjacent numbers via PerformanceObserver. */
@@ -563,6 +564,7 @@ export async function cdpCapture(
   viewports: readonly CdpShot[],
   settleMs = 2500,
   audit = false,
+  checks: { name: string; source: string }[] = [],
 ): Promise<CdpCaptureResult> {
   const { child, wsUrl, profileDir } = await launchChrome(chromePath)
   const report: RuntimeReport = { consoleErrors: [], pageErrors: [], failedRequests: [] }
@@ -574,6 +576,7 @@ export async function cdpCapture(
   let phantoms: string[] = []
   let viewTransitions: string[] = []
   let components: string[] = []
+  const checkFailures: string[] = []
   const requests = new Map<string, string>()
   let connection: CdpConnection | null = null
 
@@ -634,6 +637,24 @@ export async function cdpCapture(
     } catch {
       // perf numbers are best-effort
     }
+    for (const check of checks) {
+      try {
+        const { result, exceptionDetails } = await connection.send(
+          'Runtime.evaluate',
+          { expression: check.source, returnByValue: true, timeout: 2000 },
+          sessionId,
+        )
+        if (exceptionDetails) {
+          checkFailures.push(`${check.name}: threw ${exceptionDetails.exception?.description?.split('\n')[0] ?? exceptionDetails.text ?? 'an error'}`)
+        } else if (Array.isArray(result?.value)) {
+          for (const finding of result.value.slice(0, 5)) checkFailures.push(`${check.name}: ${String(finding)}`)
+        }
+      } catch {
+        // a hung check never blocks the probe
+      }
+      if (checkFailures.length >= 15) break
+    }
+
 
     if (audit) {
       try {
@@ -733,5 +754,5 @@ export async function cdpCapture(
     setTimeout(() => fs.rmSync(profileDir, { recursive: true, force: true }), 500).unref?.()
   }
 
-  return { report, shots, a11y, slop, perf, narration, phantoms, viewTransitions, components }
+  return { report, shots, a11y, slop, perf, narration, phantoms, viewTransitions, components, checkFailures }
 }

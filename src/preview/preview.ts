@@ -3,6 +3,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { ensureSquintIgnore } from '../state/state.js'
 import { cdpCapture, hasWebSocket, type RuntimeReport } from './cdp.js'
+import { loadChecks } from './checks.js'
 import { findChrome, screenshot } from './chrome.js'
 
 /** The review viewports: the standard trio from design-review practice. */
@@ -27,6 +28,7 @@ export interface CaptureResult {
   phantoms?: string[]
   viewTransitions?: string[]
   components?: string[]
+  checkFailures?: string[]
 }
 
 /**
@@ -78,7 +80,8 @@ export async function captureViewports(cwd: string, url: string): Promise<Captur
     try {
       // Root gets the full viewport trio + runtime watch + a11y sweep;
       // additional routes get one desktop shot each.
-      const { report, shots, a11y, slop, narration, phantoms, viewTransitions, components } = await cdpCapture(chrome, url, dir, VIEWPORTS, 2500, true)
+      const checks = loadChecks(cwd)
+      const { report, shots, a11y, slop, narration, phantoms, viewTransitions, components, checkFailures } = await cdpCapture(chrome, url, dir, VIEWPORTS, 2500, true, checks)
       const errors: string[] = []
       for (const route of routes.slice(1)) {
         try {
@@ -93,7 +96,7 @@ export async function captureViewports(cwd: string, url: string): Promise<Captur
           errors.push(`${route}: capture failed`)
         }
       }
-      return { shots, errors, runtime: report, a11y, slop, narration, phantoms, viewTransitions, components }
+      return { shots, errors, runtime: report, a11y, slop, narration, phantoms, viewTransitions, components, checkFailures }
     } catch {
       // fall through to the one-shot path
     }
@@ -146,6 +149,7 @@ function runtimeSection(report: RuntimeReport | undefined): string {
  * or the probe itself fails (never blocks the loop).
  */
 export interface ProbeResult {
+  checkFailures?: string[]
   report: RuntimeReport
   /** Path of the pulse screenshot taken during the probe, when available. */
   pulsePath?: string
@@ -158,14 +162,16 @@ export async function probeRuntime(url: string, cwd?: string): Promise<ProbeResu
   if (!chrome || !hasWebSocket()) return null
   try {
     const dir = cwd ? previewDir(cwd) : os.tmpdir()
-    const { report, shots, perf } = await cdpCapture(
+    const { report, shots, perf, checkFailures } = await cdpCapture(
       chrome,
       url,
       dir,
       cwd ? [{ name: 'pulse', width: 1280, height: 800 }] : [],
       1500,
+      false,
+      cwd ? loadChecks(cwd) : [],
     )
-    return { report, pulsePath: shots[0]?.path, perf }
+    return { report, pulsePath: shots[0]?.path, perf, checkFailures }
   } catch {
     return null
   }

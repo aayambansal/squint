@@ -47,7 +47,7 @@ export interface SessionTotals {
   turns: number
 }
 
-export type ProblemSource = 'gates' | 'dev' | 'runtime' | 'a11y' | 'flow'
+export type ProblemSource = 'gates' | 'dev' | 'runtime' | 'a11y' | 'flow' | 'check'
 
 export interface Problem {
   id: number
@@ -670,6 +670,16 @@ export class Session {
         // breakage the server never sees (blank page, exceptions, 404s).
         if (this.opts.autoProbe !== false && this.state.devUrl) {
           const probe = await probeRuntime(this.state.devUrl, this.opts.cwd)
+          if (probe?.checkFailures && probe.checkFailures.length > 0) {
+            this.addProblem(
+              'check',
+              `${probe.checkFailures.length} persistent check failure(s)`,
+              `Repo checks in .squint/checks/ failed against the live page. Each line is <check>: <failure>:\n\n${probe.checkFailures.join('\n')}\n\nFix the page (or, only if the assertion itself is genuinely outdated, update that check file and say so).`,
+            )
+            this.push('error', `checks: ${probe.checkFailures.length} failure(s)\n${probe.checkFailures.slice(0, 5).join('\n')}`)
+          } else {
+            this.clearProblems('check')
+          }
           const summary = probe ? runtimeSummary(probe.report) : null
           if (probe && summary) {
             this.addProblem('runtime', summary, buildRuntimeFixPrompt(probe.report))

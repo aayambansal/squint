@@ -109,7 +109,7 @@ export function enrich(cwd: string, ask: string): Enrichment {
     )
   }
   parts.push(
-    '## Requesting visual approval\n\nFor a visual decision you should not make alone (a redesign direction, removing something deliberate, reversing a design decision on record): write .squint/approval-request.json containing {"summary": "<one line>", "screenshot": "<path, optional>"} and end your turn immediately without making the change. The user\'s verdict arrives as the next message.',
+    '## Requesting visual approval\n\nFor a visual decision you should not make alone (a redesign direction, removing something deliberate, reversing a design decision on record): write .squint/approval-request.json containing {"summary": "<one line>", "screenshot": "<path, optional>"} and end your turn immediately without making the change. The user\'s verdict arrives as the next message.\n\n## Persistent checks\n\nWhen you verify something about the page that should stay true (an element exists, a state renders, a metric holds), persist it as .squint/checks/<name>.js — plain JS that evaluates IN THE PAGE to an array of failure strings (empty array = pass). squint replays every check against the live page after each turn.',
   )
   const matched = matchSkills(loadSkills(cwd), ask)
   for (const skill of matched) {
