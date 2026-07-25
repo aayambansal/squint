@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.2 — 2026-07-26
+
+- Visual pulse: every clean probe screenshots the app and reports cross-turn drift (pixel diff runs inside Chrome, no dependencies)
+- Problems list: gates/dev/runtime/a11y findings aggregate; /problems lists, /fix batches all, /fix <n> targets one; footer count
+- Measured diff stat in the done line (3 files +42 −7 via git)
+- /copy last reply to the clipboard; idle hints on the empty screen
+
 ## 0.2.1 — 2026-07-26
 
 - Multi-pin annotations in the element picker: pin several elements with notes, alt+enter compiles one numbered blob
