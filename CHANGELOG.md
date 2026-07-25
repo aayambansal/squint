@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0 — 2026-07-26
+
+The harness that sees, now in the terminal:
+
+- Inline screenshots: on kitty/Ghostty/WezTerm/iTerm2 the visual pulse and captures render as real pixels in the transcript (Static-region placement sidesteps the repaint problem that keeps other agent CLIs text-only)
+- Anti-slop detector: generic font stacks, purple-gradient heroes, identical card grids, emoji bullets, untouched shadcn defaults — flagged mechanically, fed to /review as distinctiveness debt
+- Failing tool results surface in the transcript; queue is editable (/queue drop <n>); totals survive /resume
+- docs/research/next-wave.md: the fresh ecosystem sweep and the wave-2 program
+
 ## 0.2.9 — 2026-07-26
 
 - squint sandbox CLI (diff/apply/discard); sandbox worktree auto-gitignored
