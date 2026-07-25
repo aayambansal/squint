@@ -26,6 +26,18 @@ describe('detectGates', () => {
     expect(detectGates(dir).map((g) => g.id)).toEqual(['typecheck', 'lint', 'test', 'build'])
   })
 
+  it('detects a prettier format gate, preferring a --check script', () => {
+    writePkg({ scripts: { format: 'prettier --check .' } })
+    expect(detectGates(dir).map((g) => g.id)).toEqual(['format'])
+    // A write-mode format script must not become a gate; config fallback kicks in.
+    writePkg({ scripts: { format: 'prettier --write .' } })
+    expect(detectGates(dir)).toEqual([])
+    fs.writeFileSync(path.join(dir, '.prettierrc'), '{}')
+    const gates = detectGates(dir)
+    expect(gates.map((g) => g.id)).toEqual(['format'])
+    expect(gates[0]!.display).toBe('prettier --check .')
+  })
+
   it('falls back to tsc/eslint detection without scripts', () => {
     writePkg({ devDependencies: { typescript: '^5' } })
     fs.writeFileSync(path.join(dir, 'eslint.config.js'), '')
