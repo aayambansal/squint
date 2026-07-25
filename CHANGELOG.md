@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.7 — 2026-07-26
+
+- autoReview: with it on, a clean turn whose visual pulse shows 10%+ change triggers the self-critique review automatically (once per ask)
+- /dev restart and /dev logs
+- CLI internals split into focused modules (behavior unchanged)
+
 ## 0.2.6 — 2026-07-26
 
 - Gemini adapter streams events (stream-json, defensively parsed)

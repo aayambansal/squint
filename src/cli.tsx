@@ -7,7 +7,7 @@ import { registerRun } from './cli/run.js'
 import { registerScaffold } from './cli/scaffold.js'
 import { registerTui } from './cli/tui.js'
 
-const VERSION = '0.2.6'
+const VERSION = '0.2.7'
 
 const program = new Command()
 
