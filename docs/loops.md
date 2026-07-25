@@ -52,6 +52,12 @@ CSS means the element is silently unstyled — the classic tell of a hallucinate
 version-mismatched utility (Tailwind v3 names in a v4 project). Phantoms are filed as
 problems with element pointers, so "why did nothing change" becomes a named class.
 
+Its static twin runs with the fast gates: **version-aware rule-packs** diff the turn's
+added lines against the project's own toolchain majors. Tailwind v3 classes in a v4
+project (`bg-gradient-to-r`, `flex-shrink-0`) become problems carrying the exact
+rename; still-valid-but-shifted classes (`shadow-sm` now one step larger) surface as
+verify-intent advisories. Silent unless package.json says the newer major is in play.
+
 ## 4. Visual pulse + `autoReview` (pulse always; review default off)
 
 Every clean probe screenshots the page and pixel-compares it with the previous turn
@@ -101,6 +107,14 @@ never blocking): `on-turn-end` (SQUINT_COST, SQUINT_DURATION_MS, SQUINT_STAT),
 `on-pulse-diff` (SQUINT_PCT), `on-problem` (SQUINT_SOURCE, SQUINT_SUMMARY),
 `on-budget` (SQUINT_TOTAL, SQUINT_BUDGET). Ring a bell, post to Slack, trigger CI —
 these are quality events no engine emits on its own.
+
+## `/context` — the injection bill
+
+Everything above rides on injected context, which is squint's edge and its silent
+failure mode. `/context` itemizes it: every source (brief, rules, design ledger,
+component inventory, locks, each skill) with estimated tokens and exactly when it
+fires, an always-on total, and warnings for stale locks, skill triggers generic enough
+to match any ask, and always-on context past the attention budget.
 
 ## Turning things off
 
