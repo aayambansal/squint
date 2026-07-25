@@ -48,6 +48,7 @@ export interface CdpCaptureResult {
   viewTransitions: string[]
   components: string[]
   checkFailures: string[]
+  webmcp: string[]
 }
 
 /** In-page collection of web-vitals-adjacent numbers via PerformanceObserver. */
@@ -271,6 +272,7 @@ export async function runFlow(
     const { targetId } = await connection.send('Target.createTarget', { url: 'about:blank' })
     const { sessionId } = await connection.send('Target.attachToTarget', { targetId, flatten: true })
     await connection.send('Page.enable', {}, sessionId)
+    await connection.send('Page.addScriptToEvaluateOnNewDocument', { source: WEBMCP_SHIM }, sessionId).catch(() => null)
     await connection.send(
       'Emulation.setDeviceMetricsOverride',
       { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false },
@@ -557,6 +559,27 @@ const FIBER_AUDIT = `(() => {
   return out;
 })()`
 
+/**
+ * WebMCP recorder: pages register typed tools for agents via
+ * navigator.modelContext (Chrome 146+). Injected before any page script
+ * runs, this shim records registrations — and stands in for the API on
+ * older Chromes so instrumented pages still work headlessly. What a
+ * page declares is capability surface squint should know about.
+ */
+const WEBMCP_SHIM = `(() => {
+  window.__squintWebMcp = [];
+  const record = (tools) => {
+    for (const t of tools || []) {
+      if (t && t.name) window.__squintWebMcp.push(t.name + (t.description ? ' — ' + t.description : ''));
+    }
+  };
+  const target = navigator.modelContext || (navigator.modelContext = {});
+  const provide = target.provideContext && target.provideContext.bind(target);
+  target.provideContext = (params) => { record(params && params.tools); return provide ? provide(params) : undefined; };
+  const register = target.registerTool && target.registerTool.bind(target);
+  target.registerTool = (tool) => { record([tool]); return register ? register(tool) : undefined; };
+})()`
+
 export async function cdpCapture(
   chromePath: string,
   url: string,
@@ -577,6 +600,7 @@ export async function cdpCapture(
   let viewTransitions: string[] = []
   let components: string[] = []
   const checkFailures: string[] = []
+  let webmcp: string[] = []
   const requests = new Map<string, string>()
   let connection: CdpConnection | null = null
 
@@ -619,6 +643,7 @@ export async function cdpCapture(
     await connection.send('Runtime.enable', {}, sessionId)
     await connection.send('Network.enable', {}, sessionId)
     await connection.send('Page.enable', {}, sessionId)
+    await connection.send('Page.addScriptToEvaluateOnNewDocument', { source: WEBMCP_SHIM }, sessionId).catch(() => null)
     await connection.send('Page.navigate', { url }, sessionId)
 
     const deadline = Date.now() + 12000
@@ -636,6 +661,16 @@ export async function cdpCapture(
       if (result?.value && typeof result.value === 'object') perf = result.value as PerfMetrics
     } catch {
       // perf numbers are best-effort
+    }
+    try {
+      const { result } = await connection.send(
+        'Runtime.evaluate',
+        { expression: 'window.__squintWebMcp || []', returnByValue: true },
+        sessionId,
+      )
+      if (Array.isArray(result?.value)) webmcp = result.value.map(String).slice(0, 12)
+    } catch {
+      // best-effort
     }
     for (const check of checks) {
       try {
@@ -754,5 +789,5 @@ export async function cdpCapture(
     setTimeout(() => fs.rmSync(profileDir, { recursive: true, force: true }), 500).unref?.()
   }
 
-  return { report, shots, a11y, slop, perf, narration, phantoms, viewTransitions, components, checkFailures }
+  return { report, shots, a11y, slop, perf, narration, phantoms, viewTransitions, components, checkFailures, webmcp }
 }

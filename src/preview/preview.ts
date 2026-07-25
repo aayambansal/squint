@@ -29,6 +29,7 @@ export interface CaptureResult {
   viewTransitions?: string[]
   components?: string[]
   checkFailures?: string[]
+  webmcp?: string[]
 }
 
 /**
@@ -81,7 +82,7 @@ export async function captureViewports(cwd: string, url: string): Promise<Captur
       // Root gets the full viewport trio + runtime watch + a11y sweep;
       // additional routes get one desktop shot each.
       const checks = loadChecks(cwd)
-      const { report, shots, a11y, slop, narration, phantoms, viewTransitions, components, checkFailures } = await cdpCapture(chrome, url, dir, VIEWPORTS, 2500, true, checks)
+      const { report, shots, a11y, slop, narration, phantoms, viewTransitions, components, checkFailures, webmcp } = await cdpCapture(chrome, url, dir, VIEWPORTS, 2500, true, checks)
       const errors: string[] = []
       for (const route of routes.slice(1)) {
         try {
@@ -96,7 +97,7 @@ export async function captureViewports(cwd: string, url: string): Promise<Captur
           errors.push(`${route}: capture failed`)
         }
       }
-      return { shots, errors, runtime: report, a11y, slop, narration, phantoms, viewTransitions, components, checkFailures }
+      return { shots, errors, runtime: report, a11y, slop, narration, phantoms, viewTransitions, components, checkFailures, webmcp }
     } catch {
       // fall through to the one-shot path
     }
@@ -204,6 +205,11 @@ function narrationSection(narration: string[] | undefined): string {
   return `\n\n## What a screen reader would say (accessibility tree, in order)\n\n${narration.join('\n')}\n\nJudge this narration as an experience: does the reading order make sense? do names actually describe their targets? is anything announced as "(no accessible name)"? Fix real incoherence — this is how non-visual users meet the page.`
 }
 
+function webmcpSection(webmcp: string[] | undefined): string {
+  if (!webmcp || webmcp.length === 0) return ''
+  return `\n\n## Page-declared WebMCP tools\n\n${webmcp.join('\n')}\n\nThe page registers these for agents via navigator.modelContext — keep them working, and prefer extending them over inventing parallel affordances.`
+}
+
 function componentSection(components: string[] | undefined): string {
   if (!components || components.length === 0) return ''
   return `\n\n## Component map (from React fibers)\n\n${components.join('\n')}\n\nUse these owner chains to name the component (and file) an issue lives in instead of describing regions.`
@@ -234,11 +240,12 @@ export function buildReviewPrompt(
   phantoms?: string[],
   viewTransitions?: string[],
   components?: string[],
+  webmcp?: string[],
 ): string {
   const list = shots.map((s) => `- ${s.name}: ${s.path}`).join('\n')
   return `Screenshots of the running app were just captured:
 
 ${list}
 
-Read each screenshot and review the rendered UI against the design standards you were given. Check: visual hierarchy and spacing rhythm, typography, color and contrast, alignment, empty-looking or broken regions, and whether the mobile capture shows horizontal overflow or cramped layout. List the concrete issues you can SEE (not hypothetical ones), ranked by visual impact${extra ? `, with special attention to: ${extra}` : ''}. Then fix them and verify the app still builds.${runtimeSection(runtime)}${a11ySection(a11y)}${slopSection(slop)}${narrationSection(narration)}${phantomSection(phantoms)}${vtSection(viewTransitions)}${componentSection(components)}`
+Read each screenshot and review the rendered UI against the design standards you were given. Check: visual hierarchy and spacing rhythm, typography, color and contrast, alignment, empty-looking or broken regions, and whether the mobile capture shows horizontal overflow or cramped layout. List the concrete issues you can SEE (not hypothetical ones), ranked by visual impact${extra ? `, with special attention to: ${extra}` : ''}. Then fix them and verify the app still builds.${runtimeSection(runtime)}${a11ySection(a11y)}${slopSection(slop)}${narrationSection(narration)}${phantomSection(phantoms)}${vtSection(viewTransitions)}${componentSection(components)}${webmcpSection(webmcp)}`
 }
