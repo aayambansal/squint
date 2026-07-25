@@ -4,10 +4,14 @@ import path from 'node:path'
 import { z } from 'zod'
 
 const ConfigSchema = z.object({
-  /** Default engine id (claude, codex, gemini, opencode). */
+  /** Default engine id (claude, codex, gemini, opencode, amp, cursor, copilot, aider). */
   engine: z.string().optional(),
   /** Per-engine model overrides, e.g. { claude: "claude-sonnet-5" }. */
   models: z.record(z.string()).optional(),
+  /** Start the project's dev server automatically when the TUI opens. */
+  autoDev: z.boolean().optional(),
+  /** Automatically send dev-server errors back to the engine (max 2 attempts). */
+  autoFix: z.boolean().optional(),
 })
 
 export type SquintConfig = z.infer<typeof ConfigSchema>
@@ -68,12 +72,17 @@ export function setConfigValue(file: string, key: string, value: string): Squint
   let next: SquintConfig
   if (key === 'engine') {
     next = { ...current, engine: value }
+  } else if (key === 'autoDev' || key === 'autoFix') {
+    if (value !== 'true' && value !== 'false') {
+      throw new Error(`"${key}" must be true or false`)
+    }
+    next = { ...current, [key]: value === 'true' }
   } else if (key.startsWith('models.')) {
     const engineId = key.slice('models.'.length)
     if (!engineId) throw new Error('Usage: squint config set models.<engineId> <model>')
     next = { ...current, models: { ...current.models, [engineId]: value } }
   } else {
-    throw new Error(`Unknown config key "${key}". Supported: engine, models.<engineId>`)
+    throw new Error(`Unknown config key "${key}". Supported: engine, autoDev, autoFix, models.<engineId>`)
   }
   fs.mkdirSync(path.dirname(file), { recursive: true })
   fs.writeFileSync(file, JSON.stringify(next, null, 2) + '\n')

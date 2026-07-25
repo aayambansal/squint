@@ -122,7 +122,15 @@ program.action(() => {
   const config = loadConfig(defaultPaths(cwd))
   const engineId = resolveEngineId(config)
   const model = resolveModel(config, engineId)
-  render(<App cwd={cwd} initialEngine={engineId} initialModel={model} />)
+  render(
+    <App
+      cwd={cwd}
+      initialEngine={engineId}
+      initialModel={model}
+      autoDev={config.autoDev}
+      autoFix={config.autoFix}
+    />,
+  )
 })
 
 /** Stateful printer: streams deltas live, skips the duplicate final block. */
