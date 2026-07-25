@@ -138,6 +138,103 @@ program
     console.log(pc.dim('then describe what to build — /dev starts the preview server'))
   })
 
+const variantsCommand = program
+  .command('variants')
+  .description('Parallel design explorations — one aesthetic family each, pick with your eyes')
+
+variantsCommand
+  .command('gen')
+  .description('Generate n variants of one ask in parallel (n engine runs — n× cost)')
+  .argument('<n>', 'how many variants (max 4)')
+  .argument('<prompt...>', 'what to build')
+  .option('-e, --engine <id>', 'engine to use')
+  .option('-m, --model <name>', 'model override')
+  .option('--no-shots', 'skip the screenshot pass')
+  .action(
+    async (nRaw: string, promptWords: string[], options: { engine?: string; model?: string; shots: boolean }) => {
+      const cwd = process.cwd()
+      const n = Number.parseInt(nRaw, 10)
+      if (!Number.isInteger(n) || n < 2 || n > 4) {
+        console.error(pc.red('✗ n must be 2–4'))
+        process.exitCode = 1
+        return
+      }
+      const { isGitRepo } = await import('./vcs/snapshot.js')
+      if (!isGitRepo(cwd)) {
+        console.error(pc.red('✗ variants need a git repo with at least one commit'))
+        process.exitCode = 1
+        return
+      }
+      const { runVariants, cleanVariants } = await import('./variants/variants.js')
+      const config = loadConfig(defaultPaths(cwd))
+      const engineId = resolveEngineId(config, options.engine)
+      const engine = getEngine(engineId)
+      const model = resolveModel(config, engineId, options.model)
+      const ask = promptWords.join(' ')
+
+      cleanVariants(cwd)
+      console.log(pc.dim(`generating ${n} directions in parallel via ${engine.id} — this runs ${n} engine sessions`))
+      const runs = await runVariants(cwd, ask, n, engine, model, (familyId, text) =>
+        console.log(`${pc.cyan(familyId.padEnd(18))} ${pc.dim(text)}`),
+      )
+
+      const succeeded = runs.filter((r) => r.result.ok)
+      if (options.shots && succeeded.length > 0) {
+        const { screenshotVariants } = await import('./variants/shots.js')
+        console.log(pc.dim('capturing screenshots…'))
+        const shots = await screenshotVariants(cwd, succeeded.map((r) => r.variant))
+        for (const shot of shots) {
+          console.log(`${pc.green('✓')} ${shot.familyId.padEnd(18)} ${shot.path ?? pc.dim(shot.error ?? '')}`)
+        }
+      }
+      console.log(
+        `\n${succeeded.length}/${runs.length} variants ready in .squint/variants/ — ` +
+          pc.bold('squint variants apply <id>') +
+          pc.dim(' applies the winner, squint variants clean discards all'),
+      )
+      if (succeeded.length === 0) process.exitCode = 1
+    },
+  )
+
+variantsCommand
+  .command('list')
+  .description('List generated variants')
+  .action(async () => {
+    const { listVariants } = await import('./variants/variants.js')
+    const ids = listVariants(process.cwd())
+    if (ids.length === 0) {
+      console.log(pc.dim('no variants — squint variants gen <n> "<ask>"'))
+      return
+    }
+    for (const id of ids) console.log(id)
+  })
+
+variantsCommand
+  .command('apply')
+  .description('Apply one variant’s changes to the main tree and discard the rest')
+  .argument('<id>', 'family id of the winning variant')
+  .action(async (id: string) => {
+    const { applyVariant, cleanVariants } = await import('./variants/variants.js')
+    const cwd = process.cwd()
+    const result = applyVariant(cwd, id)
+    if (!result.ok) {
+      console.error(pc.red(`✗ ${result.detail}`))
+      process.exitCode = 1
+      return
+    }
+    cleanVariants(cwd)
+    console.log(pc.green(`✓ applied ${id} to the working tree`) + pc.dim(' — review with git diff'))
+  })
+
+variantsCommand
+  .command('clean')
+  .description('Discard all variants')
+  .action(async () => {
+    const { cleanVariants } = await import('./variants/variants.js')
+    const count = cleanVariants(process.cwd())
+    console.log(pc.dim(`removed ${count} variant(s)`))
+  })
+
 program
   .command('brief')
   .description('Set a committed design direction for this project (.squint/brief.md)')
