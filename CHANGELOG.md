@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.4 — 2026-07-26
+
+- fixModel: auto-fix and /fix turns route to a cheaper model tier while real asks keep the session model
+- /find <term>: search the live session and saved transcripts
+
 ## 0.3.3 — 2026-07-26
 
 - Screen-reader narration pass: the AX tree linearized into what assistive tech experiences, judged in /review
