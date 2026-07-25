@@ -24,6 +24,7 @@ export const COMMANDS: CommandSpec[] = [
   { name: 'restore', args: '<n>', description: 'rewind files to before ask n' },
   { name: 'mode', args: 'plan|safe|yolo', description: 'how much the engine may do (shift+tab cycles)' },
   { name: 'engine', args: '<id>', description: 'switch backend (new session)' },
+  { name: 'engines', description: 'list installed engines with streaming/resume support' },
   { name: 'model', args: '[name]', description: 'model override for the engine' },
   { name: 'theme', args: '[name]', description: 'switch the TUI theme', viewLevel: true },
   { name: 'copy', description: 'copy the last reply to the clipboard' },
