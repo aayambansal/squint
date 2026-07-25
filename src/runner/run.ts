@@ -29,7 +29,7 @@ export function runAgent(
 
     const child = spawn(binaryPath, engine.buildArgs(opts), {
       cwd: opts.cwd,
-      env: process.env,
+      env: { ...process.env, ...engine.env },
       stdio: ['ignore', 'pipe', 'pipe'],
     })
 

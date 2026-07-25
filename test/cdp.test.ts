@@ -207,3 +207,21 @@ describe.skipIf(!chrome || !hasWebSocket())('attributed pulse diff (requires Chr
     }
   })
 })
+
+describe.skipIf(!chrome || !hasWebSocket())('APCA contrast in the slop sweep (requires Chrome)', () => {
+  it('flags foggy body text and passes strong text', { timeout: 120000, retry: 2 }, async () => {
+    const page = path.join(dir, 'apca.html')
+    fs.writeFileSync(
+      page,
+      `<!doctype html><html lang="en"><head><title>c</title></head>
+      <body style="background:#fafafa">
+      <p style="color:#b8b8b8;font-size:16px">This long paragraph of body copy is set in a light gray that reads as fog on the off-white background of the page.</p>
+      <p style="color:#1a1a1a;font-size:16px">This long paragraph of body copy is set in a properly dark ink that clears the APCA bar without any strain at all.</p>
+      </body></html>`,
+    )
+    const result = await cdpCapture(chrome!, `file://${page}`, dir, [], 500, true)
+    const apca = result.slop.filter((s) => s.includes('APCA'))
+    expect(apca.length).toBe(1)
+    expect(apca[0]).toContain('fog, not elegance')
+  })
+})

@@ -50,6 +50,8 @@ export interface Engine {
   /** How to install it, shown by `squint doctor`. */
   install: string
   supportsResume: boolean
+  /** Extra environment for every run of this engine. */
+  env?: Record<string, string>
   buildArgs(opts: RunOptions): string[]
   /**
    * Create a parser for one run. Engines that emit plain text leave this
