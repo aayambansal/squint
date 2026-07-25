@@ -46,6 +46,24 @@ export function takeSnapshot(cwd: string): Snapshot | null {
   }
 }
 
+/** Compact work summary since a snapshot: "3 files +42 −7", or null. */
+export function diffStatSince(cwd: string, snapshot: Snapshot): string | null {
+  try {
+    const source = snapshot.stashHash ?? 'HEAD'
+    const stat = git(cwd, ['diff', '--shortstat', source])
+    const files = /(\d+) files? changed/.exec(stat)
+    if (!files) return null
+    const insertions = /(\d+) insertions?/.exec(stat)
+    const deletions = /(\d+) deletions?/.exec(stat)
+    let out = `${files[1]} file${files[1] === '1' ? '' : 's'}`
+    if (insertions) out += ` +${insertions[1]}`
+    if (deletions) out += ` −${deletions[1]}`
+    return out
+  } catch {
+    return null
+  }
+}
+
 export interface RestoreResult {
   restored: boolean
   deletedFiles: number
