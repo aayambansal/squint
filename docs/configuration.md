@@ -21,6 +21,7 @@ Two layers, project wins over global, `models` maps merge key-by-key:
 | `autoReview` | bool | `false` | when the visual pulse shows 10%+ change after a clean turn, run the self-critique review automatically (once per ask) |
 | `bell` | bool | `true` | terminal bell when a turn finishes |
 | `budgetUsd` | number | off | one-time warning when session spend crosses this |
+| `fixModel` | string | session model | cheaper model used for auto-fix and `/fix` turns |
 
 Booleans are set as literal `true` / `false`:
 
