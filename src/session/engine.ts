@@ -985,6 +985,38 @@ export class Session {
         })()
         break
       }
+      case 'score': {
+        if (!this.state.devUrl) {
+          this.push('error', 'dev server not running — /dev first')
+          break
+        }
+        void (async () => {
+          const result = await this.capture()
+          if (!result) return
+          const a11yCount = result.a11y?.length ?? 0
+          const slopCount = result.slop?.length ?? 0
+          const runtimeBad = result.runtime ? (runtimeSummary(result.runtime) ? 1 : 0) : 0
+          const problems = this.state.problems.length
+          // Deterministic axes only: 5.0 minus measured debt, floored at 0.
+          // Judgment (hierarchy, taste) stays /review's job — LLM judges
+          // are unreliable on absolute quality, per the eval research.
+          const score = Math.max(
+            0,
+            5 - problems * 0.75 - Math.min(a11yCount, 4) * 0.25 - Math.min(slopCount, 4) * 0.25 - runtimeBad,
+          )
+          const lcp = this.lastPerf?.lcpMs !== undefined ? ` · LCP ${this.lastPerf.lcpMs}ms` : ''
+          this.push(
+            'status',
+            [
+              `score: ${score.toFixed(2)}/5 (deterministic axes)`,
+              `  open problems: ${problems}${problems > 0 ? ` (${this.state.problems.map((p) => p.source).join(', ')})` : ''}`,
+              `  a11y findings: ${a11yCount} · distinctiveness tells: ${slopCount} · runtime ${runtimeBad ? 'dirty' : 'clean'}${lcp}`,
+              '  /review judges what numbers cannot — hierarchy, taste, coherence',
+            ].join('\n'),
+          )
+        })()
+        break
+      }
       case 'polish': {
         const rounds = arg ? Number.parseInt(arg, 10) : 2
         if (!Number.isInteger(rounds) || rounds < 1 || rounds > 5) {
