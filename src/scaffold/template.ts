@@ -5,8 +5,11 @@
  * ships neutral structure, not decoration. Embedded (not fetched) so init
  * is deterministic and instant.
  */
+import { TAGGER_FILENAME, TAGGER_SOURCE } from '../tagger/source.js'
+
 export function templateFiles(name: string): Record<string, string> {
   return {
+    [TAGGER_FILENAME]: TAGGER_SOURCE,
     'package.json': `${JSON.stringify(
       {
         name,
@@ -54,9 +57,10 @@ export function templateFiles(name: string): Record<string, string> {
     'vite.config.ts': `import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
+import squintTagger from './squint-tagger.mjs'
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), squintTagger()],
 })
 `,
 

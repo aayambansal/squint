@@ -138,6 +138,40 @@ program
     console.log(pc.dim('then describe what to build — /dev starts the preview server'))
   })
 
+program
+  .command('tag')
+  .description('Add the element picker to this Vite app (Alt+S in the browser → click → file:line:col)')
+  .action(async () => {
+    const fs = await import('node:fs')
+    const nodePath = await import('node:path')
+    const { patchViteConfig, TAGGER_FILENAME, TAGGER_SOURCE } = await import('./tagger/source.js')
+    const cwd = process.cwd()
+    const taggerPath = nodePath.join(cwd, TAGGER_FILENAME)
+    fs.writeFileSync(taggerPath, TAGGER_SOURCE)
+    console.log(pc.green(`✓ ${TAGGER_FILENAME} written`))
+
+    const configPath = ['vite.config.ts', 'vite.config.js', 'vite.config.mjs']
+      .map((name) => nodePath.join(cwd, name))
+      .find((candidate) => fs.existsSync(candidate))
+    if (!configPath) {
+      console.log(pc.yellow('○ no vite config found — add the plugin manually:'))
+      console.log(pc.dim(`  import squintTagger from './${TAGGER_FILENAME}'\n  plugins: [squintTagger(), …]`))
+      return
+    }
+    const source = fs.readFileSync(configPath, 'utf8')
+    const patched = patchViteConfig(source)
+    if (patched === 'already') {
+      console.log(pc.dim('vite config already wired'))
+    } else if (patched === null) {
+      console.log(pc.yellow(`○ could not patch ${nodePath.basename(configPath)} automatically — add:`))
+      console.log(pc.dim(`  import squintTagger from './${TAGGER_FILENAME}'\n  plugins: [squintTagger(), …]`))
+    } else {
+      fs.writeFileSync(configPath, patched)
+      console.log(pc.green(`✓ ${nodePath.basename(configPath)} wired`))
+    }
+    console.log(pc.dim('\nin the running app: Alt+S → click an element → paste the copied file:line:col into squint'))
+  })
+
 const variantsCommand = program
   .command('variants')
   .description('Parallel design explorations — one aesthetic family each, pick with your eyes')
