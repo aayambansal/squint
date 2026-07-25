@@ -143,6 +143,8 @@ export interface ProbeResult {
   report: RuntimeReport
   /** Path of the pulse screenshot taken during the probe, when available. */
   pulsePath?: string
+  /** Load performance snapshot. */
+  perf?: import('./cdp.js').PerfMetrics
 }
 
 export async function probeRuntime(url: string, cwd?: string): Promise<ProbeResult | null> {
@@ -150,14 +152,14 @@ export async function probeRuntime(url: string, cwd?: string): Promise<ProbeResu
   if (!chrome || !hasWebSocket()) return null
   try {
     const dir = cwd ? previewDir(cwd) : os.tmpdir()
-    const { report, shots } = await cdpCapture(
+    const { report, shots, perf } = await cdpCapture(
       chrome,
       url,
       dir,
       cwd ? [{ name: 'pulse', width: 1280, height: 800 }] : [],
       1500,
     )
-    return { report, pulsePath: shots[0]?.path }
+    return { report, pulsePath: shots[0]?.path, perf }
   } catch {
     return null
   }

@@ -21,6 +21,17 @@ export interface CdpShot {
   height: number
 }
 
+export interface PerfMetrics {
+  /** Largest contentful paint, ms. */
+  lcpMs?: number
+  /** Cumulative layout shift score. */
+  cls?: number
+  /** Bytes transferred for the page load. */
+  transferBytes?: number
+  /** Number of requests during load. */
+  requests?: number
+}
+
 export interface CdpCaptureResult {
   report: RuntimeReport
   shots: { name: string; path: string }[]
@@ -28,7 +39,37 @@ export interface CdpCaptureResult {
   a11y: string[]
   /** Distinctiveness-debt findings (when the audit ran). */
   slop: string[]
+  /** Load performance snapshot for the primary navigation. */
+  perf: PerfMetrics
 }
+
+/** In-page collection of web-vitals-adjacent numbers via PerformanceObserver. */
+const PERF_PROBE = `(() => {
+  const out = {};
+  const buffered = (type) => {
+    try {
+      const po = new PerformanceObserver(() => {});
+      po.observe({ type, buffered: true });
+      const records = po.takeRecords();
+      po.disconnect();
+      return records;
+    } catch { return []; }
+  };
+  const lcp = buffered('largest-contentful-paint');
+  if (lcp.length > 0) out.lcpMs = Math.round(lcp[lcp.length - 1].startTime);
+  let cls = 0;
+  for (const e of buffered('layout-shift')) { if (!e.hadRecentInput) cls += e.value; }
+  out.cls = Math.round(cls * 1000) / 1000;
+  try {
+    const resources = performance.getEntriesByType('resource');
+    const nav = performance.getEntriesByType('navigation')[0];
+    let bytes = nav ? (nav.transferSize || 0) : 0;
+    for (const r of resources) bytes += r.transferSize || 0;
+    out.transferBytes = bytes;
+    out.requests = resources.length + (nav ? 1 : 0);
+  } catch {}
+  return out;
+})()`
 
 /**
  * Dependency-free in-page accessibility sweep: the objective checks
@@ -322,6 +363,7 @@ export async function cdpCapture(
   const shots: { name: string; path: string }[] = []
   let a11y: string[] = []
   let slop: string[] = []
+  let perf: PerfMetrics = {}
   const requests = new Map<string, string>()
   let connection: CdpConnection | null = null
 
@@ -372,6 +414,17 @@ export async function cdpCapture(
     }
     await new Promise((resolve) => setTimeout(resolve, settleMs))
 
+    try {
+      const { result } = await connection.send(
+        'Runtime.evaluate',
+        { expression: PERF_PROBE, returnByValue: true },
+        sessionId,
+      )
+      if (result?.value && typeof result.value === 'object') perf = result.value as PerfMetrics
+    } catch {
+      // perf numbers are best-effort
+    }
+
     if (audit) {
       try {
         const { result } = await connection.send(
@@ -418,5 +471,5 @@ export async function cdpCapture(
     setTimeout(() => fs.rmSync(profileDir, { recursive: true, force: true }), 500).unref?.()
   }
 
-  return { report, shots, a11y, slop }
+  return { report, shots, a11y, slop, perf }
 }
