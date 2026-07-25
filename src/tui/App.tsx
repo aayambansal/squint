@@ -31,6 +31,7 @@ export interface AppProps {
   autoFix?: boolean
   autoProbe?: boolean
   autoCheck?: boolean
+  bell?: boolean
   initialTheme?: string
 }
 
@@ -47,6 +48,7 @@ export function App({
   autoFix,
   autoProbe,
   autoCheck,
+  bell,
   initialTheme,
 }: AppProps) {
   const { exit } = useApp()
@@ -76,6 +78,13 @@ export function App({
   const historyRef = useRef<string[]>([])
   const historyIndexRef = useRef(-1)
   const ctrlCArmedAtRef = useRef(0)
+  const wasRunningRef = useRef(false)
+
+  // Attention cue: ring the terminal bell when a turn completes.
+  if (wasRunningRef.current && !state.running && bell !== false) {
+    process.stdout.write('')
+  }
+  wasRunningRef.current = state.running
 
   useInput((char, key) => {
     if (key.ctrl && char === 'c') {

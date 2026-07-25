@@ -29,6 +29,15 @@ function fakeEngine(script: string): Engine {
   }
 }
 
+/** Fake engine whose stdout lines "TOOL:<name>" become tool events. */
+function toolEngine(script: string): Engine {
+  return {
+    ...fakeEngine(script),
+    createParser: () => (line) =>
+      line.startsWith('TOOL:') ? [{ type: 'tool', name: line.slice(5) }] : [{ type: 'text', text: line }],
+  }
+}
+
 function waitFor(session: Session, predicate: () => boolean, timeoutMs = 8000): Promise<void> {
   return new Promise((resolve, reject) => {
     if (predicate()) return resolve()
@@ -55,6 +64,18 @@ describe('Session', () => {
     expect(roles[0]).toBe('user:build something')
     expect(roles.some((r) => r.startsWith('assistant:did the thing'))).toBe(true)
     expect(roles.some((r) => r.startsWith('status:done'))).toBe(true)
+    session.dispose()
+  })
+
+  it('counts edits per turn in the done line', async () => {
+    vi.spyOn(registry, 'getEngine').mockReturnValue(
+      toolEngine("console.log('TOOL:Read'); console.log('TOOL:Edit'); console.log('TOOL:Edit'); console.log('all set')"),
+    )
+    const session = new Session({ cwd: dir, engineId: 'fake' })
+    session.input('change stuff')
+    await waitFor(session, () => !session.getState().running && session.getState().totals.turns === 1)
+    const done = session.getState().items.findLast((i) => i.text.startsWith('done'))
+    expect(done?.text).toContain('2 edits')
     session.dispose()
   })
 

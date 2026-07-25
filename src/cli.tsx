@@ -388,6 +388,7 @@ program.action(() => {
       autoFix={config.autoFix}
       autoProbe={config.autoProbe}
       autoCheck={config.autoCheck}
+      bell={config.bell}
       initialTheme={config.theme}
     />,
   )

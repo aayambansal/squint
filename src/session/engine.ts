@@ -218,6 +218,9 @@ export class Session {
     return this.dev
   }
 
+  private turnEdits = 0
+  private turnTools = 0
+
   private handleEvent = (event: AgentEvent): void => {
     switch (event.type) {
       case 'status':
@@ -240,10 +243,13 @@ export class Session {
         this.commitLive()
         this.push('thinking', event.text)
         break
-      case 'tool':
+      case 'tool': {
         this.commitLive()
+        this.turnTools += 1
+        if (/edit|write|patch|apply/i.test(event.name)) this.turnEdits += 1
         this.push('tool', event.detail ? `${event.name} · ${event.detail}` : event.name)
         break
+      }
       case 'error':
         this.commitLive()
         this.push('error', event.text)
@@ -259,6 +265,8 @@ export class Session {
   /** Run one engine turn. `display` is what the transcript shows as the ask. */
   private async runTurn(prompt: string, display: string): Promise<void> {
     this.push('user', display)
+    this.turnEdits = 0
+    this.turnTools = 0
     this.notify({ running: true, runStartedAt: Date.now() })
     const runStart = Date.now()
     const engine = getEngine(this.state.engineId)
@@ -279,7 +287,13 @@ export class Session {
     if (result.ok) {
       const cost = result.costUsd !== undefined ? ` · $${result.costUsd.toFixed(2)}` : ''
       const secs = result.durationMs !== undefined ? ` · ${(result.durationMs / 1000).toFixed(0)}s` : ''
-      this.push('status', `done${secs}${cost}`)
+      const work =
+        this.turnEdits > 0
+          ? ` · ${this.turnEdits} edit${this.turnEdits === 1 ? '' : 's'}`
+          : this.turnTools > 0
+            ? ` · ${this.turnTools} tool call${this.turnTools === 1 ? '' : 's'}`
+            : ''
+      this.push('status', `done${secs}${cost}${work}`)
       this.notify({
         totals: {
           costUsd: this.state.totals.costUsd + (result.costUsd ?? 0),
