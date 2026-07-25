@@ -49,6 +49,7 @@
   "dependencies": {
     "commander": "^15.0.0",
     "ink": "^7.1.1",
+    "ink-picture": "^2.1.0",
     "picocolors": "^1.1.1",
     "react": "^19.1.0",
     "zod": "^4.4.3"

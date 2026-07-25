@@ -30,7 +30,7 @@ import { applyVariant, cleanVariants, listVariants, runVariants } from '../varia
 import { screenshotVariants } from '../variants/shots.js'
 import { findChrome } from '../preview/chrome.js'
 
-export type TranscriptRole = 'user' | 'assistant' | 'status' | 'tool' | 'error' | 'thinking'
+export type TranscriptRole = 'user' | 'assistant' | 'status' | 'tool' | 'error' | 'thinking' | 'image'
 
 export interface TranscriptItem {
   id: number
@@ -635,6 +635,7 @@ export class Session {
     this.lastPulse = current
     if (!previous) {
       this.push('status', 'visual pulse: baseline captured')
+      this.push('image', pulsePath)
       return null
     }
     const pct = await comparePulse(previous, current)
@@ -643,6 +644,8 @@ export class Session {
       'status',
       pct < 0.5 ? 'visual pulse: stable vs last turn' : `visual pulse: ${pct.toFixed(1)}% of the page changed vs last turn`,
     )
+    // Show the page when it actually changed; stable turns stay text-only.
+    if (pct >= 0.5) this.push('image', pulsePath)
     return pct
   }
 
@@ -665,6 +668,8 @@ export class Session {
         'status',
         `captured ${result.shots.map((s) => s.name).join(', ')} → ${path.dirname(result.shots[0]!.path)}`,
       )
+      const desktop = result.shots.find((s) => s.name === 'desktop') ?? result.shots[0]!
+      this.push('image', desktop.path)
     }
     if (result.runtime) {
       const summary = runtimeSummary(result.runtime)
@@ -804,6 +809,9 @@ export class Session {
                 break
               case 'tool':
                 lines.push(`- ⚙ ${item.text}`)
+                break
+              case 'image':
+                lines.push(`![screenshot](${item.text})`, '')
                 break
               case 'thinking':
                 break

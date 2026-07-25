@@ -1,4 +1,5 @@
 import { Box, Static, Text, useApp, useInput } from 'ink'
+import { InkPictureProvider } from 'ink-picture'
 import path from 'node:path'
 import { useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { completeCommand } from '../session/commands.js'
@@ -220,6 +221,7 @@ export function App({
 
   return (
     <ThemeProvider value={theme}>
+    <InkPictureProvider>
     <Box flexDirection="column" paddingX={1}>
       <Static items={state.items}>
         {(item) => (
@@ -297,6 +299,7 @@ export function App({
         </Text>
       </Box>
     </Box>
+    </InkPictureProvider>
     </ThemeProvider>
   )
 }

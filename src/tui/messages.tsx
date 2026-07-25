@@ -1,13 +1,17 @@
-import { Text } from 'ink'
+import { Box, Text } from 'ink'
+import Image from 'ink-picture'
 import { useEffect, useState } from 'react'
 import { Markdown } from './markdown.js'
+import { supportsInlineImages } from './termImage.js'
 import { useTheme } from './themeContext.js'
 
 export interface Message {
   id: number
-  role: 'user' | 'assistant' | 'status' | 'tool' | 'error' | 'thinking'
+  role: 'user' | 'assistant' | 'status' | 'tool' | 'error' | 'thinking' | 'image'
   text: string
 }
+
+const INLINE_IMAGES = supportsInlineImages()
 
 const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
 const PHRASES = ['working', 'thinking', 'squinting', 'crafting', 'still at it']
@@ -83,6 +87,22 @@ export function MessageLine({ message }: { message: Message }) {
         <Text color={theme.error} wrap="wrap">
           ✗ {message.text}
         </Text>
+      )
+    case 'image':
+      // Real pixels where the terminal can (kitty/iTerm2 family);
+      // elsewhere just the path — ASCII screenshots are noise.
+      if (!INLINE_IMAGES) {
+        return (
+          <Text color={theme.dim} wrap="wrap">
+            ▣ {message.text}
+          </Text>
+        )
+      }
+      return (
+        <Box flexDirection="column">
+          <Image src={message.text} width={48} height={14} alt="screenshot" />
+          <Text color={theme.dim}>▣ {message.text}</Text>
+        </Box>
       )
   }
 }
