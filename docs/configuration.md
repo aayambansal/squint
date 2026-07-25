@@ -44,7 +44,8 @@ Hand-authored (commit these):
 | `config.json` | the project config layer |
 
 Working files (auto-gitignored by squint): `preview/` (screenshots), `state.json`
-(session resume), `variants/` (exploration worktrees), `transcripts/` (`/save` exports).
+(session resume), `variants/` (exploration worktrees), `sandbox/` (the /sandbox worktree),
+`transcripts/` (`/save` exports).
 
 ## Environment
 
