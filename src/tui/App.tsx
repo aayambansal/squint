@@ -17,74 +17,10 @@ import { composePrompt } from '../prompt/brief.js'
 import { runAgent } from '../runner/run.js'
 import { clearState, loadState, saveState } from '../state/state.js'
 import { restoreSnapshot, type Snapshot, takeSnapshot } from '../vcs/snapshot.js'
+import { type Message, MessageLine, WorkingLine } from './messages.js'
 import { theme } from './theme.js'
 
-interface Message {
-  id: number
-  role: 'user' | 'assistant' | 'status' | 'tool' | 'error' | 'thinking'
-  text: string
-}
-
-const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
 const MAX_AUTO_FIX_ATTEMPTS = 2
-
-function WorkingLine({ startedAt }: { startedAt: number }) {
-  const [frame, setFrame] = useState(0)
-  const [elapsed, setElapsed] = useState(0)
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setFrame((f) => (f + 1) % SPINNER_FRAMES.length)
-      setElapsed(Math.floor((Date.now() - startedAt) / 1000))
-    }, 80)
-    return () => clearInterval(timer)
-  }, [startedAt])
-  return (
-    <Text>
-      <Text color={theme.accent}>{SPINNER_FRAMES[frame]}</Text>
-      <Text color={theme.dim}>
-        {' '}
-        working… {elapsed}s · esc to interrupt
-      </Text>
-    </Text>
-  )
-}
-
-function MessageLine({ message }: { message: Message }) {
-  switch (message.role) {
-    case 'user':
-      return (
-        <Text color={theme.user} wrap="wrap">
-          ❯ {message.text}
-        </Text>
-      )
-    case 'assistant':
-      return <Text wrap="wrap">{message.text}</Text>
-    case 'status':
-      return (
-        <Text color={theme.dim} wrap="wrap">
-          · {message.text}
-        </Text>
-      )
-    case 'tool':
-      return (
-        <Text color={theme.tool} wrap="wrap">
-          ⚙ {message.text}
-        </Text>
-      )
-    case 'thinking':
-      return (
-        <Text color={theme.dim} italic wrap="wrap">
-          {message.text}
-        </Text>
-      )
-    case 'error':
-      return (
-        <Text color={theme.error} wrap="wrap">
-          ✗ {message.text}
-        </Text>
-      )
-  }
-}
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
