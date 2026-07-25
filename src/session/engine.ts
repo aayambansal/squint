@@ -5,6 +5,7 @@ import type { AgentEvent, RunMode } from '../engines/types.js'
 import { buildGatePrompt, detectFastGates, detectGates, runGates } from '../gates/gates.js'
 import {
   buildReviewPrompt,
+  type ProbeResult,
   buildRuntimeFixPrompt,
   type CaptureResult,
   captureViewports,
@@ -113,6 +114,7 @@ export class Session {
   private fixAttempts = 0
   private reviewTipShown = false
   private lastPulse: Buffer | null = null
+  private lastPerf: { lcpMs?: number; cls?: number; transferBytes?: number } | null = null
   private autoReviewedThisAsk = false
   private readonly startedAt = Date.now()
 
@@ -555,6 +557,7 @@ export class Session {
             this.push('status', '/fix sends open problems to the engine · /problems lists them')
           } else if (probe) {
             this.clearProblems('runtime')
+            this.perfPulse(probe.perf)
             const pct = await this.visualPulse(probe.pulsePath)
             // Substantial visual change + autoReview → the engine looks at
             // its own work, once per ask.
@@ -630,6 +633,33 @@ export class Session {
     } else {
       this.push('error', `restore failed: ${result.detail ?? 'unknown error'}`)
     }
+  }
+
+  /** Cross-turn load-performance deltas: the perf twin of the visual pulse. */
+  private perfPulse(perf: ProbeResult['perf']): void {
+    if (!perf || (perf.lcpMs === undefined && perf.transferBytes === undefined)) return
+    const previous = this.lastPerf
+    this.lastPerf = perf
+    const mb = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(1)}MB`
+    const parts: string[] = []
+    if (perf.lcpMs !== undefined) {
+      const delta =
+        previous?.lcpMs !== undefined && Math.abs(perf.lcpMs - previous.lcpMs) >= 100
+          ? ` (${perf.lcpMs > previous.lcpMs ? '+' : '−'}${Math.abs(perf.lcpMs - previous.lcpMs)}ms)`
+          : ''
+      parts.push(`LCP ${perf.lcpMs}ms${delta}`)
+    }
+    if (perf.cls !== undefined && perf.cls > 0.05) parts.push(`CLS ${perf.cls}`)
+    if (perf.transferBytes !== undefined) {
+      const delta =
+        previous?.transferBytes !== undefined &&
+        Math.abs(perf.transferBytes - previous.transferBytes) > 100 * 1024
+          ? ` (${perf.transferBytes > previous.transferBytes ? '+' : '−'}${mb(Math.abs(perf.transferBytes - previous.transferBytes))})`
+          : ''
+      parts.push(`${mb(perf.transferBytes)}${delta}`)
+    }
+    if (perf.requests !== undefined) parts.push(`${perf.requests} req`)
+    if (parts.length > 0) this.push('status', `perf: ${parts.join(' · ')}`)
   }
 
   /**
