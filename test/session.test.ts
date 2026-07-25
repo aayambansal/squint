@@ -104,6 +104,39 @@ describe('Session', () => {
     session.dispose()
   })
 
+  it('queues asks typed mid-turn and dispatches them in order', async () => {
+    vi.spyOn(registry, 'getEngine').mockReturnValue(
+      fakeEngine("setTimeout(() => console.log('slow done'), 400)"),
+    )
+    const session = new Session({ cwd: dir, engineId: 'fake' })
+    session.input('first ask')
+    await waitFor(session, () => session.getState().running)
+    session.input('second ask')
+    session.input('third ask')
+    expect(session.getState().queue).toEqual(['second ask', 'third ask'])
+
+    await waitFor(session, () => session.getState().totals.turns === 3, 15000)
+    const users = session.getState().items.filter((i) => i.role === 'user').map((i) => i.text)
+    expect(users).toEqual(['first ask', 'second ask', 'third ask'])
+    expect(session.getState().queue).toEqual([])
+    session.dispose()
+  })
+
+  it('clears the queue on /queue clear mid-turn', async () => {
+    vi.spyOn(registry, 'getEngine').mockReturnValue(
+      fakeEngine("setTimeout(() => console.log('done'), 500)"),
+    )
+    const session = new Session({ cwd: dir, engineId: 'fake' })
+    session.input('first')
+    await waitFor(session, () => session.getState().running)
+    session.input('second')
+    session.input('/queue clear')
+    expect(session.getState().queue).toEqual([])
+    await waitFor(session, () => !session.getState().running, 15000)
+    expect(session.getState().totals.turns).toBe(1)
+    session.dispose()
+  })
+
   it('reports interrupted runs without counting a turn', async () => {
     vi.spyOn(registry, 'getEngine').mockReturnValue(
       fakeEngine("setInterval(() => console.log('tick'), 100)"),

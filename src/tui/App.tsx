@@ -65,8 +65,8 @@ export function App({ cwd, initialEngine, initialModel, autoDev, autoFix, autoPr
       exit()
       return
     }
-    if (state.running) {
-      if (key.escape) session.interrupt()
+    if (key.escape && state.running) {
+      session.interrupt()
       return
     }
     if (key.return) {
@@ -168,17 +168,23 @@ export function App({ cwd, initialEngine, initialModel, autoDev, autoFix, autoPr
         </Box>
       )}
 
-      <Box marginTop={1}>
-        {state.running ? (
+      {state.running && (
+        <Box marginTop={1}>
           <WorkingLine startedAt={state.runStartedAt} />
-        ) : (
-          <Text>
-            <Text color={theme.accent}>❯ </Text>
-            {line.text.slice(0, line.cursor)}
-            <Text inverse>{line.text[line.cursor] ?? ' '}</Text>
-            {line.text.slice(line.cursor + 1)}
-          </Text>
-        )}
+        </Box>
+      )}
+      {state.queue.map((queued, index) => (
+        <Box key={index}>
+          <Text color={theme.dim}>⋯ queued: {queued}</Text>
+        </Box>
+      ))}
+      <Box marginTop={state.running ? 0 : 1}>
+        <Text>
+          <Text color={theme.accent}>❯ </Text>
+          {line.text.slice(0, line.cursor)}
+          <Text inverse>{line.text[line.cursor] ?? ' '}</Text>
+          {line.text.slice(line.cursor + 1)}
+        </Text>
       </Box>
 
       <Box>

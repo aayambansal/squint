@@ -39,6 +39,8 @@ export interface SessionState {
   devState: DevServerState
   devUrl: string | null
   totals: SessionTotals
+  /** Asks typed while a turn runs; dispatched in order afterward. */
+  queue: string[]
 }
 
 export interface SessionOptions {
@@ -86,6 +88,7 @@ export class Session {
       devState: 'stopped',
       devUrl: null,
       totals: { costUsd: 0, turns: 0 },
+      queue: [],
     }
     if (opts.autoDev && detectDevCommand(opts.cwd)) {
       this.devServer().start()
@@ -124,15 +127,37 @@ export class Session {
     this.abort?.abort()
   }
 
-  /** Route one line of user input: slash command or an ask for the engine. */
+  /**
+   * Route one line of user input: slash command or an ask for the engine.
+   * Asks arriving mid-turn queue up and dispatch in order once the
+   * current turn (including its fix cycle) settles.
+   */
   input(raw: string): void {
     const value = raw.trim()
     if (value.length === 0) return
+    if (this.state.running) {
+      if (value === '/queue clear') {
+        this.notify({ queue: [] })
+        this.push('status', 'queue cleared')
+        return
+      }
+      this.notify({ queue: [...this.state.queue, value] })
+      return
+    }
     if (value.startsWith('/')) {
       this.command(value)
     } else {
       void this.submit(value)
     }
+  }
+
+  /** Dispatch queued input after the current work settles. */
+  private drainQueue(): void {
+    if (this.state.running) return
+    const [next, ...rest] = this.state.queue
+    if (next === undefined) return
+    this.notify({ queue: rest })
+    this.input(next)
   }
 
   // ---------- internals ----------
@@ -304,6 +329,7 @@ export class Session {
       }
     }
     this.notify({ running: false })
+    this.drainQueue()
   }
 
   async submit(ask: string): Promise<void> {
@@ -415,6 +441,7 @@ export class Session {
             )
           })
           this.notify({ running: false })
+          this.drainQueue()
           const failures = results.filter((r) => !r.ok)
           if (failures.length > 0) {
             this.pendingFix = {
