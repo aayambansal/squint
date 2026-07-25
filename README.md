@@ -28,8 +28,10 @@ Lovable proved the loop: prompt → generate → preview → auto-fix → iterat
 1. **You describe.** Every ask is wrapped in squint's design brief — an opinionated standard built from studying Lovable's leaked prompts, v0's design rules, and the documented catalog of "AI slop" tells: commit to a direction before code, tokens are the system, banned generic patterns, real craft details. Override per project with `.squint/brief.md`.
 2. **Your agent builds.** squint drives whichever engine you choose, headlessly, streaming its work into the transcript token by token.
 3. **The dev server judges.** squint runs your dev server, watches for build errors after every turn, and routes fresh breakage straight back to the engine (`/fix`, or automatic with `autoFix`).
-4. **The agent looks at its work.** `/review` screenshots the running app at mobile/tablet/desktop with headless Chrome and re-prompts the engine to critique what it can *see* — then fix it.
-5. **Gates keep it honest.** `/check` runs typecheck → lint → test → build and feeds failures back, with instructions not to weaken the checks.
+4. **The runtime is watched.** After every clean turn, squint loads the page headlessly (CDP over Chrome, ~2s) and catches what the dev server never prints — blank pages, uncaught exceptions, console errors, failed requests — and feeds those back too.
+5. **The agent looks at its work.** `/review` screenshots the running app at mobile/tablet/desktop and re-prompts the engine to critique what it can *see* — then fix it.
+6. **Gates keep it honest.** `/check` runs typecheck → lint → test → build and feeds failures back, with instructions not to weaken the checks.
+7. **Everything is reversible.** Each ask is snapshotted via git plumbing; `/undo` reverts the whole turn — while your own uncommitted work survives.
 
 ## Install
 
@@ -74,10 +76,20 @@ cd your-project && squint
 ```sh
 squint run "add a dark mode toggle to the navbar"
 squint run -e codex -m gpt-5 "tighten the hero spacing"
+squint run --json "…"             # normalized ndjson events for scripting
 squint check                      # quality gates: typecheck → lint → test → build
 squint shot http://localhost:5173 # screenshots at 390/768/1440
+squint brief                      # list design directions; squint brief terminal commits one
 squint engines                    # what's installed
-squint doctor                     # environment check
+squint doctor                     # engines + Chrome + WebSocket check
+```
+
+**Commit a design direction** so every session holds the same look:
+
+```sh
+squint brief                 # editorial-minimal · terminal · warm-editorial · data-dense
+                             # cinematic-dark · playful · brutalist
+squint brief cinematic-dark  # writes .squint/brief.md — plain markdown, made to remix
 ```
 
 **Configure** (global `~/.config/squint/config.json`, per-repo `.squint/config.json`):
@@ -86,7 +98,8 @@ squint doctor                     # environment check
 squint config set engine claude
 squint config set models.claude claude-sonnet-5
 squint config set autoDev true              # start the dev server with the TUI
-squint config set autoFix true              # auto-send build errors back (max 2 tries)
+squint config set autoFix true              # auto-send build/runtime errors back (max 2 tries)
+squint config set autoProbe false           # disable the post-turn runtime probe
 squint config set --project engine codex    # per-repo override
 ```
 
@@ -99,6 +112,8 @@ squint config set --project engine codex    # per-repo override
 | `/fix` | send captured errors / failed gates to the engine |
 | `/shot` | screenshot the app at mobile/tablet/desktop |
 | `/review [focus]` | screenshots + the engine critiques its own rendered work, then fixes it |
+| `/undo` | revert the whole last ask (your own uncommitted work survives) |
+| `/resume` | pick the previous session back up after a restart |
 | `/engine <id>` · `/model <name>` | switch backend or model mid-session |
 | `/clear` | new session |
 | `Esc` | interrupt the running turn · `↑/↓` prompt history |
@@ -112,10 +127,9 @@ squint config set --project engine codex    # per-repo override
 
 ## Roadmap
 
-- Session persistence across TUI restarts
-- Runtime console/network error capture (CDP) feeding the fix loop
 - Element → source mapping for "point at this and change it"
 - Multi-variant generation: N design directions in parallel, pick with your eyes
+- npm distribution
 
 Architecture notes in `docs/design/`, research base in `docs/research/`.
 
