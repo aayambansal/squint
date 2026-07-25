@@ -75,7 +75,7 @@ export class Session {
   private dev: DevServer | null = null
   private abort: AbortController | null = null
   private pendingFix: { prompt: string; display: string } | null = null
-  private snapshot: Snapshot | null = null
+  private checkpoints: Array<{ snapshot: Snapshot; label: string; at: number }> = []
   private fixAttempts = 0
   private reviewTipShown = false
 
@@ -372,13 +372,43 @@ export class Session {
 
   async submit(ask: string): Promise<void> {
     this.fixAttempts = 0
-    // Whole-ask undo: the snapshot covers this turn plus any auto-fixes.
-    this.snapshot = takeSnapshot(this.opts.cwd)
+    // Checkpoint per ask: the snapshot covers this turn plus its fixes.
+    const snapshot = takeSnapshot(this.opts.cwd)
+    if (snapshot) {
+      this.checkpoints.push({
+        snapshot,
+        label: ask.length > 60 ? `${ask.slice(0, 59)}…` : ask,
+        at: Date.now(),
+      })
+      if (this.checkpoints.length > 20) this.checkpoints.shift()
+    }
     // Resumable engines keep the brief in session context, so follow-up
     // turns send the raw ask; non-resumable engines get it every turn.
     const isFirstTurn = this.sessionId === undefined
     const prompt = isFirstTurn ? composePrompt(ask, { cwd: this.opts.cwd, firstTurn: true }) : ask
     await this.runTurn(prompt, ask)
+  }
+
+  /** Restore files to the state before checkpoint `index`; drop it and everything after. */
+  private restoreTo(index: number): void {
+    const checkpoint = this.checkpoints[index]
+    if (!checkpoint) {
+      this.push('status', 'no such checkpoint — /checkpoints lists them')
+      return
+    }
+    const result = restoreSnapshot(this.opts.cwd, checkpoint.snapshot)
+    if (result.restored) {
+      const dropped = this.checkpoints.length - index
+      this.checkpoints = this.checkpoints.slice(0, index)
+      this.push(
+        'status',
+        `restored files to before "${checkpoint.label}"${
+          dropped > 1 ? ` · ${dropped} asks rolled back` : ''
+        }${result.deletedFiles > 0 ? ` · removed ${result.deletedFiles} created file(s)` : ''} — the conversation continues from here`,
+      )
+    } else {
+      this.push('error', `restore failed: ${result.detail ?? 'unknown error'}`)
+    }
   }
 
   /** Screenshot the running app (and watch its runtime where CDP is available). */
@@ -506,20 +536,30 @@ export class Session {
           }
         })()
         break
-      case 'undo': {
-        if (!this.snapshot) {
+      case 'undo':
+        if (this.checkpoints.length === 0) {
           this.push('status', 'nothing to undo — no ask this session, or not a git repo with commits')
-          break
-        }
-        const result = restoreSnapshot(this.opts.cwd, this.snapshot)
-        if (result.restored) {
-          this.snapshot = null
-          this.push(
-            'status',
-            `reverted the last ask${result.deletedFiles > 0 ? ` · removed ${result.deletedFiles} created file(s)` : ''}`,
-          )
         } else {
-          this.push('error', `undo failed: ${result.detail ?? 'unknown error'}`)
+          this.restoreTo(this.checkpoints.length - 1)
+        }
+        break
+      case 'checkpoints':
+        if (this.checkpoints.length === 0) {
+          this.push('status', 'no checkpoints yet — one is taken before every ask in a git repo')
+        } else {
+          const lines = this.checkpoints.map((c, i) => {
+            const mins = Math.max(0, Math.round((Date.now() - c.at) / 60000))
+            return `${i + 1}. ${c.label} · ${mins}m ago`
+          })
+          this.push('status', `${lines.join('\n')}\n/restore <n> rewinds files to before that ask · /undo pops the last`)
+        }
+        break
+      case 'restore': {
+        const index = Number.parseInt(arg, 10)
+        if (!Number.isInteger(index) || index < 1 || index > this.checkpoints.length) {
+          this.push('status', `usage: /restore <1–${Math.max(this.checkpoints.length, 1)}> — see /checkpoints`)
+        } else {
+          this.restoreTo(index - 1)
         }
         break
       }
@@ -551,7 +591,7 @@ export class Session {
       case 'help':
         this.push(
           'status',
-          '/engine <id> · /model <name> · /dev (start/stop server) · /check (quality gates) · /fix (send failures) · /shot (screenshots) · /review [focus] (visual self-critique) · /undo (revert last ask) · /resume (last session) · /clear (new session) · /quit',
+          '/engine <id> · /model <name> · /dev (start/stop server) · /check (quality gates) · /fix (send failures) · /shot (screenshots) · /review [focus] (visual self-critique) · /undo (revert last ask) · /checkpoints · /restore <n> · /resume (last session) · /clear (new session) · /quit',
         )
         break
       case 'quit':
