@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { buildFixPrompt, DevServer, type DevServerState, detectDevCommand } from '../devserver/devserver.js'
 import { engines, getEngine } from '../engines/registry.js'
 import type { AgentEvent } from '../engines/types.js'
+import { buildReviewPrompt, captureViewports } from '../preview/preview.js'
 import { composePrompt } from '../prompt/brief.js'
 import { runAgent } from '../runner/run.js'
 import { theme } from './theme.js'
@@ -51,6 +52,7 @@ export function App({ cwd, initialEngine, initialModel, autoDev, autoFix }: AppP
   const devRef = useRef<DevServer | null>(null)
   const pendingErrorsRef = useRef<string[]>([])
   const fixAttemptsRef = useRef(0)
+  const reviewTipShownRef = useRef(false)
 
   const push = useCallback((message: Message) => {
     setMessages((prev) => [...prev, message])
@@ -174,12 +176,38 @@ export function App({ cwd, initialEngine, initialModel, autoDev, autoFix }: AppP
           push({ role: 'status', text: 'type /fix to send them to the engine' })
         } else {
           pendingErrorsRef.current = []
+          if (!reviewTipShownRef.current && devUrl) {
+            reviewTipShownRef.current = true
+            push({ role: 'status', text: 'tip: /review screenshots the app and has the engine critique its own work' })
+          }
         }
       }
       setRunning(false)
     },
-    [cwd, engineId, model, push, handleEvent, clearLive, autoFix],
+    [cwd, engineId, model, push, handleEvent, clearLive, autoFix, devUrl],
   )
+
+  /** Screenshot the running app at the review viewports. */
+  const capture = useCallback(async (): Promise<{ name: string; path: string }[] | null> => {
+    if (!devUrl) {
+      push({ role: 'error', text: 'dev server not running — /dev first' })
+      return null
+    }
+    push({ role: 'status', text: 'capturing screenshots…' })
+    const result = await captureViewports(cwd, devUrl)
+    if (!result) {
+      push({ role: 'error', text: 'no Chrome/Chromium found for screenshots' })
+      return null
+    }
+    for (const err of result.errors) push({ role: 'error', text: `screenshot ${err}` })
+    if (result.shots.length > 0) {
+      push({
+        role: 'status',
+        text: `captured ${result.shots.map((s) => s.name).join(', ')} → ${path.dirname(result.shots[0]!.path)}`,
+      })
+    }
+    return result.shots.length > 0 ? result.shots : null
+  }, [cwd, devUrl, push])
 
   const submit = useCallback(
     async (ask: string) => {
@@ -241,6 +269,17 @@ export function App({ cwd, initialEngine, initialModel, autoDev, autoFix }: AppP
             void runTurn(buildFixPrompt(pendingErrorsRef.current, dev.tail(30)), '⛑ fix dev server errors')
           }
           break
+        case 'shot':
+          void capture()
+          break
+        case 'review':
+          void (async () => {
+            const shots = await capture()
+            if (shots) {
+              await runTurn(buildReviewPrompt(shots, arg || undefined), `👁 review rendered UI${arg ? ` · ${arg}` : ''}`)
+            }
+          })()
+          break
         case 'clear':
           setMessages([])
           sessionRef.current = undefined
@@ -248,7 +287,7 @@ export function App({ cwd, initialEngine, initialModel, autoDev, autoFix }: AppP
         case 'help':
           push({
             role: 'status',
-            text: '/engine <id> · /model <name> · /dev (start/stop server) · /fix (send errors) · /clear (new session) · /quit',
+            text: '/engine <id> · /model <name> · /dev (start/stop server) · /fix (send errors) · /shot (screenshots) · /review [focus] (visual self-critique) · /clear (new session) · /quit',
           })
           break
         case 'quit':
@@ -260,7 +299,7 @@ export function App({ cwd, initialEngine, initialModel, autoDev, autoFix }: AppP
           push({ role: 'error', text: `unknown command /${name} — try /help` })
       }
     },
-    [push, exit, cwd, getDevServer, runTurn],
+    [push, exit, cwd, getDevServer, runTurn, capture],
   )
 
   useInput((char, key) => {
