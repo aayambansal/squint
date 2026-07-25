@@ -1,13 +1,11 @@
 # Security Policy
 
 squint spawns agent CLIs, dev servers, and headless Chrome on your machine, and applies
-git patches — bugs here can matter. If you find a vulnerability:
+git patches: bugs here can matter. If you find a vulnerability:
 
-- **Do not open a public issue.**
+- **Please either open a public issue or report a vulnerability below.**
 - Use GitHub's private reporting: [Report a vulnerability](https://github.com/aayambansal/squint/security/advisories/new),
-  with a description and reproduction. You'll get a reply within a few days. If you can't
-  use that, email me — contact details are on [my GitHub profile](https://github.com/aayambansal).
-
+  with a description and reproduction. You'll get a reply within a few days. 
 ## Scope worth probing
 
 - Command construction in engine adapters (`src/engines/*`) — prompts are passed as argv
