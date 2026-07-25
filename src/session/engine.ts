@@ -935,6 +935,15 @@ export class Session {
         }
         break
       }
+      case 'context': {
+        try {
+          const { contextReport, formatContextReport } = await import('../quality/contextDoctor.js')
+          this.push('status', formatContextReport(contextReport(this.execCwd())))
+        } catch (error) {
+          this.push('status', `context report failed: ${error instanceof Error ? error.message : String(error)}`)
+        }
+        break
+      }
       case 'decide': {
         if (!arg) {
           this.push('status', 'usage: /decide <the decision> — recorded in .squint/design-log.jsonl and injected into every future ask')
