@@ -8,6 +8,7 @@ import { buildGatePrompt, detectGates, runGates } from '../gates/gates.js'
 import { buildReviewPrompt, captureViewports } from '../preview/preview.js'
 import { composePrompt } from '../prompt/brief.js'
 import { runAgent } from '../runner/run.js'
+import { clearState, loadState, saveState } from '../state/state.js'
 import { theme } from './theme.js'
 
 interface Message {
@@ -140,8 +141,22 @@ export function App({ cwd, initialEngine, initialModel, autoDev, autoFix }: AppP
     if (autoDev && detectDevCommand(cwd)) {
       getDevServer().start()
     }
+    const saved = loadState(cwd)
+    if (saved) {
+      try {
+        if (getEngine(saved.engine).supportsResume) {
+          const mins = Math.max(1, Math.round((Date.now() - saved.at) / 60000))
+          push(
+            'status',
+            `previous session (${mins}m ago${saved.lastAsk ? ` · "${saved.lastAsk}"` : ''}) — /resume to continue`,
+          )
+        }
+      } catch {
+        // engine no longer exists; ignore stale state
+      }
+    }
     return () => devRef.current?.stop()
-  }, [autoDev, cwd, getDevServer])
+  }, [autoDev, cwd, getDevServer, push])
 
   const handleEvent = useCallback(
     (event: AgentEvent) => {
@@ -214,6 +229,15 @@ export function App({ cwd, initialEngine, initialModel, autoDev, autoFix }: AppP
         const cost = result.costUsd !== undefined ? ` · $${result.costUsd.toFixed(2)}` : ''
         const secs = result.durationMs !== undefined ? ` · ${(result.durationMs / 1000).toFixed(0)}s` : ''
         push('status', `done${secs}${cost}`)
+        if (sessionRef.current) {
+          saveState(cwd, {
+            engine: engineId,
+            sessionId: sessionRef.current,
+            model,
+            lastAsk: display.length > 80 ? `${display.slice(0, 79)}…` : display,
+            at: Date.now(),
+          })
+        }
       }
 
       // The Lovable loop: give the dev server a moment to rebuild, then
@@ -367,14 +391,36 @@ export function App({ cwd, initialEngine, initialModel, autoDev, autoFix }: AppP
             }
           })()
           break
+        case 'resume': {
+          const saved = loadState(cwd)
+          if (!saved) {
+            push('status', 'no previous session for this project')
+            break
+          }
+          try {
+            if (!getEngine(saved.engine).supportsResume) {
+              push('status', `previous engine ${saved.engine} cannot resume sessions`)
+              break
+            }
+          } catch {
+            push('error', `previous engine ${saved.engine} is no longer available`)
+            break
+          }
+          setEngineId(saved.engine)
+          if (saved.model) setModel(saved.model)
+          sessionRef.current = saved.sessionId
+          push('status', `resumed ${saved.engine} session${saved.lastAsk ? ` · "${saved.lastAsk}"` : ''}`)
+          break
+        }
         case 'clear':
           setMessages([])
           sessionRef.current = undefined
+          clearState(cwd)
           break
         case 'help':
           push(
             'status',
-            '/engine <id> · /model <name> · /dev (start/stop server) · /check (quality gates) · /fix (send failures) · /shot (screenshots) · /review [focus] (visual self-critique) · /clear (new session) · /quit',
+            '/engine <id> · /model <name> · /dev (start/stop server) · /check (quality gates) · /fix (send failures) · /shot (screenshots) · /review [focus] (visual self-critique) · /resume (last session) · /clear (new session) · /quit',
           )
           break
         case 'quit':
