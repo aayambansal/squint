@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.5 — 2026-07-26
+
+- Modes mapped on all eight engines (opencode plan agent, aider --dry-run, copilot approval drop, amp yolo)
+- --mode on squint run; prettier format gate; light theme + OSC 11 terminal-background auto-detection
+- docs: engine setup guide + configuration reference
+
 ## 0.2.4 — 2026-07-26
 
 - Route-aware review: .squint/routes extends /shot and /review beyond the root (desktop shot per route, capped at 6)
