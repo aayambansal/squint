@@ -14,6 +14,7 @@ import {
   runtimeSummary,
 } from '../preview/preview.js'
 import { composePrompt } from '../prompt/brief.js'
+import { appendDecision } from './designLog.js'
 import { runHook } from './hooks.js'
 import { enrich } from '../prompt/skills.js'
 import { runAgent } from '../runner/run.js'
@@ -689,6 +690,7 @@ export class Session {
     const result = restoreSnapshot(this.opts.cwd, checkpoint.snapshot)
     if (result.restored) {
       const dropped = this.checkpoints.length - index
+      appendDecision(this.opts.cwd, { decision: `rejected and rolled back: \"${checkpoint.label}\"`, source: 'restore' })
       this.checkpoints = this.checkpoints.slice(0, index)
       this.push(
         'status',
@@ -911,6 +913,19 @@ export class Session {
         } else {
           this.dispatchFix([...this.state.problems])
         }
+        break
+      }
+      case 'decide': {
+        if (!arg) {
+          this.push('status', 'usage: /decide <the decision> — recorded in .squint/design-log.jsonl and injected into every future ask')
+          break
+        }
+        appendDecision(this.opts.cwd, {
+          decision: arg,
+          source: 'decide',
+          screenshot: this.lastPulse ? '.squint/preview/pulse.png' : undefined,
+        })
+        this.push('status', `decision recorded: ${arg}`)
         break
       }
       case 'find': {
@@ -1234,6 +1249,7 @@ export class Session {
             discardSandbox(this.opts.cwd)
             this.notify({ sandbox: false })
             this.resetDevServer()
+            appendDecision(this.opts.cwd, { decision: 'accepted the sandboxed session onto the real tree', source: 'sandbox' })
             this.push('status', 'sandbox applied to the real tree — review with git diff')
           } else {
             this.push('error', applied.detail ?? 'apply failed')
@@ -1275,6 +1291,7 @@ export class Session {
           const applied = applyVariant(this.opts.cwd, id)
           if (applied.ok) {
             cleanVariants(this.opts.cwd)
+            appendDecision(this.opts.cwd, { decision: `chose the ${id} direction over the other variants`, source: 'variant' })
             this.push('status', `applied ${id} to the working tree — review with git diff`)
           } else {
             this.push('error', applied.detail ?? 'apply failed')

@@ -42,6 +42,7 @@ export const COMMANDS: CommandSpec[] = [
   { name: 'copy', group: 'session', description: 'copy the last reply to the clipboard' },
   { name: 'save', group: 'session', description: 'export the transcript to .squint/transcripts/' },
   { name: 'find', args: '<term>', group: 'session', description: 'search this session and saved transcripts' },
+  { name: 'decide', args: '<text>', group: 'session', description: 'record a design decision; injected into every future ask' },
   { name: 'resume', group: 'session', description: 'pick up the previous session for this repo' },
   { name: 'clear', group: 'session', description: 'new session (transcript, totals, persisted state)' },
   { name: 'help', group: 'session', description: 'list commands' },

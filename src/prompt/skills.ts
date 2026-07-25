@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { decisionsSection } from '../session/designLog.js'
 import { inventorySection, loadComponentInventory } from './registry.js'
 
 /**
@@ -94,6 +95,8 @@ export function enrich(cwd: string, ask: string): Enrichment {
   const parts: string[] = []
   const rules = loadRules(cwd)
   if (rules) parts.push(`## Project rules (always apply)\n\n${rules}`)
+  const decisions = decisionsSection(cwd)
+  if (decisions) parts.push(decisions)
   // Registry awareness: composing from real components beats inventing.
   const inventory = loadComponentInventory(cwd)
   if (inventory) parts.push(inventorySection(inventory))
