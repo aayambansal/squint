@@ -32,6 +32,8 @@ Lovable proved the loop: prompt → generate → preview → auto-fix → iterat
 5. **The agent looks at its work.** `/review` screenshots the running app at mobile/tablet/desktop and re-prompts the engine to critique what it can *see* — then fix it.
 6. **Gates keep it honest.** `/check` runs typecheck → lint → test → build and feeds failures back, with instructions not to weaken the checks.
 7. **Everything is reversible.** Each ask is snapshotted via git plumbing; `/undo` reverts the whole turn — while your own uncommitted work survives.
+8. **Point at things.** `squint tag` (wired automatically in new apps) adds an element picker to your dev server: **Alt+S**, click any element, and a self-locating reference (`src/App.tsx <h1 class="…"> "Ready."`) lands on your clipboard to paste into squint.
+9. **Explore in parallel.** `squint variants gen 3 "landing page for …"` builds the same ask three ways — three git worktrees, three *different* committed aesthetic directions, one screenshot each. Pick with your eyes, `squint variants apply <id>`.
 
 ## Install
 
@@ -82,6 +84,9 @@ squint shot http://localhost:5173 # screenshots at 390/768/1440
 squint brief                      # list design directions; squint brief terminal commits one
 squint engines                    # what's installed
 squint doctor                     # engines + Chrome + WebSocket check
+squint tag                        # add the Alt+S element picker to any Vite app
+squint variants gen 3 "<ask>"     # 3 parallel design explorations (3 engine runs)
+squint variants apply terminal    # keep the winner, discard the rest
 ```
 
 **Commit a design direction** so every session holds the same look:
@@ -127,9 +132,9 @@ squint config set --project engine codex    # per-repo override
 
 ## Roadmap
 
-- Element → source mapping for "point at this and change it"
-- Multi-variant generation: N design directions in parallel, pick with your eyes
 - npm distribution
+- Variants inside the TUI with an inline picker
+- Deeper gates: axe accessibility audits, Lighthouse budgets, visual regression baselines
 
 Architecture notes in `docs/design/`, research base in `docs/research/`.
 
