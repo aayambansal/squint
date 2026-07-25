@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.2 — 2026-07-26
+
+- Phantom-class check: DOM class tokens with no CSS rule are elements silently unstyled — the deterministic catch for hallucinated/version-mismatched utilities; filed as problems with element pointers
+- Design-decision ledger: .squint/design-log.jsonl records decisions at the moments squint owns (/decide, variant chosen, rollback, sandbox accepted) with screenshot evidence; the recent ledger rides into every ask
+- docs/research/wave-3.md: the fifth sweep and its ranked 12
+
 ## 0.4.1 — 2026-07-26
 
 - Flow verbs: hover (selector or visible text), scroll (bottom/top/selector), wait (capped, validated)
