@@ -72,6 +72,8 @@ export function contextReport(cwd: string): ContextReport {
     }
   }
 
+  lines.push({ source: 'approval protocol (built-in)', tokens: 70, when: 'every ask' })
+
   const totalAlways = lines.filter((l) => l.when === 'every ask').reduce((sum, l) => sum + l.tokens, 0)
   if (totalAlways > 3000) warnings.push(`~${totalAlways} tokens ride on every single ask — that is real money and real attention; trim the always-on set`)
 

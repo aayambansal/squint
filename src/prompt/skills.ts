@@ -108,6 +108,9 @@ export function enrich(cwd: string, ask: string): Enrichment {
         .join('\n')}\nIf the task appears to require changing them, stop and explain instead.`,
     )
   }
+  parts.push(
+    '## Requesting visual approval\n\nFor a visual decision you should not make alone (a redesign direction, removing something deliberate, reversing a design decision on record): write .squint/approval-request.json containing {"summary": "<one line>", "screenshot": "<path, optional>"} and end your turn immediately without making the change. The user\'s verdict arrives as the next message.',
+  )
   const matched = matchSkills(loadSkills(cwd), ask)
   for (const skill of matched) {
     parts.push(`## Project notes: ${skill.name}\n\n${skill.body}`)

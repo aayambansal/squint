@@ -56,6 +56,6 @@ describe('context doctor', () => {
   it('stays quiet on a bare project', () => {
     const report = contextReport(dir)
     expect(report.warnings).toEqual([])
-    expect(report.lines.length).toBe(1) // just the built-in brief
+    expect(report.lines.length).toBe(2) // the built-in brief + approval protocol
   })
 })
