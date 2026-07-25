@@ -64,7 +64,9 @@ verify-intent advisories. Silent unless package.json says the newer major is in 
 The probe also audits **view transitions**: duplicate `view-transition-name` values
 (the browser silently skips the entire transition) become problems with element
 pointers, and declared transitions with no `prefers-reduced-motion` handling surface
-as advisories in `/review`.
+as advisories in `/review`. On React dev pages the **fiber probe** walks
+`__reactFiber$` chains from landmark elements and hands `/review` a component map
+(`h1 — Hero < App`), so critiques name the component an issue lives in.
 
 ## 4. Visual pulse + `autoReview` (pulse always; review default off)
 
@@ -86,6 +88,15 @@ causes rather than weaken checks. Manually: `/problems` lists, `/fix` sends all,
 - **Sandbox mode** (`/sandbox on`) redirects everything — engine, gates, dev server,
   probes — into a shadow worktree until you `apply` or `discard`.
 - `budgetUsd` flags runaway session cost; Esc interrupts any turn instantly.
+
+## Visual approval
+
+Every ask teaches the engine one escape hatch: for a visual decision it should not
+make alone (a redesign direction, reversing a decision on record), write
+`.squint/approval-request.json` and end the turn. squint renders the request —
+screenshot inline on capable terminals — and blocks on your verdict: `/yes [note]`
+approves, `/no [note]` rejects, either way the outcome joins the design ledger and
+rides back to the engine as the next message.
 
 ## The design ledger
 

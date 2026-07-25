@@ -174,6 +174,8 @@ squint doctor --probe             # run every engine end to end, verify auth act
   flagged from the live page, and on Next 16+ the framework's own `/_next/mcp`
   channel feeds structured errors straight into the fix loop. `/context` itemizes
   the injected-context bill per source, with staleness warnings.
+- **Visual approval**: engines ask before contested changes — the request renders
+  with its screenshot, `/yes` / `/no` answer it, the ledger remembers.
 - **The design ledger**: `/decide` (plus chosen variants, rollbacks, accepted
   sandboxes) appends to a committed `.squint/design-log.jsonl`; recent decisions ride
   into every ask so they stop getting silently undone between sessions.
