@@ -557,6 +557,42 @@ const SLOP_AUDIT = `(() => {
       break;
     }
   }
+  // APCA (the contrast model that graduated in DevTools 149): body text
+  // under |Lc| 60 reads as fog even when it squeaks past WCAG AA.
+  const chan = (v) => Math.pow(v / 255, 2.4);
+  const lum = (rgb) => {
+    const m = rgb.match(/rgba?\\(([\\d.]+)[,\\s]+([\\d.]+)[,\\s]+([\\d.]+)/);
+    if (!m) return null;
+    return 0.2126729 * chan(+m[1]) + 0.7151522 * chan(+m[2]) + 0.0721750 * chan(+m[3]);
+  };
+  const apca = (txt, bg) => {
+    let yt = lum(txt), yb = lum(bg);
+    if (yt === null || yb === null) return null;
+    const clamp = (y) => (y < 0.022 ? y + Math.pow(0.022 - y, 1.414) : y);
+    yt = clamp(yt); yb = clamp(yb);
+    const c = yb > yt ? (Math.pow(yb, 0.56) - Math.pow(yt, 0.57)) * 1.14 : (Math.pow(yb, 0.65) - Math.pow(yt, 0.62)) * 1.14;
+    return Math.abs(c) < 0.1 ? 0 : Math.round((Math.abs(c) - 0.027) * 100);
+  };
+  let apcaFlagged = 0;
+  for (const p of document.querySelectorAll('p, li, td, span')) {
+    if (apcaFlagged >= 2) break;
+    const text = (p.textContent || '').trim();
+    if (text.length < 40) continue;
+    const cs = getComputedStyle(p);
+    if (parseFloat(cs.fontSize) >= 24) continue;
+    let bgEl = p, bg = 'rgba(0, 0, 0, 0)';
+    while (bgEl) {
+      const b = getComputedStyle(bgEl).backgroundColor;
+      if (b && !b.includes('0, 0, 0, 0')) { bg = b; break; }
+      bgEl = bgEl.parentElement;
+    }
+    if (bg.includes('0, 0, 0, 0')) bg = 'rgb(255, 255, 255)';
+    const lc = apca(cs.color, bg);
+    if (lc !== null && lc > 0 && lc < 60) {
+      out.push('low APCA contrast: Lc ' + lc + ' on <' + p.tagName.toLowerCase() + '> body text ("' + text.slice(0, 40) + '…") — fog, not elegance');
+      apcaFlagged++;
+    }
+  }
   const vw = innerWidth, vh = innerHeight;
   for (const el of document.querySelectorAll('*')) {
     const r = el.getBoundingClientRect();
@@ -997,7 +1033,10 @@ export async function cdpCapture(
         {
           width: viewport.width,
           height: viewport.height,
-          deviceScaleFactor: 1,
+          // 2x for review shots: sub-pixel border/kerning slop is
+          // invisible at 1x. The pulse stays 1x — its diff math and
+          // hit-testing assume CSS pixels.
+          deviceScaleFactor: viewport.name === 'pulse' ? 1 : 2,
           mobile: viewport.width < 500,
         },
         sessionId,

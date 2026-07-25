@@ -12,6 +12,10 @@ export const claude: Engine = {
   install: 'npm install -g @anthropic-ai/claude-code',
   supportsResume: true,
 
+  // 2.1.211+: subagent output joins stream-json. The env-var form is a
+  // no-op on older CLIs, unlike the flag, so the loops see spawned work
+  // wherever it's supported.
+  env: { CLAUDE_CODE_FORWARD_SUBAGENT_TEXT: '1' },
   buildArgs(opts: RunOptions): string[] {
     const permissionMode =
       opts.mode === 'plan' ? 'plan' : opts.mode === 'yolo' ? 'bypassPermissions' : 'acceptEdits'
@@ -22,6 +26,7 @@ export const claude: Engine = {
       'stream-json',
       '--verbose',
       '--include-partial-messages',
+
       '--permission-mode',
       permissionMode,
     ]
