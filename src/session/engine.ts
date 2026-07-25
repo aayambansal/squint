@@ -459,6 +459,20 @@ export class Session {
             ? ` · ${this.turnTools} tool call${this.turnTools === 1 ? '' : 's'}`
             : ''
       this.push('status', `done${secs}${cost}${work}`)
+      // Token drift guard: hardcoded colors in this turn's additions get
+      // pointed at the nearest existing token. Style pressure, not a gate.
+      if (checkpoint) {
+        try {
+          const { driftSummary, loadTokenIndex, scanDrift } = await import('../quality/tokens.js')
+          const index = loadTokenIndex(this.execCwd())
+          const drift = scanDrift(this.execCwd(), checkpoint.snapshot.stashHash ?? 'HEAD', index)
+          if (drift.length > 0) {
+            this.push('status', `token drift: ${drift.length} hardcoded color(s)\n${driftSummary(drift)}`)
+          }
+        } catch {
+          // never blocks the loop
+        }
+      }
       const before = this.state.totals.costUsd
       this.notify({
         totals: {
