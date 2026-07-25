@@ -2,6 +2,22 @@ import { Box, Static, Text, useApp, useInput } from 'ink'
 import path from 'node:path'
 import { useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { Session } from '../session/engine.js'
+import {
+  backspace,
+  emptyLine,
+  end,
+  fromText,
+  home,
+  insert,
+  killToEnd,
+  killToStart,
+  killWordBack,
+  left,
+  type Line,
+  right,
+  wordLeft,
+  wordRight,
+} from './lineEditor.js'
 import { MessageLine, WorkingLine } from './messages.js'
 import { theme } from './theme.js'
 
@@ -39,7 +55,7 @@ export function App({ cwd, initialEngine, initialModel, autoDev, autoFix, autoPr
     () => session.getState(),
   )
 
-  const [input, setInput] = useState('')
+  const [line, setLine] = useState<Line>(emptyLine)
   const historyRef = useRef<string[]>([])
   const historyIndexRef = useRef(-1)
 
@@ -54,8 +70,8 @@ export function App({ cwd, initialEngine, initialModel, autoDev, autoFix, autoPr
       return
     }
     if (key.return) {
-      const value = input.trim()
-      setInput('')
+      const value = line.text.trim()
+      setLine(emptyLine)
       historyIndexRef.current = -1
       if (!value) return
       historyRef.current.push(value)
@@ -68,7 +84,7 @@ export function App({ cwd, initialEngine, initialModel, autoDev, autoFix, autoPr
       const next =
         historyIndexRef.current === -1 ? history.length - 1 : Math.max(historyIndexRef.current - 1, 0)
       historyIndexRef.current = next
-      setInput(history[next] ?? '')
+      setLine(fromText(history[next] ?? ''))
       return
     }
     if (key.downArrow) {
@@ -77,19 +93,47 @@ export function App({ cwd, initialEngine, initialModel, autoDev, autoFix, autoPr
       const next = historyIndexRef.current + 1
       if (next >= history.length) {
         historyIndexRef.current = -1
-        setInput('')
+        setLine(emptyLine)
       } else {
         historyIndexRef.current = next
-        setInput(history[next] ?? '')
+        setLine(fromText(history[next] ?? ''))
       }
       return
     }
-    if (key.backspace || key.delete) {
-      setInput((prev) => prev.slice(0, -1))
+    if (key.leftArrow) {
+      setLine((prev) => (key.meta ? wordLeft(prev) : left(prev)))
       return
     }
-    if (char && !key.ctrl && !key.meta) {
-      setInput((prev) => prev + char)
+    if (key.rightArrow) {
+      setLine((prev) => (key.meta ? wordRight(prev) : right(prev)))
+      return
+    }
+    if (key.backspace || key.delete) {
+      setLine((prev) => (key.meta ? killWordBack(prev) : backspace(prev)))
+      return
+    }
+    if (key.ctrl) {
+      switch (char) {
+        case 'a':
+          setLine(home)
+          return
+        case 'e':
+          setLine(end)
+          return
+        case 'k':
+          setLine(killToEnd)
+          return
+        case 'u':
+          setLine(killToStart)
+          return
+        case 'w':
+          setLine(killWordBack)
+          return
+      }
+      return
+    }
+    if (char && !key.meta) {
+      setLine((prev) => insert(prev, char))
     }
   })
 
@@ -130,8 +174,9 @@ export function App({ cwd, initialEngine, initialModel, autoDev, autoFix, autoPr
         ) : (
           <Text>
             <Text color={theme.accent}>❯ </Text>
-            {input}
-            <Text color={theme.accent}>▏</Text>
+            {line.text.slice(0, line.cursor)}
+            <Text inverse>{line.text[line.cursor] ?? ' '}</Text>
+            {line.text.slice(line.cursor + 1)}
           </Text>
         )}
       </Box>
