@@ -174,6 +174,9 @@ squint doctor --probe             # run every engine end to end, verify auth act
   flagged from the live page, and on Next 16+ the framework's own `/_next/mcp`
   channel feeds structured errors straight into the fix loop. `/context` itemizes
   the injected-context bill per source, with staleness warnings.
+- **Two more doors in**: `squint mcp` serves the gates as MCP tools (any
+  MCP-speaking agent calls squint's verification directly); `squint ci` runs the
+  whole loop headlessly in a pipeline — JSON report, non-zero exit on hard findings.
 - **The sentinel**: gate evasion (deleted tests, added skips, suppressed
   diagnostics, weakened checks, locked-path touches) detected deterministically per
   turn and reported to you — never sent back to the engine that did it.
