@@ -139,6 +139,41 @@ program
   })
 
 program
+  .command('brief')
+  .description('Set a committed design direction for this project (.squint/brief.md)')
+  .argument('[family]', 'aesthetic family id (omit to list)')
+  .option('--force', 'overwrite an existing project brief')
+  .action(async (familyId: string | undefined, options: { force?: boolean }) => {
+    const fs = await import('node:fs')
+    const nodePath = await import('node:path')
+    const { FAMILIES, getFamily, renderFamilyBrief } = await import('./prompt/families.js')
+    if (!familyId) {
+      console.log(pc.bold('Aesthetic families') + pc.dim(' — squint brief <id>\n'))
+      for (const family of FAMILIES) {
+        console.log(`${pc.green(family.id.padEnd(18))} ${family.name.padEnd(22)} ${pc.dim(family.summary)}`)
+      }
+      console.log(pc.dim('\nThe brief wraps every ask; edit .squint/brief.md to remix.'))
+      return
+    }
+    const family = getFamily(familyId)
+    if (!family) {
+      console.error(pc.red(`✗ unknown family "${familyId}" — run squint brief to list`))
+      process.exitCode = 1
+      return
+    }
+    const target = nodePath.join(process.cwd(), '.squint', 'brief.md')
+    if (fs.existsSync(target) && !options.force) {
+      console.error(pc.red(`✗ ${target} exists — use --force to overwrite`))
+      process.exitCode = 1
+      return
+    }
+    fs.mkdirSync(nodePath.dirname(target), { recursive: true })
+    fs.writeFileSync(target, renderFamilyBrief(family) + '\n')
+    console.log(pc.green(`✓ ${family.name} direction written to .squint/brief.md`))
+    console.log(pc.dim('every squint ask in this repo now holds this direction — edit the file to remix'))
+  })
+
+program
   .command('check')
   .description('Run this project’s quality gates (typecheck, lint, test, build)')
   .action(async () => {
