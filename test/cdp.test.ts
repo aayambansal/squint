@@ -92,7 +92,7 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
         const fiberHero = { type: Hero, return: fiberApp };
         const h1 = document.querySelector('h1');
         h1['__reactFiber$squint'] = { type: 'h1', return: fiberHero };
-        navigator.modelContext.provideContext({
+        document.modelContext.provideContext({
           tools: [{ name: 'add-todo', description: 'Adds a todo item', execute: () => {} }],
         });
         navigator.modelContext.registerTool({ name: 'clear-done' });

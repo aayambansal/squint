@@ -573,11 +573,17 @@ const WEBMCP_SHIM = `(() => {
       if (t && t.name) window.__squintWebMcp.push(t.name + (t.description ? ' — ' + t.description : ''));
     }
   };
-  const target = navigator.modelContext || (navigator.modelContext = {});
-  const provide = target.provideContext && target.provideContext.bind(target);
-  target.provideContext = (params) => { record(params && params.tools); return provide ? provide(params) : undefined; };
-  const register = target.registerTool && target.registerTool.bind(target);
-  target.registerTool = (tool) => { record([tool]); return register ? register(tool) : undefined; };
+  const wrap = (target) => {
+    const provide = target.provideContext && target.provideContext.bind(target);
+    target.provideContext = (params) => { record(params && params.tools); return provide ? provide(params) : undefined; };
+    const register = target.registerTool && target.registerTool.bind(target);
+    target.registerTool = (tool) => { record([tool]); return register ? register(tool) : undefined; };
+    return target;
+  };
+  // The spec moved the API to document.modelContext (Chrome 150 drops
+  // the navigator location); shim both so either registration is seen.
+  wrap(document.modelContext || (document.modelContext = {}));
+  wrap(navigator.modelContext || (navigator.modelContext = {}));
 })()`
 
 export async function cdpCapture(
