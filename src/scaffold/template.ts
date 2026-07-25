@@ -142,5 +142,12 @@ dist/
 *.log
 .DS_Store
 `,
+
+    '.squint/flows/home.flow': `# The starter journey: replayed headlessly by /flows after every change.
+# Grow this file as the app grows — or ask the engine to.
+goto /
+expect Ready
+shot home
+`,
   }
 }
