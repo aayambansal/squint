@@ -330,6 +330,167 @@ export async function runFlow(
  * Chrome via canvas (no image dependency in Node). Samples every other
  * pixel; returns null when either image fails to decode.
  */
+export interface PulseDiff {
+  pct: number
+  /** Per-element sentences for the changed regions, worst-first. */
+  sentences: string[]
+}
+
+/**
+ * Element-attributed pulse diff: the percentage says the page changed;
+ * these sentences say WHAT changed. Changed pixels cluster into
+ * regions (32px grid, flood-fill merge), then region centers hit-test
+ * against the live page in a second tab of the same browser — one
+ * launch, real DOM names, fiber owners when React is in dev.
+ */
+export async function pixelDiffAttributed(
+  chromePath: string,
+  pngA: Buffer,
+  pngB: Buffer,
+  url?: string,
+): Promise<PulseDiff | null> {
+  const { child, wsUrl, profileDir } = await launchChrome(chromePath)
+  let connection: CdpConnection | null = null
+  try {
+    connection = await CdpConnection.connect(wsUrl, 10000)
+    const { targetId } = await connection.send('Target.createTarget', { url: 'about:blank' })
+    const { sessionId } = await connection.send('Target.attachToTarget', { targetId, flatten: true })
+    await connection.send('Runtime.enable', {}, sessionId)
+    const expression = `(async () => {
+      const load = (src) => new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('decode'));
+        img.src = src;
+      });
+      const a = await load('data:image/png;base64,${pngA.toString('base64')}');
+      const b = await load('data:image/png;base64,${pngB.toString('base64')}');
+      const w = Math.min(a.width, b.width), h = Math.min(a.height, b.height);
+      if (w === 0 || h === 0) return null;
+      const draw = (img) => {
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        return ctx.getImageData(0, 0, w, h).data;
+      };
+      const da = draw(a), db = draw(b);
+      const CELL = 32;
+      const gw = Math.ceil(w / CELL), gh = Math.ceil(h / CELL);
+      const marked = new Uint8Array(gw * gh);
+      let differ = 0, total = 0;
+      for (let y = 0; y < h; y += 2) {
+        for (let x = 0; x < w; x += 2) {
+          total++;
+          const i = (y * w + x) * 4;
+          if (Math.abs(da[i] - db[i]) > 8 || Math.abs(da[i + 1] - db[i + 1]) > 8 || Math.abs(da[i + 2] - db[i + 2]) > 8) {
+            differ++;
+            marked[Math.floor(y / CELL) * gw + Math.floor(x / CELL)] = 1;
+          }
+        }
+      }
+      // Flood-fill marked cells into region bounding boxes.
+      const seen = new Uint8Array(gw * gh);
+      const regions = [];
+      for (let cy = 0; cy < gh; cy++) {
+        for (let cx = 0; cx < gw; cx++) {
+          const start = cy * gw + cx;
+          if (!marked[start] || seen[start]) continue;
+          let minX = cx, maxX = cx, minY = cy, maxY = cy, cells = 0;
+          const stack = [start];
+          seen[start] = 1;
+          while (stack.length) {
+            const cell = stack.pop();
+            const x = cell % gw, y = Math.floor(cell / gw);
+            cells++;
+            if (x < minX) minX = x; if (x > maxX) maxX = x;
+            if (y < minY) minY = y; if (y > maxY) maxY = y;
+            for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+              const nx = x + dx, ny = y + dy;
+              if (nx < 0 || ny < 0 || nx >= gw || ny >= gh) continue;
+              const n = ny * gw + nx;
+              if (marked[n] && !seen[n]) { seen[n] = 1; stack.push(n); }
+            }
+          }
+          regions.push({
+            x: minX * CELL, y: minY * CELL,
+            w: Math.min(w, (maxX + 1) * CELL) - minX * CELL,
+            h: Math.min(h, (maxY + 1) * CELL) - minY * CELL,
+            cells,
+          });
+        }
+      }
+      regions.sort((p, q) => q.cells - p.cells);
+      const sizePenalty = (a.width !== b.width || a.height !== b.height) ? 1 : 0;
+      return { pct: Math.min(100, (differ / total) * 100 + sizePenalty), regions: regions.slice(0, 5), w, h };
+    })()`
+    const { result } = await connection.send(
+      'Runtime.evaluate',
+      { expression, awaitPromise: true, returnByValue: true },
+      sessionId,
+    )
+    const value = result?.value as { pct: number; regions: { x: number; y: number; w: number; h: number }[]; w: number; h: number } | null
+    if (!value || typeof value.pct !== 'number') return null
+    if (!url || value.regions.length === 0 || value.pct < 0.5) return { pct: value.pct, sentences: [] }
+
+    // Second tab: the live page at the pulse viewport, hit-test centers.
+    let sentences: string[] = []
+    try {
+      const page = await connection.send('Target.createTarget', { url: 'about:blank' })
+      const attach = await connection.send('Target.attachToTarget', { targetId: page.targetId, flatten: true })
+      const pageSession = attach.sessionId
+      await connection.send('Runtime.enable', {}, pageSession)
+      await connection.send('Page.enable', {}, pageSession)
+      await connection.send(
+        'Emulation.setDeviceMetricsOverride',
+        { width: value.w, height: value.h, deviceScaleFactor: 1, mobile: false },
+        pageSession,
+      )
+      await connection.send('Page.navigate', { url }, pageSession)
+      await new Promise((resolve) => setTimeout(resolve, 1200))
+      const hitTest = `((regions) => regions.map((r) => {
+        const el = document.elementsFromPoint(r.x + r.w / 2, r.y + r.h / 2)
+          .find((e) => e !== document.documentElement && e !== document.body);
+        const where = r.w + '×' + r.h + ' region @ (' + r.x + ',' + r.y + ')';
+        if (!el) return where + ' changed';
+        let label = el.tagName.toLowerCase();
+        if (el.id) label += '#' + el.id;
+        else if (el.classList[0]) label += '.' + el.classList[0];
+        const key = Object.keys(el).find((k) => k.startsWith('__reactFiber\$'));
+        let chain = '';
+        if (key) {
+          let fiber = el[key];
+          const names = [];
+          let hops = 0;
+          while (fiber && hops < 50 && names.length < 2) {
+            const t = fiber.type;
+            const n = typeof t === 'function' ? (t.displayName || t.name || '') : '';
+            if (n && !names.includes(n)) names.push(n);
+            fiber = fiber.return; hops++;
+          }
+          chain = names.join(' < ');
+        }
+        return '<' + label + '>' + (chain ? ' (' + chain + ')' : '') + ': ' + where + ' changed';
+      }))(${JSON.stringify(value.regions)})`
+      const hit = await connection.send(
+        'Runtime.evaluate',
+        { expression: hitTest, returnByValue: true },
+        pageSession,
+      )
+      if (Array.isArray(hit.result?.value)) sentences = hit.result.value.map(String)
+    } catch {
+      // attribution is a bonus on top of the percentage
+    }
+    return { pct: value.pct, sentences }
+  } catch {
+    return null
+  } finally {
+    connection?.close()
+    child.kill('SIGKILL')
+    setTimeout(() => fs.rmSync(profileDir, { recursive: true, force: true }), 500).unref?.()
+  }
+}
+
 export async function pixelDiffPct(chromePath: string, pngA: Buffer, pngB: Buffer): Promise<number | null> {
   const { child, wsUrl, profileDir } = await launchChrome(chromePath)
   let connection: CdpConnection | null = null

@@ -171,3 +171,39 @@ describe.skipIf(!chrome || !hasWebSocket())('LoAF jank attribution (requires Chr
     }
   })
 })
+
+describe.skipIf(!chrome || !hasWebSocket())('attributed pulse diff (requires Chrome)', () => {
+  it('names the element behind a changed region', { timeout: 120000, retry: 2 }, async () => {
+    const http = await import('node:http')
+    const page = (navBg: string) => `<!doctype html><html lang="en"><head><title>a</title>
+      <style>body{margin:0}nav{height:120px;background:${navBg}}main{height:600px;background:#fff}</style>
+      </head><body><nav class="top-nav">menu</nav><main>content</main>
+      <script>
+        function Shell() {}
+        const nav = document.querySelector('nav');
+        nav['__reactFiber$squint'] = { type: 'nav', return: { type: Shell, return: null } };
+      </script></body></html>`
+    let bg = '#112233'
+    const server = http.createServer((_req, res) => {
+      res.writeHead(200, { 'content-type': 'text/html', 'cache-control': 'no-store' })
+      res.end(page(bg))
+    })
+    const port: number = await new Promise((resolve) => {
+      server.listen(0, '127.0.0.1', () => resolve((server.address() as { port: number }).port))
+    })
+    const url = `http://127.0.0.1:${port}/`
+    try {
+      const before = await cdpCapture(chrome!, url, dir, [{ name: 'pulse', width: 1280, height: 800 }], 500, false)
+      const beforePng = fs.readFileSync(before.shots[0]!.path)
+      bg = '#ff8800'
+      const after = await cdpCapture(chrome!, url, dir, [{ name: 'pulse', width: 1280, height: 800 }], 500, false)
+      const { pixelDiffAttributed } = await import('../src/preview/cdp.js')
+      const diff = await pixelDiffAttributed(chrome!, beforePng, fs.readFileSync(after.shots[0]!.path), url)
+      expect(diff).not.toBeNull()
+      expect(diff!.pct).toBeGreaterThan(1)
+      expect(diff!.sentences.some((s) => s.includes('<nav.top-nav>') && s.includes('(Shell)') && s.includes('changed'))).toBe(true)
+    } finally {
+      server.close()
+    }
+  })
+})

@@ -187,6 +187,18 @@ export async function comparePulse(previous: Buffer, current: Buffer): Promise<n
   return pixelDiffPct(chrome, previous, current)
 }
 
+/** Attributed compare: percentage plus per-element sentences for the changed regions. */
+export async function comparePulseAttributed(
+  previous: Buffer,
+  current: Buffer,
+  url?: string,
+): Promise<import('./cdp.js').PulseDiff | null> {
+  const chrome = findChrome()
+  if (!chrome || !hasWebSocket()) return null
+  const { pixelDiffAttributed } = await import('./cdp.js')
+  return pixelDiffAttributed(chrome, previous, current, url)
+}
+
 /** Fix prompt for runtime errors found without a visual pass. */
 export function buildRuntimeFixPrompt(report: RuntimeReport): string {
   return `The running app has runtime problems.${runtimeSection(report)}\n\nDiagnose and fix the root causes, then confirm the app loads clean.`

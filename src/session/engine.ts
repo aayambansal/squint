@@ -5,12 +5,12 @@ import { getEngine } from '../engines/registry.js'
 import type { AgentEvent, RunMode } from '../engines/types.js'
 import { buildGatePrompt, detectFastGates, detectGates, runGates } from '../gates/gates.js'
 import {
+  comparePulseAttributed,
   buildReviewPrompt,
   type ProbeResult,
   buildRuntimeFixPrompt,
   type CaptureResult,
   captureViewports,
-  comparePulse,
   probeRuntime,
   runtimeSummary,
 } from '../preview/preview.js'
@@ -826,11 +826,14 @@ export class Session {
       this.push('image', pulsePath)
       return null
     }
-    const pct = await comparePulse(previous, current)
-    if (pct === null) return null
+    const diff = await comparePulseAttributed(previous, current, this.state.devUrl ?? undefined)
+    if (diff === null) return null
+    const pct = diff.pct
     this.push(
       'status',
-      pct < 0.5 ? 'visual pulse: stable vs last turn' : `visual pulse: ${pct.toFixed(1)}% of the page changed vs last turn`,
+      pct < 0.5
+        ? 'visual pulse: stable vs last turn'
+        : `visual pulse: ${pct.toFixed(1)}% of the page changed vs last turn${diff.sentences.length > 0 ? `\n${diff.sentences.map((s) => `  ${s}`).join('\n')}` : ''}`,
     )
     runHook(this.opts.cwd, 'on-pulse-diff', { pct: pct.toFixed(1) })
     // Show the page when it actually changed; stable turns stay text-only.
