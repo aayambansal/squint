@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.3 — 2026-07-26
+
+- Slash-command autocomplete: typing / lists commands with descriptions, tab completes (one registry powers /help too)
+- /save exports the transcript as markdown to .squint/transcripts/
+- .squint/locks: paths the engine must never modify, injected as a hard constraint
+
 ## 0.2.2 — 2026-07-26
 
 - Visual pulse: every clean probe screenshots the app and reports cross-turn drift (pixel diff runs inside Chrome, no dependencies)
