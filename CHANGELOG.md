@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.4 — 2026-07-26
+
+- View-transitions correctness: duplicate view-transition-name values (the browser skips the whole transition) filed as problems with element pointers; declared transitions with no prefers-reduced-motion handling surfaced as advisories
+- The Next.js channel: on next 16+ projects, squint speaks MCP to /_next/mcp after each turn and merges the framework's own build/runtime errors into the fix loop, ahead of log scraping
+
 ## 0.4.3 — 2026-07-26
 
 - Version-aware rule-packs: v3-era Tailwind written into a v4 project (and retired Vite idioms) caught at gate time with the exact rename as the fix prompt; renamed-scale traps (shadow-sm and friends) surface as advisory verify-intent pressure

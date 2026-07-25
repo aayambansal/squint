@@ -36,7 +36,10 @@ The slow gates (format, test, build) stay behind `/check` and `squint check`.
 
 squint owns the dev server (`/dev`, or `autoDev`), ring-buffers its output, and tags
 error lines across the vite/esbuild/webpack/next/tsc vocabularies. After each turn it
-waits 1.5s for the rebuild, then sweeps for fresh errors. Crashes get one automatic
+waits 1.5s for the rebuild, then sweeps for fresh errors. On Next 16+ projects the
+sweep also asks the framework itself: squint speaks MCP to the dev server's
+`/_next/mcp` endpoint and merges its structured build/runtime errors in ahead of the
+log scrape. Crashes get one automatic
 restart; a second crash is a human's job.
 
 ## 3. Runtime probe — `autoProbe` (default on)
@@ -57,6 +60,11 @@ added lines against the project's own toolchain majors. Tailwind v3 classes in a
 project (`bg-gradient-to-r`, `flex-shrink-0`) become problems carrying the exact
 rename; still-valid-but-shifted classes (`shadow-sm` now one step larger) surface as
 verify-intent advisories. Silent unless package.json says the newer major is in play.
+
+The probe also audits **view transitions**: duplicate `view-transition-name` values
+(the browser silently skips the entire transition) become problems with element
+pointers, and declared transitions with no `prefers-reduced-motion` handling surface
+as advisories in `/review`.
 
 ## 4. Visual pulse + `autoReview` (pulse always; review default off)
 
