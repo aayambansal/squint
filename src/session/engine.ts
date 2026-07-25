@@ -551,7 +551,7 @@ export class Session {
               const captureResult = await this.capture()
               if (captureResult) {
                 await this.runTurn(
-                  buildReviewPrompt(captureResult.shots, undefined, captureResult.runtime, captureResult.a11y),
+                  buildReviewPrompt(captureResult.shots, undefined, captureResult.runtime, captureResult.a11y, captureResult.slop),
                   '👁 auto-review rendered UI',
                 )
               }
@@ -681,6 +681,9 @@ export class Session {
         this.clearProblems('runtime')
         this.push('status', 'runtime clean — no console errors, exceptions, or failed requests')
       }
+    }
+    if (result.slop && result.slop.length > 0) {
+      this.push('status', `distinctiveness: ${result.slop.length} tell(s)\n${result.slop.join('\n')}`)
     }
     if (result.a11y && result.a11y.length > 0) {
       this.push('error', `a11y: ${result.a11y.length} finding(s)\n${result.a11y.slice(0, 5).join('\n')}`)
@@ -889,7 +892,7 @@ export class Session {
           const result = await this.capture()
           if (result) {
             await this.runTurn(
-              buildReviewPrompt(result.shots, arg || undefined, result.runtime, result.a11y),
+              buildReviewPrompt(result.shots, arg || undefined, result.runtime, result.a11y, result.slop),
               `👁 review rendered UI${arg ? ` · ${arg}` : ''}`,
             )
           }

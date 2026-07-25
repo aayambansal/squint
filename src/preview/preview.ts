@@ -19,6 +19,8 @@ export interface CaptureResult {
   runtime?: RuntimeReport
   /** Accessibility sweep findings — present when the CDP path was available. */
   a11y?: string[]
+  /** Distinctiveness-debt findings (the checkable AI-slop tells). */
+  slop?: string[]
 }
 
 /**
@@ -70,7 +72,7 @@ export async function captureViewports(cwd: string, url: string): Promise<Captur
     try {
       // Root gets the full viewport trio + runtime watch + a11y sweep;
       // additional routes get one desktop shot each.
-      const { report, shots, a11y } = await cdpCapture(chrome, url, dir, VIEWPORTS, 2500, true)
+      const { report, shots, a11y, slop } = await cdpCapture(chrome, url, dir, VIEWPORTS, 2500, true)
       const errors: string[] = []
       for (const route of routes.slice(1)) {
         try {
@@ -85,7 +87,7 @@ export async function captureViewports(cwd: string, url: string): Promise<Captur
           errors.push(`${route}: capture failed`)
         }
       }
-      return { shots, errors, runtime: report, a11y }
+      return { shots, errors, runtime: report, a11y, slop }
     } catch {
       // fall through to the one-shot path
     }
@@ -183,16 +185,22 @@ function a11ySection(findings: string[] | undefined): string {
   return `\n\n## Accessibility sweep findings\n\n${findings.join('\n')}\n\nFix these as part of the pass — they are objective defects, not style preferences.`
 }
 
+function slopSection(findings: string[] | undefined): string {
+  if (!findings || findings.length === 0) return ''
+  return `\n\n## Distinctiveness debt (detected mechanically)\n\n${findings.join('\n')}\n\nThese patterns make the page read as template output. Rework them within the committed design direction — this is style debt, not a defect list.`
+}
+
 export function buildReviewPrompt(
   shots: { name: string; path: string }[],
   extra?: string,
   runtime?: RuntimeReport,
   a11y?: string[],
+  slop?: string[],
 ): string {
   const list = shots.map((s) => `- ${s.name}: ${s.path}`).join('\n')
   return `Screenshots of the running app were just captured:
 
 ${list}
 
-Read each screenshot and review the rendered UI against the design standards you were given. Check: visual hierarchy and spacing rhythm, typography, color and contrast, alignment, empty-looking or broken regions, and whether the mobile capture shows horizontal overflow or cramped layout. List the concrete issues you can SEE (not hypothetical ones), ranked by visual impact${extra ? `, with special attention to: ${extra}` : ''}. Then fix them and verify the app still builds.${runtimeSection(runtime)}${a11ySection(a11y)}`
+Read each screenshot and review the rendered UI against the design standards you were given. Check: visual hierarchy and spacing rhythm, typography, color and contrast, alignment, empty-looking or broken regions, and whether the mobile capture shows horizontal overflow or cramped layout. List the concrete issues you can SEE (not hypothetical ones), ranked by visual impact${extra ? `, with special attention to: ${extra}` : ''}. Then fix them and verify the app still builds.${runtimeSection(runtime)}${a11ySection(a11y)}${slopSection(slop)}`
 }

@@ -26,6 +26,8 @@ export interface CdpCaptureResult {
   shots: { name: string; path: string }[]
   /** Findings from the in-page accessibility sweep (when requested). */
   a11y: string[]
+  /** Distinctiveness-debt findings (when the audit ran). */
+  slop: string[]
 }
 
 /**
@@ -257,6 +259,56 @@ export async function pixelDiffPct(chromePath: string, pngA: Buffer, pngB: Buffe
   }
 }
 
+/**
+ * Deterministic distinctiveness sweep: the checkable subset of the
+ * "every AI site looks identical" tell catalog. Style debt, not
+ * defects — findings feed the review prompt, never the fix loop.
+ */
+const SLOP_AUDIT = `(() => {
+  const out = [];
+  const bodyFont = (getComputedStyle(document.body).fontFamily || '').toLowerCase();
+  const h1 = document.querySelector('h1,h2');
+  const displayFont = h1 ? (getComputedStyle(h1).fontFamily || '').toLowerCase() : bodyFont;
+  for (const tell of ['inter', 'roboto', 'arial', 'space grotesk']) {
+    if (displayFont.includes(tell) || bodyFont.split(',')[0].includes(tell)) {
+      out.push('generic font stack: ' + tell + ' (' + (displayFont.includes(tell) ? 'display' : 'body') + ')');
+      break;
+    }
+  }
+  const vw = innerWidth, vh = innerHeight;
+  for (const el of document.querySelectorAll('*')) {
+    const r = el.getBoundingClientRect();
+    if (r.top > vh || r.width * r.height < vw * vh * 0.2) continue;
+    const bg = getComputedStyle(el).backgroundImage || '';
+    if (bg.includes('gradient')) {
+      const purples = bg.match(/rgb\\((\\d+),\\s*(\\d+),\\s*(\\d+)/g) || [];
+      if (purples.some((c) => { const [r2, g2, b2] = c.slice(4).split(',').map(Number); return b2 > 150 && r2 > 80 && r2 < 200 && g2 < r2; })) {
+        out.push('purple/violet gradient on a hero-scale element');
+        break;
+      }
+    }
+  }
+  for (const container of document.querySelectorAll('section, div')) {
+    const kids = [...container.children];
+    if (kids.length < 3 || kids.length > 4) continue;
+    const rects = kids.map((k) => k.getBoundingClientRect());
+    if (rects[0].width < 150 || rects[0].top > vh * 2) continue;
+    const sameSize = rects.every((r) => Math.abs(r.width - rects[0].width) < 4 && Math.abs(r.height - rects[0].height) < 24);
+    const cardish = kids.every((k) => k.querySelector('svg, img') && k.querySelector('h2,h3,h4') && k.querySelector('p'));
+    if (sameSize && cardish) { out.push('identical icon-card grid (' + kids.length + ' cards)'); break; }
+  }
+  let emojiBullets = 0;
+  for (const li of document.querySelectorAll('li')) {
+    if (/^[\\u{1F300}-\\u{1FAFF}\\u{2600}-\\u{27BF}]/u.test((li.textContent || '').trim())) emojiBullets++;
+  }
+  if (emojiBullets >= 3) out.push(emojiBullets + ' emoji-bulleted list items');
+  const rootStyle = getComputedStyle(document.documentElement);
+  if (rootStyle.getPropertyValue('--radius').trim() === '0.5rem' && rootStyle.getPropertyValue('--primary').trim() === '222.2 47.4% 11.2%') {
+    out.push('untouched shadcn default theme tokens');
+  }
+  return out.slice(0, 8);
+})()`
+
 export async function cdpCapture(
   chromePath: string,
   url: string,
@@ -269,6 +321,7 @@ export async function cdpCapture(
   const report: RuntimeReport = { consoleErrors: [], pageErrors: [], failedRequests: [] }
   const shots: { name: string; path: string }[] = []
   let a11y: string[] = []
+  let slop: string[] = []
   const requests = new Map<string, string>()
   let connection: CdpConnection | null = null
 
@@ -330,6 +383,16 @@ export async function cdpCapture(
       } catch {
         // The sweep is best-effort; a failed audit never blocks capture.
       }
+      try {
+        const { result } = await connection.send(
+          'Runtime.evaluate',
+          { expression: SLOP_AUDIT, returnByValue: true },
+          sessionId,
+        )
+        if (Array.isArray(result?.value)) slop = result.value.map(String)
+      } catch {
+        // best-effort
+      }
     }
 
     for (const viewport of viewports) {
@@ -355,5 +418,5 @@ export async function cdpCapture(
     setTimeout(() => fs.rmSync(profileDir, { recursive: true, force: true }), 500).unref?.()
   }
 
-  return { report, shots, a11y }
+  return { report, shots, a11y, slop }
 }
