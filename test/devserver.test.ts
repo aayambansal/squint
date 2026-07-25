@@ -80,6 +80,39 @@ describe('DevServer', () => {
   })
 })
 
+describe('DevServer auto-restart', () => {
+  it('restarts once after a crash, then stays crashed', { timeout: 15000 }, async () => {
+    const transitions: string[] = []
+    const server = new DevServer(process.cwd(), { onStateChange: (s) => transitions.push(s) })
+    // Announces a url then exits: crash → one restart → crash → give up.
+    server.start({
+      command: 'node',
+      args: ['-e', "console.log('on http://localhost:4222'); setTimeout(() => process.exit(1), 120)"],
+      display: 'node -e',
+    })
+    await new Promise((resolve) => setTimeout(resolve, 3500))
+    expect(transitions.filter((t) => t === 'running').length).toBe(2)
+    expect(transitions.at(-1)).toBe('crashed')
+    expect(server.state).toBe('crashed')
+    server.stop()
+  })
+
+  it('does not restart after a manual stop', async () => {
+    const transitions: string[] = []
+    const server = new DevServer(process.cwd(), { onStateChange: (s) => transitions.push(s) })
+    server.start({
+      command: 'node',
+      args: ['-e', "console.log('on http://localhost:4223'); setInterval(() => {}, 1000)"],
+      display: 'node -e',
+    })
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    server.stop()
+    await new Promise((resolve) => setTimeout(resolve, 1500))
+    expect(server.state).toBe('stopped')
+    expect(transitions.filter((t) => t === 'starting').length).toBe(1)
+  })
+})
+
 describe('buildFixPrompt', () => {
   it('includes errors and recent output with root-cause instruction', () => {
     const prompt = buildFixPrompt(['error TS1005: expected ;'], ['line a', 'line b'])

@@ -60,6 +60,8 @@ const BUFFER_LIMIT = 400
 export class DevServer {
   private child: ChildProcess | null = null
   private lines: CapturedLine[] = []
+  private lastCommand: DevCommand | null = null
+  private restarts = 0
   state: DevServerState = 'stopped'
   url: string | null = null
 
@@ -69,9 +71,15 @@ export class DevServer {
   ) {}
 
   start(command?: DevCommand): boolean {
+    this.restarts = 0
+    return this.launch(command)
+  }
+
+  private launch(command?: DevCommand): boolean {
     if (this.child) return true
     const cmd = command ?? detectDevCommand(this.cwd)
     if (!cmd) return false
+    this.lastCommand = cmd
 
     this.setState('starting')
     this.lines = []
@@ -109,7 +117,17 @@ export class DevServer {
     })
     child.on('close', () => {
       this.child = null
-      if (this.state !== 'stopped') this.setState('crashed')
+      if (this.state === 'stopped') return
+      this.setState('crashed')
+      // One automatic restart per user start: dev servers die to
+      // transient causes (port grabs, config reload) more often than
+      // real ones, and a second crash means a human should look.
+      if (this.restarts < 1 && this.lastCommand) {
+        this.restarts += 1
+        setTimeout(() => {
+          if (this.state === 'crashed') this.launch(this.lastCommand!)
+        }, 1000)
+      }
     })
     return true
   }
