@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.9 — 2026-07-26
+
+- squint sandbox CLI (diff/apply/discard); sandbox worktree auto-gitignored
+- /shot accepts any URL; grouped /help; docs/loops.md explains every automatic loop
+- Version ships from package.json (build-time injection)
+
 ## 0.2.8 — 2026-07-26
 
 - Sandbox mode: /sandbox on accumulates asks in a shadow worktree (engines, gates, dev server all run there); diff / apply / discard
