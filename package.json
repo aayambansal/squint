@@ -1,5 +1,5 @@
 {
-  "name": "squint",
+  "name": "@aayambansal/squint",
   "version": "0.1.0",
   "description": "Lovable for your terminal — a frontend harness on top of Claude Code, Codex, and other coding agents.",
   "type": "module",
@@ -8,6 +8,26 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/aayambansal/squint.git"
+  },
+  "homepage": "https://github.com/aayambansal/squint#readme",
+  "bugs": {
+    "url": "https://github.com/aayambansal/squint/issues"
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "frontend",
+    "harness",
+    "tui",
+    "cli",
+    "claude-code",
+    "codex",
+    "lovable",
+    "vite",
+    "design"
+  ],
+  "publishConfig": {
+    "access": "public"
   },
   "bin": {
     "squint": "dist/cli.js"
@@ -23,7 +43,8 @@
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "check": "npm run typecheck && npm run test && npm run build"
+    "check": "npm run typecheck && npm run test && npm run build",
+    "prepublishOnly": "npm run check"
   },
   "dependencies": {
     "commander": "^13.1.0",

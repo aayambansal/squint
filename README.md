@@ -38,6 +38,13 @@ Lovable proved the loop: prompt → generate → preview → auto-fix → iterat
 ## Install
 
 ```sh
+npm install -g @aayambansal/squint   # then just: squint
+npx @aayambansal/squint              # or run without installing
+```
+
+From source:
+
+```sh
 git clone https://github.com/aayambansal/squint.git
 cd squint
 npm install && npm run build && npm link
