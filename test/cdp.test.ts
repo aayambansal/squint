@@ -31,9 +31,13 @@ describe('runtimeSummary / prompts', () => {
     expect(fix).toContain('boom happened')
     expect(fix).toContain('404 http://localhost/missing.js')
 
-    const review = buildReviewPrompt([{ name: 'desktop', path: '/x/d.png' }], undefined, report)
+    const review = buildReviewPrompt([{ name: 'desktop', path: '/x/d.png' }], undefined, report, [
+      'img missing alt: hero.png',
+    ])
     expect(review).toContain('Runtime errors observed')
     expect(review).toContain('TypeError: x is not a function')
+    expect(review).toContain('Accessibility sweep findings')
+    expect(review).toContain('img missing alt: hero.png')
   })
 })
 
@@ -44,18 +48,28 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
     const page = path.join(dir, 'page.html')
     fs.writeFileSync(
       page,
-      `<!doctype html><html><body><h1>squint cdp</h1>
+      `<!doctype html><html><head><title>t</title></head><body><h1>squint cdp</h1>
+      <h4>skipped levels</h4>
       <img src="definitely-missing.png" />
+      <button></button>
+      <input type="text" />
       <script>
         console.error('console-boom');
         setTimeout(() => { throw new Error('uncaught-boom') }, 100);
       </script>
       </body></html>`,
     )
-    const result = await cdpCapture(chrome!, `file://${page}`, dir, [
-      { name: 'mobile', width: 390, height: 844 },
-      { name: 'desktop', width: 1280, height: 800 },
-    ])
+    const result = await cdpCapture(
+      chrome!,
+      `file://${page}`,
+      dir,
+      [
+        { name: 'mobile', width: 390, height: 844 },
+        { name: 'desktop', width: 1280, height: 800 },
+      ],
+      2500,
+      true,
+    )
 
     expect(result.shots.map((s) => s.name)).toEqual(['mobile', 'desktop'])
     for (const shot of result.shots) {
@@ -64,5 +78,12 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
     expect(result.report.consoleErrors.join(' ')).toContain('console-boom')
     expect(result.report.pageErrors.join(' ')).toContain('uncaught-boom')
     expect(result.report.failedRequests.join(' ')).toContain('definitely-missing.png')
+
+    const findings = result.a11y.join('\n')
+    expect(findings).toContain('missing lang')
+    expect(findings).toContain('img missing alt')
+    expect(findings).toContain('button without accessible name')
+    expect(findings).toContain('form control without label')
+    expect(findings).toContain('heading order jumps h1 → h4')
   })
 })

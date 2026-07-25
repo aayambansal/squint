@@ -24,7 +24,47 @@ export interface CdpShot {
 export interface CdpCaptureResult {
   report: RuntimeReport
   shots: { name: string; path: string }[]
+  /** Findings from the in-page accessibility sweep (when requested). */
+  a11y: string[]
 }
+
+/**
+ * Dependency-free in-page accessibility sweep: the objective checks
+ * that don't need a full axe run — alt text, accessible names, label
+ * association, document lang/title, heading order, tap-target size,
+ * positive tabindex. Returns human-readable findings, capped at 20.
+ */
+const A11Y_AUDIT = `(() => {
+  const out = [];
+  const name = (el) => (el.getAttribute('aria-label') || el.textContent || el.getAttribute('title') || '').trim();
+  const short = (el) => '<' + el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + (el.className && typeof el.className === 'string' ? '.' + el.className.split(/\\s+/).slice(0, 2).join('.') : '') + '>';
+  if (!document.documentElement.getAttribute('lang')) out.push('document missing lang attribute');
+  if (!document.title.trim()) out.push('document missing <title>');
+  for (const img of document.querySelectorAll('img:not([alt])')) out.push('img missing alt: ' + (img.getAttribute('src') || '').split('/').pop());
+  for (const el of document.querySelectorAll('button, a[href]')) {
+    if (!name(el) && !el.querySelector('img[alt]')) out.push(el.tagName.toLowerCase() + ' without accessible name ' + short(el));
+  }
+  for (const el of document.querySelectorAll('input:not([type=hidden]), select, textarea')) {
+    const labelled = el.getAttribute('aria-label') || el.getAttribute('aria-labelledby') || el.closest('label') || (el.id && document.querySelector('label[for="' + el.id + '"]'));
+    if (!labelled) out.push('form control without label ' + short(el));
+  }
+  let last = 0;
+  for (const h of document.querySelectorAll('h1,h2,h3,h4,h5,h6')) {
+    const level = Number(h.tagName[1]);
+    if (last && level > last + 1) out.push('heading order jumps h' + last + ' → h' + level + ' ' + short(h));
+    last = level;
+  }
+  let tiny = 0;
+  for (const el of document.querySelectorAll('button, a[href]')) {
+    const r = el.getBoundingClientRect();
+    if (r.width > 0 && (r.width < 24 || r.height < 24)) tiny++;
+  }
+  if (tiny > 0) out.push(tiny + ' interactive element(s) smaller than 24x24px');
+  for (const el of document.querySelectorAll('[tabindex]')) {
+    if (Number(el.getAttribute('tabindex')) > 0) out.push('positive tabindex ' + short(el));
+  }
+  return out.slice(0, 20);
+})()`
 
 export function hasWebSocket(): boolean {
   return typeof globalThis.WebSocket === 'function'
@@ -164,10 +204,12 @@ export async function cdpCapture(
   outDir: string,
   viewports: readonly CdpShot[],
   settleMs = 2500,
+  audit = false,
 ): Promise<CdpCaptureResult> {
   const { child, wsUrl, profileDir } = await launchChrome(chromePath)
   const report: RuntimeReport = { consoleErrors: [], pageErrors: [], failedRequests: [] }
   const shots: { name: string; path: string }[] = []
+  let a11y: string[] = []
   const requests = new Map<string, string>()
   let connection: CdpConnection | null = null
 
@@ -218,6 +260,19 @@ export async function cdpCapture(
     }
     await new Promise((resolve) => setTimeout(resolve, settleMs))
 
+    if (audit) {
+      try {
+        const { result } = await connection.send(
+          'Runtime.evaluate',
+          { expression: A11Y_AUDIT, returnByValue: true },
+          sessionId,
+        )
+        if (Array.isArray(result?.value)) a11y = result.value.map(String)
+      } catch {
+        // The sweep is best-effort; a failed audit never blocks capture.
+      }
+    }
+
     for (const viewport of viewports) {
       await connection.send(
         'Emulation.setDeviceMetricsOverride',
@@ -241,5 +296,5 @@ export async function cdpCapture(
     setTimeout(() => fs.rmSync(profileDir, { recursive: true, force: true }), 500).unref?.()
   }
 
-  return { report, shots }
+  return { report, shots, a11y }
 }
