@@ -46,6 +46,12 @@ the server never prints: blank pages, uncaught exceptions, console errors, faile
 requests. `/shot` and `/review` add the accessibility sweep (alt text, labels,
 accessible names, heading order, tap targets) and cover `.squint/routes`.
 
+The probe also runs the **phantom-class check**: every class token in the DOM is diffed
+against the compiled stylesheet's selectors. Present in the markup but absent from the
+CSS means the element is silently unstyled — the classic tell of a hallucinated or
+version-mismatched utility (Tailwind v3 names in a v4 project). Phantoms are filed as
+problems with element pointers, so "why did nothing change" becomes a named class.
+
 ## 4. Visual pulse + `autoReview` (pulse always; review default off)
 
 Every clean probe screenshots the page and pixel-compares it with the previous turn
@@ -66,6 +72,16 @@ causes rather than weaken checks. Manually: `/problems` lists, `/fix` sends all,
 - **Sandbox mode** (`/sandbox on`) redirects everything — engine, gates, dev server,
   probes — into a shadow worktree until you `apply` or `discard`.
 - `budgetUsd` flags runaway session cost; Esc interrupts any turn instantly.
+
+## The design ledger
+
+Decisions evaporate between sessions; `.squint/design-log.jsonl` (committed, not
+ignored) is where they survive. squint appends an entry at each moment a decision
+actually happens — `/decide <text>` records one explicitly, applying a variant records
+the direction you chose, `/restore` records what you rejected, applying a sandbox
+records what you accepted — with the current pulse screenshot as evidence when there is
+one. The most recent entries ride into every ask as standing decisions the engine must
+not silently undo. Memory with receipts.
 
 ## Flows and the score
 

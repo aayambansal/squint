@@ -45,6 +45,7 @@ Hand-authored (commit these):
 | `routes` | one path per line; `/shot` and `/review` cover them beyond the root |
 | `flows/` | declared user journeys replayed by `/flows` (see [loops](./loops.md#flows-and-the-score)) |
 | `config.json` | the project config layer |
+| `design-log.jsonl` | the design-decision ledger, appended by `/decide`, variants, restores, sandboxes (see [loops](./loops.md#the-design-ledger)) |
 
 Working files (auto-gitignored by squint): `preview/` (screenshots), `state.json`
 (session resume), `variants/` (exploration worktrees), `sandbox/` (the /sandbox worktree),
