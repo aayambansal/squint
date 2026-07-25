@@ -69,6 +69,8 @@ export interface SessionOptions {
   autoProbe?: boolean
   /** Run typecheck+lint after every turn (default on where detected). */
   autoCheck?: boolean
+  /** Session budget in USD; crossing it warns (never blocks). */
+  budgetUsd?: number
   /** Called when a /quit-style command asks the frontend to close. */
   onQuit?: () => void
 }
@@ -410,12 +412,20 @@ export class Session {
             ? ` · ${this.turnTools} tool call${this.turnTools === 1 ? '' : 's'}`
             : ''
       this.push('status', `done${secs}${cost}${work}`)
+      const before = this.state.totals.costUsd
       this.notify({
         totals: {
-          costUsd: this.state.totals.costUsd + (result.costUsd ?? 0),
+          costUsd: before + (result.costUsd ?? 0),
           turns: this.state.totals.turns + 1,
         },
       })
+      const budget = this.opts.budgetUsd
+      if (budget && before < budget && this.state.totals.costUsd >= budget) {
+        this.push(
+          'error',
+          `session cost $${this.state.totals.costUsd.toFixed(2)} crossed your $${budget.toFixed(2)} budget — squint keeps working, this is just the flag you asked for`,
+        )
+      }
       if (this.sessionId) {
         saveState(this.opts.cwd, {
           engine: this.state.engineId,

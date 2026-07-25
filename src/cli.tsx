@@ -467,6 +467,7 @@ program.action(() => {
       autoProbe={config.autoProbe}
       autoCheck={config.autoCheck}
       bell={config.bell}
+      budgetUsd={config.budgetUsd}
       initialTheme={config.theme}
     />,
   )

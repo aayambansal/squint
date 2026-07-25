@@ -18,6 +18,8 @@ const ConfigSchema = z.object({
   autoCheck: z.boolean().optional(),
   /** Terminal bell when a turn finishes (default on). */
   bell: z.boolean().optional(),
+  /** Session budget in USD; crossing it warns (never blocks). */
+  budgetUsd: z.number().positive().optional(),
   /** TUI theme name (amber, ocean, moss, rose, mono). */
   theme: z.string().optional(),
 })
@@ -91,13 +93,19 @@ export function setConfigValue(file: string, key: string, value: string): Squint
       throw new Error(`"${key}" must be true or false`)
     }
     next = { ...current, [key]: value === 'true' }
+  } else if (key === 'budgetUsd') {
+    const budget = Number.parseFloat(value)
+    if (!Number.isFinite(budget) || budget <= 0) {
+      throw new Error('"budgetUsd" must be a positive number')
+    }
+    next = { ...current, budgetUsd: budget }
   } else if (key.startsWith('models.')) {
     const engineId = key.slice('models.'.length)
     if (!engineId) throw new Error('Usage: squint config set models.<engineId> <model>')
     next = { ...current, models: { ...current.models, [engineId]: value } }
   } else {
     throw new Error(
-      `Unknown config key "${key}". Supported: engine, theme, autoDev, autoFix, autoProbe, autoCheck, bell, models.<engineId>`,
+      `Unknown config key "${key}". Supported: engine, theme, autoDev, autoFix, autoProbe, autoCheck, bell, budgetUsd, models.<engineId>`,
     )
   }
   fs.mkdirSync(path.dirname(file), { recursive: true })
