@@ -47,17 +47,17 @@
     "prepublishOnly": "npm run check"
   },
   "dependencies": {
-    "commander": "^13.1.0",
-    "ink": "^6.0.0",
+    "commander": "^15.0.0",
+    "ink": "^7.1.1",
     "picocolors": "^1.1.1",
     "react": "^19.1.0",
-    "zod": "^3.25.0"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/node": "^22.15.0",
+    "@types/node": "^26.1.1",
     "@types/react": "^19.1.0",
     "tsup": "^8.4.0",
-    "typescript": "^5.8.0",
-    "vitest": "^3.1.0"
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
   }
 }
