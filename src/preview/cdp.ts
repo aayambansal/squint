@@ -43,6 +43,8 @@ export interface CdpCaptureResult {
   perf: PerfMetrics
   /** "What a screen reader would say": linearized AX tree (when audited). */
   narration: string[]
+  /** Class tokens in the DOM with no matching CSS rule (when audited). */
+  phantoms: string[]
 }
 
 /** In-page collection of web-vitals-adjacent numbers via PerformanceObserver. */
@@ -421,6 +423,44 @@ const SLOP_AUDIT = `(() => {
   return out.slice(0, 8);
 })()`
 
+/**
+ * Phantom-class check: class tokens present in the DOM but absent from
+ * every same-origin stylesheet are silently unstyled — the signature of
+ * hallucinated or version-mismatched utility classes (Tailwind v3
+ * spellings in v4 projects, misspellings, never-compiled concatenations).
+ */
+const PHANTOM_AUDIT = `(() => {
+  const defined = new Set();
+  for (const sheet of document.styleSheets) {
+    let rules; try { rules = sheet.cssRules; } catch { continue; }
+    const walk = (list) => {
+      for (const rule of list) {
+        if (rule.selectorText) {
+          for (const m of rule.selectorText.matchAll(/\\.((?:[\\w-]|\\\\.)+)/g)) {
+            defined.add(m[1].replace(/\\\\(.)/g, '$1'));
+          }
+        }
+        if (rule.cssRules) walk(rule.cssRules);
+      }
+    };
+    walk(rules);
+  }
+  if (defined.size < 10) return []; // no CSSOM visibility — stay silent
+  const seen = new Map();
+  for (const el of document.querySelectorAll('[class]')) {
+    for (const cls of el.classList) {
+      if (cls.length < 3) continue;
+      if (!defined.has(cls) && !seen.has(cls)) seen.set(cls, el.tagName.toLowerCase());
+    }
+  }
+  const out = [];
+  for (const [cls, tag] of seen) {
+    out.push(cls + ' (on <' + tag + '>)');
+    if (out.length >= 12) break;
+  }
+  return out;
+})()`
+
 export async function cdpCapture(
   chromePath: string,
   url: string,
@@ -436,6 +476,7 @@ export async function cdpCapture(
   let slop: string[] = []
   let perf: PerfMetrics = {}
   let narration: string[] = []
+  let phantoms: string[] = []
   const requests = new Map<string, string>()
   let connection: CdpConnection | null = null
 
@@ -519,6 +560,16 @@ export async function cdpCapture(
         // best-effort
       }
       try {
+        const { result } = await connection.send(
+          'Runtime.evaluate',
+          { expression: PHANTOM_AUDIT, returnByValue: true },
+          sessionId,
+        )
+        if (Array.isArray(result?.value)) phantoms = result.value.map(String)
+      } catch {
+        // best-effort
+      }
+      try {
         await connection.send('Accessibility.enable', {}, sessionId)
         const { nodes } = await connection.send('Accessibility.getFullAXTree', {}, sessionId)
         const interesting = new Set([
@@ -565,5 +616,5 @@ export async function cdpCapture(
     setTimeout(() => fs.rmSync(profileDir, { recursive: true, force: true }), 500).unref?.()
   }
 
-  return { report, shots, a11y, slop, perf, narration }
+  return { report, shots, a11y, slop, perf, narration, phantoms }
 }

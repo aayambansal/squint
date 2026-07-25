@@ -275,7 +275,7 @@ export class Session {
         return
       }
       await this.runTurn(
-        buildReviewPrompt(result.shots, undefined, result.runtime, result.a11y, result.slop, result.narration),
+        buildReviewPrompt(result.shots, undefined, result.runtime, result.a11y, result.slop, result.narration, result.phantoms),
         `👁 polish round ${round}/${rounds}`,
       )
     }
@@ -634,7 +634,7 @@ export class Session {
               const captureResult = await this.capture()
               if (captureResult) {
                 await this.runTurn(
-                  buildReviewPrompt(captureResult.shots, undefined, captureResult.runtime, captureResult.a11y, captureResult.slop, captureResult.narration),
+                  buildReviewPrompt(captureResult.shots, undefined, captureResult.runtime, captureResult.a11y, captureResult.slop, captureResult.narration, captureResult.phantoms),
                   '👁 auto-review rendered UI',
                 )
               }
@@ -792,6 +792,15 @@ export class Session {
         this.clearProblems('runtime')
         this.push('status', 'runtime clean — no console errors, exceptions, or failed requests')
       }
+    }
+    if (result.phantoms && result.phantoms.length > 0) {
+      this.push('error', `phantom classes: ${result.phantoms.length} (in the DOM, absent from CSS)\n${result.phantoms.slice(0, 5).join('\n')}`)
+      this.addProblem(
+        'runtime',
+        `${result.phantoms.length} phantom class(es) — elements silently unstyled`,
+        `These class tokens appear in the DOM but match no CSS rule, so the elements are silently unstyled. Usually a misspelled or version-mismatched utility (e.g. Tailwind v3 spellings in a v4 project) or a concatenated class the scanner never compiled:\n\n${result.phantoms.join('\n')}\n\nFix the class names or define the styles, then confirm visually.`,
+      )
+      this.push('status', '/fix sends open problems to the engine')
     }
     if (result.slop && result.slop.length > 0) {
       this.push('status', `distinctiveness: ${result.slop.length} tell(s)\n${result.slop.join('\n')}`)
@@ -1148,7 +1157,7 @@ export class Session {
           const result = await this.capture()
           if (result) {
             await this.runTurn(
-              buildReviewPrompt(result.shots, arg || undefined, result.runtime, result.a11y, result.slop, result.narration),
+              buildReviewPrompt(result.shots, arg || undefined, result.runtime, result.a11y, result.slop, result.narration, result.phantoms),
               `👁 review rendered UI${arg ? ` · ${arg}` : ''}`,
             )
           }
