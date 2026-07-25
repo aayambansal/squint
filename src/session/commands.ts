@@ -16,7 +16,7 @@ export const COMMANDS: CommandSpec[] = [
   { name: 'check', description: 'run all quality gates (typecheck, lint, test, build)' },
   { name: 'problems', description: 'list open findings from gates, dev server, runtime, a11y' },
   { name: 'fix', args: '[n]', description: 'send all open problems to the engine, or just problem n' },
-  { name: 'shot', description: 'screenshot the app at mobile/tablet/desktop' },
+  { name: 'shot', args: '[url]', description: 'screenshot the app (or any url) at mobile/tablet/desktop' },
   { name: 'review', args: '[focus]', description: 'screenshots + the engine critiques its own rendered work' },
   { name: 'variants', args: '<2-4> <ask>', description: 'parallel design explorations; apply/list/clean' },
   { name: 'sandbox', args: '[on|diff|apply|discard]', description: 'asks accumulate in a shadow worktree until you apply' },

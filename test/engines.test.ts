@@ -79,6 +79,27 @@ describe('amp', () => {
   })
 })
 
+describe('cursor parser (shared claude protocol)', () => {
+  it('parses assistant text, results, and skips subagent chatter', () => {
+    const parse = cursor.createParser!()
+    expect(
+      parse(JSON.stringify({ type: 'assistant', message: { content: [{ type: 'text', text: 'From cursor.' }] } })),
+    ).toEqual([{ type: 'text', text: 'From cursor.' }])
+    expect(
+      parse(JSON.stringify({ type: 'result', subtype: 'success', result: 'ok', session_id: 'chat-1' })),
+    ).toEqual([{ type: 'result', ok: true, summary: 'ok', sessionId: 'chat-1', costUsd: undefined, durationMs: undefined }])
+    expect(
+      parse(
+        JSON.stringify({
+          type: 'assistant',
+          parent_tool_use_id: 't1',
+          message: { content: [{ type: 'text', text: 'sub' }] },
+        }),
+      ),
+    ).toEqual([])
+  })
+})
+
 describe('cursor', () => {
   it('builds a print-mode stream-json invocation with resume flag', () => {
     const args = cursor.buildArgs({ prompt: 'go', cwd: '/tmp', model: 'gpt-5', sessionId: 'chat-7' })
