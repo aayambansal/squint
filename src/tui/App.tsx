@@ -1,6 +1,7 @@
 import { Box, Static, Text, useApp, useInput } from 'ink'
 import path from 'node:path'
 import { useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { completeCommand } from '../session/commands.js'
 import { Session } from '../session/engine.js'
 import {
   backspace,
@@ -106,6 +107,13 @@ export function App({
     }
     if (key.tab && key.shift) {
       session.cycleMode()
+      return
+    }
+    if (key.tab && line.text.startsWith('/') && !line.text.includes(' ')) {
+      const matches = completeCommand(line.text.slice(1))
+      if (matches.length > 0) {
+        setLine(fromText(`/${matches[0]!.name}${matches[0]!.args ? ' ' : ''}`))
+      }
       return
     }
     if (key.return) {
@@ -238,6 +246,18 @@ export function App({
           <Text color={theme.dim}>⋯ queued: {queued}</Text>
         </Box>
       ))}
+      {line.text.startsWith('/') && !line.text.includes(' ') && (
+        <Box flexDirection="column">
+          {completeCommand(line.text.slice(1))
+            .slice(0, 5)
+            .map((command, index) => (
+              <Text key={command.name} color={index === 0 ? theme.accent : theme.dim}>
+                /{command.name}
+                {command.args ? ` ${command.args}` : ''} <Text color={theme.dim}>— {command.description}</Text>
+              </Text>
+            ))}
+        </Box>
+      )}
       <Box marginTop={state.running ? 0 : 1}>
         <Text>
           <Text color={theme.accent}>❯ </Text>

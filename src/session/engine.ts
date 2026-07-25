@@ -839,12 +839,10 @@ export class Session {
         clearState(this.opts.cwd)
         this.notify({ items: [], totals: { costUsd: 0, turns: 0 } })
         break
-      case 'help':
-        this.push(
-          'status',
-          '/engine <id> · /model <name> · /mode plan|safe|yolo · /dev · /check (gates) · /problems · /fix [n] · /shot · /review [focus] · /variants <2-4> <ask> · /undo · /checkpoints · /restore <n> · /copy (last reply) · /resume · /clear · /quit',
-        )
+      case 'help': {
+        void import('./commands.js').then(({ commandHelp }) => this.push('status', commandHelp()))
         break
+      }
       case 'quit':
       case 'exit':
         this.push('status', this.summary())
