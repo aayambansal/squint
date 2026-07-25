@@ -40,6 +40,7 @@ Hand-authored (commit these):
 | `rules.md` | short always-on rules, injected into every ask |
 | `skills/*.md` | knowledge injected only when an ask mentions a `triggers:` keyword |
 | `locks` | one path per line the engine must never modify |
+| `hooks/` | executables fired on quality events (see [loops](./loops.md#hooks)) |
 | `routes` | one path per line; `/shot` and `/review` cover them beyond the root |
 | `config.json` | the project config layer |
 

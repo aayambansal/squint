@@ -67,6 +67,14 @@ causes rather than weaken checks. Manually: `/problems` lists, `/fix` sends all,
   probes — into a shadow worktree until you `apply` or `discard`.
 - `budgetUsd` flags runaway session cost; Esc interrupts any turn instantly.
 
+## Hooks
+
+Drop executables in `.squint/hooks/` and squint fires them (SQUINT_* env, 10s cap,
+never blocking): `on-turn-end` (SQUINT_COST, SQUINT_DURATION_MS, SQUINT_STAT),
+`on-pulse-diff` (SQUINT_PCT), `on-problem` (SQUINT_SOURCE, SQUINT_SUMMARY),
+`on-budget` (SQUINT_TOTAL, SQUINT_BUDGET). Ring a bell, post to Slack, trigger CI —
+these are quality events no engine emits on its own.
+
 ## Turning things off
 
 ```sh
