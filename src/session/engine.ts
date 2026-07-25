@@ -276,7 +276,7 @@ export class Session {
         return
       }
       await this.runTurn(
-        buildReviewPrompt(result.shots, undefined, result.runtime, result.a11y, result.slop, result.narration, result.phantoms),
+        buildReviewPrompt(result.shots, undefined, result.runtime, result.a11y, result.slop, result.narration, result.phantoms, result.viewTransitions),
         `👁 polish round ${round}/${rounds}`,
       )
     }
@@ -655,7 +655,7 @@ export class Session {
               const captureResult = await this.capture()
               if (captureResult) {
                 await this.runTurn(
-                  buildReviewPrompt(captureResult.shots, undefined, captureResult.runtime, captureResult.a11y, captureResult.slop, captureResult.narration, captureResult.phantoms),
+                  buildReviewPrompt(captureResult.shots, undefined, captureResult.runtime, captureResult.a11y, captureResult.slop, captureResult.narration, captureResult.phantoms, captureResult.viewTransitions),
                   '👁 auto-review rendered UI',
                 )
               }
@@ -814,6 +814,19 @@ export class Session {
         this.clearProblems('runtime')
         this.push('status', 'runtime clean — no console errors, exceptions, or failed requests')
       }
+    }
+    const vtHard = (result.viewTransitions ?? []).filter((f) => f.startsWith('duplicate'))
+    if (vtHard.length > 0) {
+      this.push('error', `view transitions: ${vtHard.length} broken\n${vtHard.join('\n')}`)
+      this.addProblem(
+        'runtime',
+        `${vtHard.length} view transition(s) the browser will skip`,
+        `Duplicate view-transition-name values make the browser abort the entire transition at runtime:\n\n${vtHard.join('\n')}\n\nGive each simultaneously rendered element a unique name (or scope names per item, e.g. per list key). Do not remove the transitions.`,
+      )
+    }
+    const vtSoft = (result.viewTransitions ?? []).filter((f) => !f.startsWith('duplicate'))
+    if (vtSoft.length > 0) {
+      this.push('status', `view transitions: ${vtSoft.join('; ')}`)
     }
     if (result.phantoms && result.phantoms.length > 0) {
       this.push('error', `phantom classes: ${result.phantoms.length} (in the DOM, absent from CSS)\n${result.phantoms.slice(0, 5).join('\n')}`)
@@ -1202,7 +1215,7 @@ export class Session {
           const result = await this.capture()
           if (result) {
             await this.runTurn(
-              buildReviewPrompt(result.shots, arg || undefined, result.runtime, result.a11y, result.slop, result.narration, result.phantoms),
+              buildReviewPrompt(result.shots, arg || undefined, result.runtime, result.a11y, result.slop, result.narration, result.phantoms, result.viewTransitions),
               `👁 review rendered UI${arg ? ` · ${arg}` : ''}`,
             )
           }
