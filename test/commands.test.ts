@@ -17,9 +17,17 @@ describe('command registry', () => {
     expect(completeCommand('').length).toBe(COMMANDS.length)
   })
 
-  it('renders help lines from the same registry', () => {
+  it('renders grouped help from the same registry', () => {
     const help = commandHelp()
     expect(help).toContain('/variants <2-4> <ask> —')
-    expect(help.split('\n').length).toBe(COMMANDS.length)
+    expect(help).toContain('build\n')
+    expect(help).toContain('verify\n')
+    expect(help).toContain('explore & rewind\n')
+    expect(help).toContain('session\n')
+    // Every command appears exactly once.
+    for (const command of COMMANDS) {
+      expect(help.split(`/${command.name} `).length + help.split(`/${command.name} —`).length).toBeGreaterThan(1)
+    }
+    expect(help.split('\n').length).toBe(COMMANDS.length + 4)
   })
 })
