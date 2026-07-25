@@ -133,13 +133,16 @@ describe('Session', () => {
     // The terminal state: cap reached, /fix armed for the human.
     await waitFor(
       session,
-      () => !session.getState().running && session.getState().items.some((i) => i.text.includes('type /fix')),
+      () => !session.getState().running && session.getState().items.some((i) => i.text.includes('/fix sends open problems')),
       30000,
     )
     const texts = session.getState().items.map((i) => i.text)
     expect(texts.some((t) => t.includes('✗ typecheck'))).toBe(true)
     expect(texts.filter((t) => t.startsWith('auto-fix attempt')).length).toBe(2)
-    expect(texts.some((t) => t.includes('type /fix'))).toBe(true)
+    expect(texts.some((t) => t.includes('/fix sends open problems'))).toBe(true)
+    expect(session.getState().problems.map((p) => p.source)).toEqual(['gates'])
+    session.input('/problems')
+    expect(session.getState().items.at(-1)?.text).toContain('1. [gates]')
     session.dispose()
   }, 35000)
 

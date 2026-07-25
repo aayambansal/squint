@@ -33,6 +33,14 @@ export interface SessionTotals {
   turns: number
 }
 
+export type ProblemSource = 'gates' | 'dev' | 'runtime' | 'a11y'
+
+export interface Problem {
+  id: number
+  source: ProblemSource
+  summary: string
+}
+
 export interface SessionState {
   items: TranscriptItem[]
   liveText: string
@@ -47,6 +55,8 @@ export interface SessionState {
   queue: string[]
   /** How much the engine may do this session. */
   mode: RunMode
+  /** Open findings from gates, the dev server, the runtime, and a11y sweeps. */
+  problems: Problem[]
 }
 
 export interface SessionOptions {
@@ -80,7 +90,9 @@ export class Session {
   private sessionId: string | undefined
   private dev: DevServer | null = null
   private abort: AbortController | null = null
-  private pendingFix: { prompt: string; display: string } | null = null
+  /** Full problem records; state carries the summaries. */
+  private problemPrompts = new Map<number, string>()
+  private nextProblemId = 0
   private checkpoints: Array<{ snapshot: Snapshot; label: string; at: number }> = []
   private fixAttempts = 0
   private reviewTipShown = false
@@ -99,6 +111,7 @@ export class Session {
       totals: { costUsd: 0, turns: 0 },
       queue: [],
       mode: 'safe',
+      problems: [],
     }
     if (opts.autoDev && detectDevCommand(opts.cwd)) {
       this.devServer().start()
@@ -140,6 +153,52 @@ export class Session {
   /** Frontend-originated status line (view-level commands like /theme). */
   note(text: string): void {
     this.push('status', text)
+  }
+
+  /** Register a finding; a fresh finding from a source supersedes its old one. */
+  private addProblem(source: ProblemSource, summary: string, prompt: string): void {
+    const kept = this.state.problems.filter((p) => p.source !== source)
+    for (const gone of this.state.problems) {
+      if (gone.source === source) this.problemPrompts.delete(gone.id)
+    }
+    this.nextProblemId += 1
+    this.problemPrompts.set(this.nextProblemId, prompt)
+    this.notify({ problems: [...kept, { id: this.nextProblemId, source, summary }] })
+  }
+
+  private clearProblems(source: ProblemSource): void {
+    const removed = this.state.problems.filter((p) => p.source === source)
+    if (removed.length === 0) return
+    for (const problem of removed) this.problemPrompts.delete(problem.id)
+    this.notify({ problems: this.state.problems.filter((p) => p.source !== source) })
+  }
+
+  /** One prompt covering the given problems, oldest first. */
+  private combinedFixPrompt(problems: Problem[]): string {
+    const sections = problems.map(
+      (p) => this.problemPrompts.get(p.id) ?? `Fix this reported problem: ${p.summary}`,
+    )
+    return sections.join('\n\n---\n\n')
+  }
+
+  private dispatchFix(problems: Problem[]): void {
+    if (problems.length === 0) return
+    const prompt = this.combinedFixPrompt(problems)
+    const display = `⛑ fix: ${problems.map((p) => p.source).join(' + ')}`
+    for (const problem of problems) this.problemPrompts.delete(problem.id)
+    this.notify({ problems: this.state.problems.filter((p) => !problems.includes(p)) })
+    void this.runTurn(prompt, display)
+  }
+
+  /** Launch a capped auto-fix turn over all open problems. Returns true if launched. */
+  private maybeAutoFix(): boolean {
+    if (!this.opts.autoFix || this.fixAttempts >= MAX_AUTO_FIX_ATTEMPTS) return false
+    if (this.state.problems.length === 0) return false
+    this.fixAttempts += 1
+    this.push('status', `auto-fix attempt ${this.fixAttempts}/${MAX_AUTO_FIX_ATTEMPTS}`)
+    this.notify({ running: false })
+    this.dispatchFix([...this.state.problems])
+    return true
   }
 
   setMode(mode: RunMode): void {
@@ -344,26 +403,22 @@ export class Session {
         const gateResults = await runGates(this.opts.cwd, fastGates)
         const failures = gateResults.filter((r) => !r.ok)
         if (failures.length > 0) {
-          this.pendingFix = {
-            prompt: buildGatePrompt(failures),
-            display: `⛑ fix ${failures.map((f) => f.gate.id).join(' + ')} errors`,
-          }
+          this.addProblem(
+            'gates',
+            failures.map((f) => f.gate.id).join(' + '),
+            buildGatePrompt(failures),
+          )
           this.push(
             'error',
             failures.map((f) => `✗ ${f.gate.id} · ${f.outputTail.split('\n').slice(-3).join('\n')}`).join('\n'),
           )
-          if (this.opts.autoFix && this.fixAttempts < MAX_AUTO_FIX_ATTEMPTS) {
-            this.fixAttempts += 1
-            this.push('status', `auto-fix attempt ${this.fixAttempts}/${MAX_AUTO_FIX_ATTEMPTS}`)
-            this.notify({ running: false })
-            await this.runTurn(this.pendingFix.prompt, this.pendingFix.display)
-            return
-          }
-          this.push('status', 'type /fix to send them to the engine')
+          if (this.maybeAutoFix()) return
+          this.push('status', '/fix sends open problems to the engine · /problems lists them')
           this.notify({ running: false })
           this.drainQueue()
           return
         }
+        this.clearProblems('gates')
       }
     }
 
@@ -374,40 +429,28 @@ export class Session {
       await delay(1500)
       const errors = dev.errorsSince(runStart)
       if (errors.length > 0) {
-        this.pendingFix = {
-          prompt: buildFixPrompt(errors, dev.tail(30)),
-          display: '⛑ fix dev server errors',
-        }
+        this.addProblem(
+          'dev',
+          `${errors.length} dev server error line(s)`,
+          buildFixPrompt(errors, dev.tail(30)),
+        )
         this.push('error', `dev server: ${errors.length} error line(s)\n${errors.slice(-5).join('\n')}`)
-        if (this.opts.autoFix && this.fixAttempts < MAX_AUTO_FIX_ATTEMPTS) {
-          this.fixAttempts += 1
-          this.push('status', `auto-fix attempt ${this.fixAttempts}/${MAX_AUTO_FIX_ATTEMPTS}`)
-          this.notify({ running: false })
-          await this.runTurn(this.pendingFix.prompt, this.pendingFix.display)
-          return
-        }
-        this.push('status', 'type /fix to send them to the engine')
+        if (this.maybeAutoFix()) return
+        this.push('status', '/fix sends open problems to the engine · /problems lists them')
       } else {
-        this.pendingFix = null
+        this.clearProblems('dev')
         // Build output is clean — probe the page itself for client-side
         // breakage the server never sees (blank page, exceptions, 404s).
         if (this.opts.autoProbe !== false && this.state.devUrl) {
           const report = await probeRuntime(this.state.devUrl)
           const summary = report ? runtimeSummary(report) : null
           if (report && summary) {
-            this.pendingFix = {
-              prompt: buildRuntimeFixPrompt(report),
-              display: '⛑ fix runtime errors',
-            }
+            this.addProblem('runtime', summary, buildRuntimeFixPrompt(report))
             this.push('error', `runtime: ${summary}`)
-            if (this.opts.autoFix && this.fixAttempts < MAX_AUTO_FIX_ATTEMPTS) {
-              this.fixAttempts += 1
-              this.push('status', `auto-fix attempt ${this.fixAttempts}/${MAX_AUTO_FIX_ATTEMPTS}`)
-              this.notify({ running: false })
-              await this.runTurn(this.pendingFix.prompt, this.pendingFix.display)
-              return
-            }
-            this.push('status', 'type /fix to send them to the engine')
+            if (this.maybeAutoFix()) return
+            this.push('status', '/fix sends open problems to the engine · /problems lists them')
+          } else if (report) {
+            this.clearProblems('runtime')
           }
         }
         if (!this.reviewTipShown && this.state.devUrl) {
@@ -490,15 +533,23 @@ export class Session {
       const summary = runtimeSummary(result.runtime)
       if (summary) {
         this.push('error', `runtime: ${summary}`)
-        this.pendingFix = { prompt: buildRuntimeFixPrompt(result.runtime), display: '⛑ fix runtime errors' }
-        this.push('status', 'type /fix to send them to the engine')
+        this.addProblem('runtime', summary, buildRuntimeFixPrompt(result.runtime))
+        this.push('status', '/fix sends open problems to the engine')
       } else {
+        this.clearProblems('runtime')
         this.push('status', 'runtime clean — no console errors, exceptions, or failed requests')
       }
     }
     if (result.a11y && result.a11y.length > 0) {
       this.push('error', `a11y: ${result.a11y.length} finding(s)\n${result.a11y.slice(0, 5).join('\n')}`)
-      this.push('status', '/review folds these into the fix pass')
+      this.addProblem(
+        'a11y',
+        `${result.a11y.length} accessibility finding(s)`,
+        `Fix these accessibility defects found by an automated sweep of the running app:\n\n${result.a11y.join('\n')}\n\nThey are objective defects, not style preferences.`,
+      )
+      this.push('status', '/review folds these into the fix pass · /fix sends them directly')
+    } else if (result.runtime) {
+      this.clearProblems('a11y')
     }
     return result.shots.length > 0 ? result : null
   }
@@ -549,11 +600,30 @@ export class Session {
         }
         break
       }
-      case 'fix':
-        if (!this.pendingFix) {
-          this.push('status', 'nothing to fix — no captured errors or failed gates')
+      case 'fix': {
+        if (this.state.problems.length === 0) {
+          this.push('status', 'nothing to fix — no open problems')
+          break
+        }
+        const index = Number.parseInt(arg, 10)
+        if (arg && Number.isInteger(index)) {
+          const target = this.state.problems[index - 1]
+          if (!target) {
+            this.push('status', `usage: /fix [1–${this.state.problems.length}] — see /problems`)
+            break
+          }
+          this.dispatchFix([target])
         } else {
-          void this.runTurn(this.pendingFix.prompt, this.pendingFix.display)
+          this.dispatchFix([...this.state.problems])
+        }
+        break
+      }
+      case 'problems':
+        if (this.state.problems.length === 0) {
+          this.push('status', 'no open problems')
+        } else {
+          const lines = this.state.problems.map((p, i) => `${i + 1}. [${p.source}] ${p.summary}`)
+          this.push('status', `${lines.join('\n')}\n/fix sends all · /fix <n> targets one`)
         }
         break
       case 'check':
@@ -575,12 +645,10 @@ export class Session {
           this.drainQueue()
           const failures = results.filter((r) => !r.ok)
           if (failures.length > 0) {
-            this.pendingFix = {
-              prompt: buildGatePrompt(failures),
-              display: `⛑ fix failing gates: ${failures.map((f) => f.gate.id).join(', ')}`,
-            }
-            this.push('status', 'type /fix to send failures to the engine')
+            this.addProblem('gates', failures.map((f) => f.gate.id).join(' + '), buildGatePrompt(failures))
+            this.push('status', '/fix sends open problems to the engine · /problems lists them')
           } else {
+            this.clearProblems('gates')
             this.push('status', 'all gates passed')
           }
         })()
@@ -718,7 +786,7 @@ export class Session {
       case 'help':
         this.push(
           'status',
-          '/engine <id> · /model <name> · /mode plan|safe|yolo · /dev · /check (gates) · /fix · /shot · /review [focus] · /variants <2-4> <ask> · /undo · /checkpoints · /restore <n> · /resume · /clear · /quit',
+          '/engine <id> · /model <name> · /mode plan|safe|yolo · /dev · /check (gates) · /problems · /fix [n] · /shot · /review [focus] · /variants <2-4> <ask> · /undo · /checkpoints · /restore <n> · /resume · /clear · /quit',
         )
         break
       case 'quit':
