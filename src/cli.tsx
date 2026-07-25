@@ -64,7 +64,7 @@ program
 program
   .command('doctor')
   .description('Check squint prerequisites and engine availability')
-  .action(() => {
+  .action(async () => {
     const [major] = process.versions.node.split('.')
     const nodeOk = Number(major) >= 20
     console.log(`${nodeOk ? pc.green('✓') : pc.red('✗')} node ${process.versions.node}${nodeOk ? '' : ' (need >= 20)'}`)
@@ -74,6 +74,20 @@ program
       const status = binaryPath ? pc.green('✓') : pc.yellow('○')
       console.log(`${status} ${engine.name}${binaryPath ? '' : pc.dim(` — install: ${engine.install}`)}`)
     }
+
+    const { findChrome } = await import('./preview/chrome.js')
+    const { hasWebSocket } = await import('./preview/cdp.js')
+    const chrome = findChrome()
+    console.log(
+      chrome
+        ? `${pc.green('✓')} Chrome ${pc.dim(chrome)}`
+        : `${pc.yellow('○')} Chrome ${pc.dim('— screenshots and runtime probing disabled')}`,
+    )
+    console.log(
+      hasWebSocket()
+        ? `${pc.green('✓')} WebSocket ${pc.dim('runtime console/network capture available')}`
+        : `${pc.yellow('○')} WebSocket ${pc.dim('— node 22+ enables runtime capture; screenshots still work')}`,
+    )
 
     const available = detected.filter((d) => d.path !== null)
     if (available.length === 0) {
@@ -197,6 +211,7 @@ program.action(() => {
       initialModel={model}
       autoDev={config.autoDev}
       autoFix={config.autoFix}
+      autoProbe={config.autoProbe}
     />,
   )
 })

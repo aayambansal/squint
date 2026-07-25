@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { ensureSquintIgnore } from '../state/state.js'
 import { cdpCapture, hasWebSocket, type RuntimeReport } from './cdp.js'
@@ -84,6 +85,22 @@ function runtimeSection(report: RuntimeReport | undefined): string {
   }
   if (blocks.length === 0) return ''
   return `\n\n## Runtime errors observed while loading the page\n\n${blocks.join('\n\n')}\n\nFix these first — a page that errors is broken regardless of how it looks.`
+}
+
+/**
+ * Load the page once and watch the runtime without taking screenshots —
+ * the cheap post-turn probe. Null when Chrome/WebSocket are unavailable
+ * or the probe itself fails (never blocks the loop).
+ */
+export async function probeRuntime(url: string): Promise<RuntimeReport | null> {
+  const chrome = findChrome()
+  if (!chrome || !hasWebSocket()) return null
+  try {
+    const { report } = await cdpCapture(chrome, url, os.tmpdir(), [], 1500)
+    return report
+  } catch {
+    return null
+  }
 }
 
 /** Fix prompt for runtime errors found without a visual pass. */

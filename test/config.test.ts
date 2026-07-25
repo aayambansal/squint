@@ -67,6 +67,16 @@ describe('setConfigValue', () => {
     expect(config.models?.claude).toBe('claude-sonnet-5')
   })
 
+  it('parses loop toggles as booleans and rejects junk values', () => {
+    const file = path.join(dir, 'c.json')
+    setConfigValue(file, 'autoFix', 'true')
+    setConfigValue(file, 'autoProbe', 'false')
+    const config = loadConfig({ globalFile: file, projectFile: path.join(dir, 'none.json') })
+    expect(config.autoFix).toBe(true)
+    expect(config.autoProbe).toBe(false)
+    expect(() => setConfigValue(file, 'autoDev', 'yes')).toThrow(/must be true or false/)
+  })
+
   it('rejects unknown keys', () => {
     expect(() => setConfigValue(path.join(dir, 'c.json'), 'nope', 'x')).toThrow(/Unknown config key/)
   })
