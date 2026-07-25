@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.3 — 2026-07-26
+
+- Screen-reader narration pass: the AX tree linearized into what assistive tech experiences, judged in /review
+- Registry-aware prompts: components.json repos get their real installed UI components enumerated in every ask
+
 ## 0.3.2 — 2026-07-26
 
 - Harness hooks: .squint/hooks/{on-turn-end,on-pulse-diff,on-problem,on-budget} fire with SQUINT_* env — quality events no engine emits
