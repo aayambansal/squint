@@ -12,6 +12,7 @@ import {
   runtimeSummary,
 } from '../preview/preview.js'
 import { composePrompt } from '../prompt/brief.js'
+import { enrich } from '../prompt/skills.js'
 import { runAgent } from '../runner/run.js'
 import { clearState, loadState, saveState } from '../state/state.js'
 import { restoreSnapshot, type Snapshot, takeSnapshot } from '../vcs/snapshot.js'
@@ -431,7 +432,13 @@ export class Session {
     // Resumable engines keep the brief in session context, so follow-up
     // turns send the raw ask; non-resumable engines get it every turn.
     const isFirstTurn = this.sessionId === undefined
-    const prompt = isFirstTurn ? composePrompt(ask, { cwd: this.opts.cwd, firstTurn: true }) : ask
+    let prompt = isFirstTurn ? composePrompt(ask, { cwd: this.opts.cwd, firstTurn: true }) : ask
+    // Repo rules + keyword-triggered skills ride along on every ask.
+    const enrichment = enrich(this.opts.cwd, ask)
+    if (enrichment.matchedSkills.length > 0) {
+      this.push('status', `skills: ${enrichment.matchedSkills.join(', ')}`)
+    }
+    prompt += enrichment.sections
     await this.runTurn(prompt, ask)
   }
 
