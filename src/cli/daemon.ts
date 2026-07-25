@@ -49,9 +49,33 @@ export function registerDaemon(program: Command): void {
 
   program
     .command('attach')
-    .description('attach this terminal to a running squint daemon')
-    .action(async () => {
+    .description('attach this terminal to a running squint daemon (full TUI; --plain for line mode)')
+    .option('--plain', 'line-mode attach instead of the full TUI')
+    .action(async (opts: { plain?: boolean }) => {
       const cwd = process.cwd()
+      if (!opts.plain) {
+        try {
+          const { RemoteSession } = await import('../daemon/remote.js')
+          const remote = await RemoteSession.connect(cwd)
+          const config = loadConfig(defaultPaths(cwd))
+          const { render } = await import('ink')
+          const { App } = await import('../tui/App.js')
+          const React = await import('react')
+          render(
+            React.createElement(App, {
+              cwd,
+              attachTo: remote,
+              initialEngine: remote.getState().engineId,
+              bell: config.bell,
+              initialTheme: config.theme,
+            }),
+          )
+        } catch {
+          console.error(`no daemon at ${socketPath(cwd)} — start one with: squint serve`)
+          process.exitCode = 1
+        }
+        return
+      }
       let client
       try {
         client = await connectDaemon(socketPath(cwd))
