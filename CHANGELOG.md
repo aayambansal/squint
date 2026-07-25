@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.2 — 2026-07-26
+
+- Harness hooks: .squint/hooks/{on-turn-end,on-pulse-diff,on-problem,on-budget} fire with SQUINT_* env — quality events no engine emits
+- /polish [1-5]: unattended rounds of screenshot → critique → fix
+
 ## 0.3.1 — 2026-07-26
 
 - Perf pulse: LCP/CLS/transfer/request deltas per clean turn — bundle bloat shows the turn it happens
