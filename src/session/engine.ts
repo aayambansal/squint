@@ -15,7 +15,7 @@ import { composePrompt } from '../prompt/brief.js'
 import { enrich } from '../prompt/skills.js'
 import { runAgent } from '../runner/run.js'
 import { clearState, loadState, saveState } from '../state/state.js'
-import { isGitRepo, restoreSnapshot, type Snapshot, takeSnapshot } from '../vcs/snapshot.js'
+import { diffStatSince, isGitRepo, restoreSnapshot, type Snapshot, takeSnapshot } from '../vcs/snapshot.js'
 import { applyVariant, cleanVariants, listVariants, runVariants } from '../variants/variants.js'
 import { screenshotVariants } from '../variants/shots.js'
 import { findChrome } from '../preview/chrome.js'
@@ -371,8 +371,13 @@ export class Session {
     if (result.ok) {
       const cost = result.costUsd !== undefined ? ` · $${result.costUsd.toFixed(2)}` : ''
       const secs = result.durationMs !== undefined ? ` · ${(result.durationMs / 1000).toFixed(0)}s` : ''
-      const work =
-        this.turnEdits > 0
+      // Prefer measured reality (git diff vs this ask's checkpoint) over
+      // tool-call counting; fall back to counts outside git.
+      const checkpoint = this.checkpoints.at(-1)
+      const stat = checkpoint ? diffStatSince(this.opts.cwd, checkpoint.snapshot) : null
+      const work = stat
+        ? ` · ${stat}`
+        : this.turnEdits > 0
           ? ` · ${this.turnEdits} edit${this.turnEdits === 1 ? '' : 's'}`
           : this.turnTools > 0
             ? ` · ${this.turnTools} tool call${this.turnTools === 1 ? '' : 's'}`

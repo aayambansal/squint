@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { isGitRepo, restoreSnapshot, takeSnapshot } from '../src/vcs/snapshot.js'
+import { diffStatSince, isGitRepo, restoreSnapshot, takeSnapshot } from '../src/vcs/snapshot.js'
 
 let dir: string
 
@@ -68,6 +68,14 @@ describe('snapshot/restore', () => {
     // …their scratch file survives, and the agent's file is gone.
     expect(fs.existsSync(path.join(dir, 'wip.txt'))).toBe(true)
     expect(fs.existsSync(path.join(dir, 'agent.txt'))).toBe(false)
+  })
+
+  it('summarizes work since a snapshot as a compact diff stat', () => {
+    const snapshot = takeSnapshot(dir)!
+    expect(diffStatSince(dir, snapshot)).toBeNull() // nothing changed yet
+    fs.writeFileSync(path.join(dir, 'a.txt'), 'changed line\nsecond line\n')
+    const stat = diffStatSince(dir, snapshot)
+    expect(stat).toMatch(/^1 file \+2 −1$/)
   })
 
   it('returns null outside git or without commits', () => {
