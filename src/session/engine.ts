@@ -305,17 +305,34 @@ export class Session {
 
   private turnEdits = 0
   private turnTools = 0
+  private toolStreak = 0
+  private collapsedTools = 0
+
+  /**
+   * Long tool cascades collapse: the first three of a consecutive burst
+   * render, the rest fold into one "+N more" line pushed when the burst
+   * ends — append-only, so the Static transcript stays valid.
+   */
+  private flushToolCollapse(): void {
+    if (this.collapsedTools > 0) {
+      this.push('tool', `+${this.collapsedTools} more tool call${this.collapsedTools === 1 ? '' : 's'}`)
+      this.collapsedTools = 0
+    }
+    this.toolStreak = 0
+  }
 
   private handleEvent = (event: AgentEvent): void => {
     switch (event.type) {
       case 'status':
         this.commitLive()
+        this.flushToolCollapse()
         this.push('status', event.text)
         break
       case 'delta':
         this.setLive(this.live + event.text)
         break
       case 'text':
+        this.flushToolCollapse()
         if (event.streamed) {
           this.live = ''
           this.state = { ...this.state, liveText: '' }
@@ -326,17 +343,24 @@ export class Session {
         break
       case 'thinking':
         this.commitLive()
+        this.flushToolCollapse()
         this.push('thinking', event.text)
         break
       case 'tool': {
         this.commitLive()
         this.turnTools += 1
+        this.toolStreak += 1
         if (/edit|write|patch|apply/i.test(event.name)) this.turnEdits += 1
-        this.push('tool', event.detail ? `${event.name} · ${event.detail}` : event.name)
+        if (this.toolStreak <= 3) {
+          this.push('tool', event.detail ? `${event.name} · ${event.detail}` : event.name)
+        } else {
+          this.collapsedTools += 1
+        }
         break
       }
       case 'error':
         this.commitLive()
+        this.flushToolCollapse()
         this.push('error', event.text)
         break
       case 'result':
@@ -370,6 +394,7 @@ export class Session {
     )
     this.abort = null
     this.commitLive()
+    this.flushToolCollapse()
     if (result.ok) {
       const cost = result.costUsd !== undefined ? ` · $${result.costUsd.toFixed(2)}` : ''
       const secs = result.durationMs !== undefined ? ` · ${(result.durationMs / 1000).toFixed(0)}s` : ''

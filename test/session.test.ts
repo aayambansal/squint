@@ -67,6 +67,17 @@ describe('Session', () => {
     session.dispose()
   })
 
+  it('collapses long tool bursts to first three + a counter', async () => {
+    const script = Array.from({ length: 7 }, (_, i) => `console.log('TOOL:Read${i}')`).join(';') + ";console.log('finished')"
+    vi.spyOn(registry, 'getEngine').mockReturnValue(toolEngine(script))
+    const session = new Session({ cwd: dir, engineId: 'fake' })
+    session.input('do lots of things')
+    await waitFor(session, () => !session.getState().running && session.getState().totals.turns === 1)
+    const tools = session.getState().items.filter((i) => i.role === 'tool').map((i) => i.text)
+    expect(tools).toEqual(['Read0', 'Read1', 'Read2', '+4 more tool calls'])
+    session.dispose()
+  })
+
   it('counts edits per turn in the done line', async () => {
     vi.spyOn(registry, 'getEngine').mockReturnValue(
       toolEngine("console.log('TOOL:Read'); console.log('TOOL:Edit'); console.log('TOOL:Edit'); console.log('all set')"),
