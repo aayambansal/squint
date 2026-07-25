@@ -71,6 +71,8 @@ export interface SessionOptions {
   autoCheck?: boolean
   /** Session budget in USD; crossing it warns (never blocks). */
   budgetUsd?: number
+  /** Auto-run /review when the visual pulse shows a big change. */
+  autoReview?: boolean
   /** Called when a /quit-style command asks the frontend to close. */
   onQuit?: () => void
 }
@@ -100,6 +102,7 @@ export class Session {
   private fixAttempts = 0
   private reviewTipShown = false
   private lastPulse: Buffer | null = null
+  private autoReviewedThisAsk = false
   private readonly startedAt = Date.now()
 
   constructor(private readonly opts: SessionOptions) {
@@ -493,7 +496,22 @@ export class Session {
             this.push('status', '/fix sends open problems to the engine · /problems lists them')
           } else if (probe) {
             this.clearProblems('runtime')
-            await this.visualPulse(probe.pulsePath)
+            const pct = await this.visualPulse(probe.pulsePath)
+            // Substantial visual change + autoReview → the engine looks at
+            // its own work, once per ask.
+            if (this.opts.autoReview && pct !== null && pct >= 10 && !this.autoReviewedThisAsk) {
+              this.autoReviewedThisAsk = true
+              this.push('status', `auto-review: the page changed ${pct.toFixed(0)}% — capturing for self-critique`)
+              this.notify({ running: false })
+              const captureResult = await this.capture()
+              if (captureResult) {
+                await this.runTurn(
+                  buildReviewPrompt(captureResult.shots, undefined, captureResult.runtime, captureResult.a11y),
+                  '👁 auto-review rendered UI',
+                )
+              }
+              return
+            }
           }
         }
         if (!this.reviewTipShown && this.state.devUrl) {
@@ -508,6 +526,7 @@ export class Session {
 
   async submit(ask: string): Promise<void> {
     this.fixAttempts = 0
+    this.autoReviewedThisAsk = false
     // Checkpoint per ask: the snapshot covers this turn plus its fixes.
     const snapshot = takeSnapshot(this.opts.cwd)
     if (snapshot) {
@@ -558,26 +577,27 @@ export class Session {
    * with the previous one and report how much of the page changed.
    * Informational — changes are usually intended; surprises shouldn't be.
    */
-  private async visualPulse(pulsePath: string | undefined): Promise<void> {
-    if (!pulsePath) return
+  private async visualPulse(pulsePath: string | undefined): Promise<number | null> {
+    if (!pulsePath) return null
     let current: Buffer
     try {
       current = (await import('node:fs')).readFileSync(pulsePath)
     } catch {
-      return
+      return null
     }
     const previous = this.lastPulse
     this.lastPulse = current
     if (!previous) {
       this.push('status', 'visual pulse: baseline captured')
-      return
+      return null
     }
     const pct = await comparePulse(previous, current)
-    if (pct === null) return
+    if (pct === null) return null
     this.push(
       'status',
       pct < 0.5 ? 'visual pulse: stable vs last turn' : `visual pulse: ${pct.toFixed(1)}% of the page changed vs last turn`,
     )
+    return pct
   }
 
   /** Screenshot the running app (and watch its runtime where CDP is available). */

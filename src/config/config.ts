@@ -20,6 +20,8 @@ const ConfigSchema = z.object({
   bell: z.boolean().optional(),
   /** Session budget in USD; crossing it warns (never blocks). */
   budgetUsd: z.number().positive().optional(),
+  /** Auto-run /review when the visual pulse shows a big change (default off). */
+  autoReview: z.boolean().optional(),
   /** TUI theme name (amber, ocean, moss, rose, mono). */
   theme: z.string().optional(),
 })
@@ -87,6 +89,7 @@ export function setConfigValue(file: string, key: string, value: string): Squint
     key === 'autoFix' ||
     key === 'autoProbe' ||
     key === 'autoCheck' ||
+    key === 'autoReview' ||
     key === 'bell'
   ) {
     if (value !== 'true' && value !== 'false') {
@@ -105,7 +108,7 @@ export function setConfigValue(file: string, key: string, value: string): Squint
     next = { ...current, models: { ...current.models, [engineId]: value } }
   } else {
     throw new Error(
-      `Unknown config key "${key}". Supported: engine, theme, autoDev, autoFix, autoProbe, autoCheck, bell, budgetUsd, models.<engineId>`,
+      `Unknown config key "${key}". Supported: engine, theme, autoDev, autoFix, autoProbe, autoCheck, autoReview, bell, budgetUsd, models.<engineId>`,
     )
   }
   fs.mkdirSync(path.dirname(file), { recursive: true })
