@@ -70,6 +70,24 @@ describe('enrich', () => {
     expect(enrich(os.tmpdir(), 'x').sections).toBe('')
   })
 
+  it('injects the shadcn component inventory when components.json exists', () => {
+    fs.writeFileSync(
+      path.join(dir, 'components.json'),
+      JSON.stringify({ aliases: { components: '@/components' } }),
+    )
+    const uiDir = path.join(dir, 'src', 'components', 'ui')
+    fs.mkdirSync(uiDir, { recursive: true })
+    fs.writeFileSync(path.join(uiDir, 'button.tsx'), '')
+    fs.writeFileSync(path.join(uiDir, 'dialog.tsx'), '')
+    fs.writeFileSync(path.join(uiDir, 'notes.md'), '')
+
+    const enriched = enrich(dir, 'anything')
+    expect(enriched.sections).toContain('Installed UI components')
+    expect(enriched.sections).toContain('button · dialog')
+    expect(enriched.sections).not.toContain('notes')
+    expect(enriched.sections).toContain('shadcn@latest add')
+  })
+
   it('injects locked paths as a hard constraint, skipping comments', () => {
     fs.mkdirSync(path.join(dir, '.squint'), { recursive: true })
     fs.writeFileSync(path.join(dir, '.squint', 'locks'), '# do not touch\nsrc/legacy/**\npackage-lock.json\n\n')

@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { inventorySection, loadComponentInventory } from './registry.js'
 
 /**
  * Repo skills: deterministic, zero-embedding context routing (the
@@ -88,11 +89,14 @@ export interface Enrichment {
   matchedSkills: string[]
 }
 
-/** Rules (always) + locks (always) + trigger-matched skills, as prompt sections. */
+/** Rules + locks + component inventory (always) + trigger-matched skills. */
 export function enrich(cwd: string, ask: string): Enrichment {
   const parts: string[] = []
   const rules = loadRules(cwd)
   if (rules) parts.push(`## Project rules (always apply)\n\n${rules}`)
+  // Registry awareness: composing from real components beats inventing.
+  const inventory = loadComponentInventory(cwd)
+  if (inventory) parts.push(inventorySection(inventory))
   const locks = loadLocks(cwd)
   if (locks.length > 0) {
     parts.push(
