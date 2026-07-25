@@ -79,6 +79,23 @@ describe('Session', () => {
     session.dispose()
   })
 
+  it('exports the transcript with /save', async () => {
+    vi.spyOn(registry, 'getEngine').mockReturnValue(fakeEngine("console.log('**bold** reply')"))
+    const session = new Session({ cwd: dir, engineId: 'fake' })
+    session.input('write something')
+    await waitFor(session, () => session.getState().totals.turns === 1)
+    session.input('/save')
+    await waitFor(session, () => session.getState().items.some((i) => i.text.includes('saved transcript')))
+    const transcriptsDir = path.join(dir, '.squint', 'transcripts')
+    const files = fs.readdirSync(transcriptsDir)
+    expect(files.length).toBe(1)
+    const content = fs.readFileSync(path.join(transcriptsDir, files[0]!), 'utf8')
+    expect(content).toContain('## ❯ write something')
+    expect(content).toContain('**bold** reply')
+    expect(content).toContain('> session:')
+    session.dispose()
+  })
+
   it('cycles run modes and accepts /mode', () => {
     const session = new Session({ cwd: dir, engineId: 'claude' })
     expect(session.getState().mode).toBe('safe')

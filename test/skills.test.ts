@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { enrich, loadRules, loadSkills, matchSkills, parseSkill } from '../src/prompt/skills.js'
+import { enrich, loadLocks, loadRules, loadSkills, matchSkills, parseSkill } from '../src/prompt/skills.js'
 
 let dir: string
 
@@ -68,5 +68,15 @@ describe('enrich', () => {
 
     expect(loadRules(os.tmpdir())).toBeNull()
     expect(enrich(os.tmpdir(), 'x').sections).toBe('')
+  })
+
+  it('injects locked paths as a hard constraint, skipping comments', () => {
+    fs.mkdirSync(path.join(dir, '.squint'), { recursive: true })
+    fs.writeFileSync(path.join(dir, '.squint', 'locks'), '# do not touch\nsrc/legacy/**\npackage-lock.json\n\n')
+    expect(loadLocks(dir)).toEqual(['src/legacy/**', 'package-lock.json'])
+    const enriched = enrich(dir, 'anything')
+    expect(enriched.sections).toContain('Locked files (hard constraint)')
+    expect(enriched.sections).toContain('- src/legacy/**')
+    expect(enriched.sections).toContain('stop and explain instead')
   })
 })

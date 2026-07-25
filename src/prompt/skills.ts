@@ -70,16 +70,37 @@ export function matchSkills(skills: Skill[], ask: string): Skill[] {
   return skills.filter((skill) => skill.triggers.some((t) => haystack.includes(t)))
 }
 
+/** Paths the engine must never touch: .squint/locks, one per line. */
+export function loadLocks(cwd: string): string[] {
+  try {
+    return fs
+      .readFileSync(path.join(cwd, '.squint', 'locks'), 'utf8')
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0 && !line.startsWith('#'))
+  } catch {
+    return []
+  }
+}
+
 export interface Enrichment {
   sections: string
   matchedSkills: string[]
 }
 
-/** Rules (always) + trigger-matched skills, as prompt sections. */
+/** Rules (always) + locks (always) + trigger-matched skills, as prompt sections. */
 export function enrich(cwd: string, ask: string): Enrichment {
   const parts: string[] = []
   const rules = loadRules(cwd)
   if (rules) parts.push(`## Project rules (always apply)\n\n${rules}`)
+  const locks = loadLocks(cwd)
+  if (locks.length > 0) {
+    parts.push(
+      `## Locked files (hard constraint)\n\nNever modify these paths, no matter what the task seems to need:\n${locks
+        .map((l) => `- ${l}`)
+        .join('\n')}\nIf the task appears to require changing them, stop and explain instead.`,
+    )
+  }
   const matched = matchSkills(loadSkills(cwd), ask)
   for (const skill of matched) {
     parts.push(`## Project notes: ${skill.name}\n\n${skill.body}`)
