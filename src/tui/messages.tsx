@@ -38,13 +38,14 @@ export function WorkingLine({ startedAt }: { startedAt: number }) {
 /** Distinct glyph per tool family; ⚙ for the unrecognized rest. */
 export function toolGlyph(text: string): string {
   const name = text.split(/[\s·]/, 1)[0]?.toLowerCase() ?? ''
+  // "todo" outranks "write": TodoWrite is a todo tool, not an editor.
+  if (name.includes('todo')) return '☰'
   if (name.includes('read') || name.includes('view') || name.includes('cat')) return '⊙'
   if (name.includes('edit') || name.includes('write') || name.includes('patch') || name.includes('apply')) return '✎'
   if (name.includes('bash') || name.includes('shell') || name.includes('exec') || name.includes('command')) return '$'
   if (name.includes('grep') || name.includes('glob') || name.includes('search') || name.includes('find')) return '⌕'
   if (name.includes('web') || name.includes('fetch') || name.includes('http')) return '⇣'
   if (name.includes('task') || name.includes('agent')) return '◇'
-  if (name.includes('todo')) return '☰'
   return '⚙'
 }
 
