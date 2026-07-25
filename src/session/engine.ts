@@ -127,6 +127,11 @@ export class Session {
     this.abort?.abort()
   }
 
+  /** Frontend-originated status line (view-level commands like /theme). */
+  note(text: string): void {
+    this.push('status', text)
+  }
+
   /**
    * Route one line of user input: slash command or an ask for the engine.
    * Asks arriving mid-turn queue up and dispatch in order once the

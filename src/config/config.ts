@@ -14,6 +14,8 @@ const ConfigSchema = z.object({
   autoFix: z.boolean().optional(),
   /** Probe the running app's runtime after each clean turn (default on). */
   autoProbe: z.boolean().optional(),
+  /** TUI theme name (amber, ocean, moss, rose, mono). */
+  theme: z.string().optional(),
 })
 
 export type SquintConfig = z.infer<typeof ConfigSchema>
@@ -72,8 +74,8 @@ export function resolveModel(config: SquintConfig, engineId: string, override?: 
 export function setConfigValue(file: string, key: string, value: string): SquintConfig {
   const current = readConfigFile(file)
   let next: SquintConfig
-  if (key === 'engine') {
-    next = { ...current, engine: value }
+  if (key === 'engine' || key === 'theme') {
+    next = { ...current, [key]: value }
   } else if (key === 'autoDev' || key === 'autoFix' || key === 'autoProbe') {
     if (value !== 'true' && value !== 'false') {
       throw new Error(`"${key}" must be true or false`)
@@ -84,7 +86,9 @@ export function setConfigValue(file: string, key: string, value: string): Squint
     if (!engineId) throw new Error('Usage: squint config set models.<engineId> <model>')
     next = { ...current, models: { ...current.models, [engineId]: value } }
   } else {
-    throw new Error(`Unknown config key "${key}". Supported: engine, autoDev, autoFix, autoProbe, models.<engineId>`)
+    throw new Error(
+      `Unknown config key "${key}". Supported: engine, theme, autoDev, autoFix, autoProbe, models.<engineId>`,
+    )
   }
   fs.mkdirSync(path.dirname(file), { recursive: true })
   fs.writeFileSync(file, JSON.stringify(next, null, 2) + '\n')

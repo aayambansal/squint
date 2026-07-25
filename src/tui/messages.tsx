@@ -1,6 +1,6 @@
 import { Text } from 'ink'
 import { useEffect, useState } from 'react'
-import { theme } from './theme.js'
+import { useTheme } from './themeContext.js'
 
 export interface Message {
   id: number
@@ -11,6 +11,7 @@ export interface Message {
 const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
 
 export function WorkingLine({ startedAt }: { startedAt: number }) {
+  const theme = useTheme()
   const [frame, setFrame] = useState(0)
   const [elapsed, setElapsed] = useState(0)
   useEffect(() => {
@@ -32,6 +33,7 @@ export function WorkingLine({ startedAt }: { startedAt: number }) {
 }
 
 export function MessageLine({ message }: { message: Message }) {
+  const theme = useTheme()
   switch (message.role) {
     case 'user':
       return (
