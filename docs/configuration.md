@@ -43,6 +43,7 @@ Hand-authored (commit these):
 | `locks` | one path per line the engine must never modify |
 | `hooks/` | executables fired on quality events (see [loops](./loops.md#hooks)) |
 | `routes` | one path per line; `/shot` and `/review` cover them beyond the root |
+| `flows/` | declared user journeys replayed by `/flows` (see [loops](./loops.md#flows-and-the-score)) |
 | `config.json` | the project config layer |
 
 Working files (auto-gitignored by squint): `preview/` (screenshots), `state.json`
