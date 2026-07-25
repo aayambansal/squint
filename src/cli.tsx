@@ -85,6 +85,37 @@ program
   })
 
 program
+  .command('init')
+  .description('Scaffold a new Vite + React + TS + Tailwind app with token-first CSS')
+  .argument('[dir]', 'target directory', '.')
+  .option('--force', 'write into a non-empty directory')
+  .option('--no-install', 'skip npm install')
+  .action(async (dir: string, options: { force?: boolean; install: boolean }) => {
+    const { installDependencies, writeTemplate } = await import('./scaffold/init.js')
+    let result
+    try {
+      result = writeTemplate(dir, { force: options.force })
+    } catch (err) {
+      console.error(pc.red(`✗ ${err instanceof Error ? err.message : String(err)}`))
+      process.exitCode = 1
+      return
+    }
+    console.log(pc.green(`✓ scaffolded ${result.files.length} files in ${result.dir}`))
+    if (options.install) {
+      console.log(pc.dim('installing dependencies…'))
+      const ok = await installDependencies(result.dir)
+      if (!ok) {
+        console.error(pc.red('✗ npm install failed — run it manually'))
+        process.exitCode = 1
+        return
+      }
+    }
+    const cd = result.dir === '.' ? '' : `cd ${result.dir} && `
+    console.log(`\nNext: ${pc.bold(`${cd}${options.install ? '' : 'npm install && '}squint`)}`)
+    console.log(pc.dim('then describe what to build — /dev starts the preview server'))
+  })
+
+program
   .command('shot')
   .description('Screenshot a running app at mobile/tablet/desktop viewports')
   .argument('<url>', 'URL of the running app (e.g. http://localhost:5173)')
