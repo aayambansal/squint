@@ -75,6 +75,15 @@ export function detectGates(cwd: string): Gate[] {
   return gates
 }
 
+/**
+ * The inner-loop subset: deterministic, seconds-fast checks worth running
+ * after every single turn (dyad runs exactly this pre-loop). Slow gates
+ * (test, build) stay behind the explicit /check.
+ */
+export function detectFastGates(cwd: string): Gate[] {
+  return detectGates(cwd).filter((gate) => gate.id === 'typecheck' || gate.id === 'lint')
+}
+
 const TAIL_LINES = 40
 const GATE_TIMEOUT_MS = 5 * 60 * 1000
 

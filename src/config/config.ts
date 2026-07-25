@@ -14,6 +14,8 @@ const ConfigSchema = z.object({
   autoFix: z.boolean().optional(),
   /** Probe the running app's runtime after each clean turn (default on). */
   autoProbe: z.boolean().optional(),
+  /** Run typecheck+lint after every turn (default on where detected). */
+  autoCheck: z.boolean().optional(),
   /** TUI theme name (amber, ocean, moss, rose, mono). */
   theme: z.string().optional(),
 })
@@ -76,7 +78,7 @@ export function setConfigValue(file: string, key: string, value: string): Squint
   let next: SquintConfig
   if (key === 'engine' || key === 'theme') {
     next = { ...current, [key]: value }
-  } else if (key === 'autoDev' || key === 'autoFix' || key === 'autoProbe') {
+  } else if (key === 'autoDev' || key === 'autoFix' || key === 'autoProbe' || key === 'autoCheck') {
     if (value !== 'true' && value !== 'false') {
       throw new Error(`"${key}" must be true or false`)
     }
@@ -87,7 +89,7 @@ export function setConfigValue(file: string, key: string, value: string): Squint
     next = { ...current, models: { ...current.models, [engineId]: value } }
   } else {
     throw new Error(
-      `Unknown config key "${key}". Supported: engine, theme, autoDev, autoFix, autoProbe, models.<engineId>`,
+      `Unknown config key "${key}". Supported: engine, theme, autoDev, autoFix, autoProbe, autoCheck, models.<engineId>`,
     )
   }
   fs.mkdirSync(path.dirname(file), { recursive: true })

@@ -29,6 +29,7 @@ export interface AppProps {
   autoDev?: boolean
   autoFix?: boolean
   autoProbe?: boolean
+  autoCheck?: boolean
   initialTheme?: string
 }
 
@@ -37,7 +38,16 @@ export interface AppProps {
  * the Static scrollback, the live region below it, and owns nothing but
  * input editing and key routing.
  */
-export function App({ cwd, initialEngine, initialModel, autoDev, autoFix, autoProbe, initialTheme }: AppProps) {
+export function App({
+  cwd,
+  initialEngine,
+  initialModel,
+  autoDev,
+  autoFix,
+  autoProbe,
+  autoCheck,
+  initialTheme,
+}: AppProps) {
   const { exit } = useApp()
   const [themeName, setThemeName] = useState(() => resolveTheme(initialTheme).name)
   const theme = resolveTheme(themeName)
@@ -50,6 +60,7 @@ export function App({ cwd, initialEngine, initialModel, autoDev, autoFix, autoPr
       autoDev,
       autoFix,
       autoProbe,
+      autoCheck,
       onQuit: () => exit(),
     })
   }
