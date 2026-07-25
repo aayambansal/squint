@@ -18,6 +18,7 @@ Two layers, project wins over global, `models` maps merge key-by-key:
 | `autoFix` | bool | `false` | send open problems back to the engine automatically, max 2 attempts per ask |
 | `autoCheck` | bool | `true` | run typecheck + lint after every turn |
 | `autoProbe` | bool | `true` | load the page headlessly after clean turns (runtime errors + visual pulse) |
+| `autoReview` | bool | `false` | when the visual pulse shows 10%+ change after a clean turn, run the self-critique review automatically (once per ask) |
 | `bell` | bool | `true` | terminal bell when a turn finishes |
 | `budgetUsd` | number | off | one-time warning when session spend crosses this |
 
