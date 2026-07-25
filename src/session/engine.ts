@@ -261,6 +261,18 @@ export class Session {
         this.push('status', 'queue cleared')
         return
       }
+      const drop = /^\/queue drop (\d+)$/.exec(value)
+      if (drop) {
+        const index = Number.parseInt(drop[1]!, 10) - 1
+        if (index >= 0 && index < this.state.queue.length) {
+          const removed = this.state.queue[index]!
+          this.notify({ queue: this.state.queue.filter((_, i) => i !== index) })
+          this.push('status', `dropped from queue: ${removed}`)
+        } else {
+          this.push('status', `queue has ${this.state.queue.length} item(s) — /queue drop <1-${Math.max(this.state.queue.length, 1)}>`)
+        }
+        return
+      }
       this.notify({ queue: [...this.state.queue, value] })
       return
     }
