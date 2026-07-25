@@ -252,7 +252,11 @@ export function App({
           {state.engineId}
           {state.model ? ` · ${state.model}` : ''} · {path.basename(cwd)}
           {devBadge}
-          {totalsBadge} · shift+tab mode · /help
+          {totalsBadge}
+          {state.problems.length > 0 && (
+            <Text color={theme.error}> · {state.problems.length} problem{state.problems.length === 1 ? '' : 's'}</Text>
+          )}
+          {' '}· shift+tab mode · /help
         </Text>
       </Box>
     </Box>
