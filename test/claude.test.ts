@@ -95,6 +95,28 @@ describe('claude parser', () => {
     ])
   })
 
+  it('surfaces failing tool results, stays quiet on successes', () => {
+    const parse = claude.createParser!()
+    expect(
+      parse(
+        JSON.stringify({
+          type: 'user',
+          message: {
+            content: [{ type: 'tool_result', tool_use_id: 't1', is_error: true, content: 'ENOENT: no such file' }],
+          },
+        }),
+      ),
+    ).toEqual([{ type: 'status', text: '⚠ tool error · ENOENT: no such file' }])
+    expect(
+      parse(
+        JSON.stringify({
+          type: 'user',
+          message: { content: [{ type: 'tool_result', tool_use_id: 't2', content: 'fine' }] },
+        }),
+      ),
+    ).toEqual([])
+  })
+
   it('treats non-json lines as text instead of crashing', () => {
     const parse = claude.createParser!()
     expect(parse('plain output')).toEqual([{ type: 'text', text: 'plain output' }])
