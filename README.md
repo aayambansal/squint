@@ -167,7 +167,12 @@ squint doctor --probe             # run every engine end to end, verify auth act
   pixel-compared with the last (drift as a number), load performance is tracked with
   deltas (`perf: LCP 812ms (+420ms)`), hardcoded colors get pointed at the nearest
   design token, and the mechanical anti-slop sweep flags generic-AI tells as
-  distinctiveness debt in `/review`.
+  distinctiveness debt in `/review`. The phantom-class check diffs every DOM class
+  against the compiled CSS — hallucinated utilities surface as named problems instead
+  of silently unstyled elements.
+- **The design ledger**: `/decide` (plus chosen variants, rollbacks, accepted
+  sandboxes) appends to a committed `.squint/design-log.jsonl`; recent decisions ride
+  into every ask so they stop getting silently undone between sessions.
 - **`/btw <question>`** asks about the codebase read-only without touching the main
   thread's context. `.squint/locks` lists paths the engine must never touch; `/save`
   exports the transcript as markdown.
