@@ -151,9 +151,12 @@ squint doctor --probe             # run every engine end to end, verify auth act
   `/fix <n>` targets one. The footer counts what's open.
 - **Variants without leaving**: `/variants 3 <ask>` runs parallel explorations with
   streaming per-family status; `/variants apply <id>` keeps the winner.
-- **Commands**: `/dev` `/check` `/problems` `/fix [n]` `/shot` `/review [focus]`
-  `/variants` `/undo` `/checkpoints` `/restore <n>` `/mode` `/theme` `/resume`
-  `/engine <id>` `/model <name>` `/clear`.
+- **Commands**: type `/` and matching commands appear with descriptions; tab completes.
+  `/dev` `/check` `/problems` `/fix [n]` `/shot` `/review [focus]` `/variants` `/undo`
+  `/checkpoints` `/restore <n>` `/mode` `/theme` `/copy` `/save` `/resume` `/clear`.
+- **Visual pulse**: every clean turn is screenshotted and pixel-compared with the last —
+  drift shows up as a number, not a surprise. `.squint/locks` lists paths the engine must
+  never touch; `/save` exports the transcript as markdown.
 - Assistant output renders as markdown; the done line measures real work via git
   (`3 files +42 −7`); the footer tracks session turns and cost; a bell rings when a
   turn finishes.
