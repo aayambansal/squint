@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.8 — 2026-07-26
+
+- Reward-hacking sentinel: deterministic gate-evasion detection per turn (deleted tests, added skips, @ts-ignore/eslint-disable, shrunken repo checks, locked-path touches) — reported to the human with an /undo pointer and an on-sentinel hook, never auto-fixed
+- LoAF jank attribution: main-thread frames ≥50ms named by function and file, provoked by a scripted scroll; rides into /review with orders to fix the work, not remove the animation
+- Element-attributed pulse diffs: the visual pulse now says WHAT changed — changed regions cluster and hit-test against the live page ("<nav.top-nav> (Shell): 1280×128 region changed")
+
 ## 0.4.7 — 2026-07-26
 
 - Detachable sessions: `squint serve` owns the session on a unix socket; `squint attach` joins with the full TUI (`--plain` for line mode) — first client drives, later attaches observe, the oldest observer inherits on detach; crash-proof and ssh-friendly

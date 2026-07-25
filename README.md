@@ -174,6 +174,9 @@ squint doctor --probe             # run every engine end to end, verify auth act
   flagged from the live page, and on Next 16+ the framework's own `/_next/mcp`
   channel feeds structured errors straight into the fix loop. `/context` itemizes
   the injected-context bill per source, with staleness warnings.
+- **The sentinel**: gate evasion (deleted tests, added skips, suppressed
+  diagnostics, weakened checks, locked-path touches) detected deterministically per
+  turn and reported to you — never sent back to the engine that did it.
 - **Detachable sessions**: `squint serve` owns the session on a unix socket;
   `squint attach` joins from any terminal (observer seats for teammates, driver
   seat inherited on detach). Crash-proof, ssh-friendly, no cloud.

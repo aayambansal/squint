@@ -46,8 +46,10 @@ restart; a second crash is a human's job.
 
 When the sweep is clean, squint loads the page headlessly (~2s, CDP) and catches what
 the server never prints: blank pages, uncaught exceptions, console errors, failed
-requests. `/shot` and `/review` add the accessibility sweep (alt text, labels,
-accessible names, heading order, tap targets) and cover `.squint/routes`.
+requests. Long-animation-frame jank gets attributed by name — `101ms frame —
+onScroll @ Carousel.tsx` — provoked by a scripted scroll, so main-thread cost lands on
+the function that spends it. `/shot` and `/review` add the accessibility sweep (alt
+text, labels, accessible names, heading order, tap targets) and cover `.squint/routes`.
 
 The probe also runs the **phantom-class check**: every class token in the DOM is diffed
 against the compiled stylesheet's selectors. Present in the markup but absent from the
@@ -71,8 +73,10 @@ as advisories in `/review`. On React dev pages the **fiber probe** walks
 ## 4. Visual pulse + `autoReview` (pulse always; review default off)
 
 Every clean probe screenshots the page and pixel-compares it with the previous turn
-(inside Chrome, sampled). Drift shows as a number: `visual pulse: 7.3% of the page
-changed vs last turn`. With `autoReview true`, a change of 10%+ triggers the full
+(inside Chrome, sampled). Drift shows as a number and, when the dev server runs, as
+element-attributed sentences — changed regions cluster and hit-test against the live
+page, so the pulse says `<nav.top-nav> (Shell): 1280×128 region changed`, not just
+`7.3%`. With `autoReview true`, a change of 10%+ triggers the full
 self-critique review automatically, once per ask.
 
 ## The fix cycle
@@ -106,6 +110,16 @@ make alone (a redesign direction, reversing a decision on record), write
 screenshot inline on capable terminals — and blocks on your verdict: `/yes [note]`
 approves, `/no [note]` rejects, either way the outcome joins the design ledger and
 rides back to the engine as the next message.
+
+## The sentinel
+
+Verification loops shift the failure mode from bad output to gate evasion: delete the
+failing test, skip it, suppress the diagnostic, water down the check that caught you.
+The sentinel diffs every turn against its checkpoint for exactly those behaviors —
+test deletions, added `.skip`s, `@ts-ignore`/`eslint-disable`, shrunken
+`.squint/checks`, any touch of a locked path — and reports to *you*, loudly, with an
+`/undo` pointer and an `on-sentinel` hook. Sentinel findings never enter auto-fix:
+sending "you weakened a gate" back to the thing that weakened it audits nothing.
 
 ## The design ledger
 
