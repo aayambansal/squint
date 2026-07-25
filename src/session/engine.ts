@@ -535,6 +535,26 @@ export class Session {
         } catch {
           // never blocks the loop
         }
+        // Version-aware rule-packs: v3-era Tailwind in a v4 project (and
+        // retired Vite idioms) caught at gate time with the rename in hand.
+        try {
+          const { rulePackSummary, scanRulePacks } = await import('../quality/rulepacks.js')
+          const findings = scanRulePacks(this.execCwd(), checkpoint.snapshot.stashHash ?? 'HEAD')
+          const hard = findings.filter((f) => f.hard)
+          if (hard.length > 0) {
+            this.addProblem(
+              'gates',
+              `${hard.length} class(es)/idiom(s) from an older toolchain major\n${rulePackSummary(hard)}`,
+              `This project's toolchain is newer than the patterns just written. Apply the exact renames below — do not downgrade dependencies or add compatibility configs:\n${rulePackSummary(hard)}`,
+            )
+          }
+          const soft = findings.filter((f) => !f.hard)
+          if (soft.length > 0) {
+            this.push('status', `renamed-scale traps (verify intent):\n${rulePackSummary(soft)}`)
+          }
+        } catch {
+          // never blocks the loop
+        }
       }
       runHook(this.opts.cwd, 'on-turn-end', {
         cost: String(result.costUsd ?? 0),
