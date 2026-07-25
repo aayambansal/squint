@@ -3,6 +3,7 @@ import { InkPictureProvider } from 'ink-picture'
 import path from 'node:path'
 import { useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { completeCommand } from '../session/commands.js'
+import type { SessionHandle } from '../daemon/remote.js'
 import { Session } from '../session/engine.js'
 import {
   backspace,
@@ -26,6 +27,8 @@ import { resolveTheme, THEMES } from './theme.js'
 import { ThemeProvider } from './themeContext.js'
 
 export interface AppProps {
+  /** Attach to an existing (daemon) session instead of creating one. */
+  attachTo?: SessionHandle
   cwd: string
   initialEngine: string
   initialModel?: string
@@ -58,11 +61,13 @@ export function App({
   bell,
   budgetUsd,
   initialTheme,
+  attachTo,
 }: AppProps) {
   const { exit } = useApp()
   const [themeName, setThemeName] = useState(() => resolveTheme(initialTheme).name)
   const theme = resolveTheme(themeName)
-  const sessionRef = useRef<Session | null>(null)
+  const sessionRef = useRef<Session | SessionHandle | null>(null)
+  if (!sessionRef.current && attachTo) sessionRef.current = attachTo
   if (!sessionRef.current) {
     sessionRef.current = new Session({
       cwd,

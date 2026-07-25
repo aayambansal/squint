@@ -14,7 +14,7 @@ import { Session, type SessionOptions } from '../session/engine.js'
  * Remote use is ssh -L away, no cloud in the loop.
  */
 export interface DaemonMessage {
-  type: 'hello' | 'state' | 'denied' | 'input' | 'command' | 'interrupt' | 'ping'
+  type: 'hello' | 'state' | 'denied' | 'input' | 'command' | 'interrupt' | 'cycleMode' | 'ping'
   [key: string]: unknown
 }
 
@@ -80,6 +80,7 @@ export function startDaemon(opts: SessionOptions): Promise<Daemon> {
         if (msg.type === 'input' && typeof msg.text === 'string') session.input(msg.text)
         else if (msg.type === 'command' && typeof msg.text === 'string') session.command(msg.text)
         else if (msg.type === 'interrupt') session.interrupt()
+        else if (msg.type === 'cycleMode') session.cycleMode()
       }
     })
 
