@@ -86,10 +86,11 @@ From source: `git clone https://github.com/aayambansal/squint.git && cd squint &
    and catches what the server never prints: blank pages, exceptions, failed requests.
 5. **The agent looks at its work.** `/review` screenshots mobile/tablet/desktop and
    re-prompts the engine to critique what it can see — then fix it.
-6. **Gates keep it honest.** `/check` runs typecheck, lint, test, build — failures come
-   back with orders not to weaken the checks.
-7. **Everything is reversible.** Each ask is snapshotted via git plumbing; `/undo` reverts
-   the whole turn while your own uncommitted work survives.
+6. **Gates keep it honest.** Typecheck + lint run automatically after *every* turn and
+   auto-fix (capped); `/check` adds tests and the build — failures come back with orders
+   not to weaken the checks.
+7. **Everything is reversible.** Every ask records a checkpoint; `/undo` pops the last,
+   `/restore <n>` rewinds files to any earlier point — your own uncommitted work survives.
 8. **Point at things.** Alt+S in the browser, click any element, and a self-locating
    reference lands on your clipboard to paste into squint.
 9. **Explore in parallel.** `squint variants gen 3 "<ask>"` builds the same ask three ways —
@@ -129,11 +130,24 @@ squint config set engine claude
 squint config set models.claude claude-sonnet-5
 squint config set autoDev true    # dev server starts with the TUI
 squint config set autoFix true    # errors auto-route back (max 2 tries)
+squint config set autoCheck false # skip the per-turn typecheck+lint pass
+squint config set theme ocean     # amber · ocean · moss · rose · mono
+squint config set bell false      # no bell on turn completion
 squint doctor                     # engines + Chrome + WebSocket check
 ```
 
-Inside the TUI: `/dev` `/check` `/fix` `/shot` `/review [focus]` `/undo` `/resume`
-`/engine <id>` `/model <name>` `/clear` — `Esc` interrupts, arrows recall history.
+**Inside the TUI:**
+
+- **Modes**: `shift+tab` cycles `safe` (edits auto-approved) → `plan` (read-only
+  investigation) → `yolo` (no friction), mapped to each engine's native permission flags.
+- **Type ahead**: keep typing while the agent works — Enter queues asks that dispatch in
+  order; `/queue clear` drops them. `Esc` interrupts the current turn.
+- **Editing**: a real line editor — arrows move, `alt+←/→` jump words, `ctrl+a/e/k/u/w`,
+  `↑/↓` history. `ctrl+c` twice exits with a session summary.
+- **Commands**: `/dev` `/check` `/fix` `/shot` `/review [focus]` `/undo` `/checkpoints`
+  `/restore <n>` `/mode` `/theme` `/resume` `/engine <id>` `/model <name>` `/clear`.
+- Assistant output renders as markdown; the footer tracks session turns and cost; a bell
+  rings when a turn finishes.
 
 ## Design directions
 
