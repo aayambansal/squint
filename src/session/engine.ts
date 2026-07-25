@@ -901,6 +901,52 @@ export class Session {
         }
         break
       }
+      case 'find': {
+        if (!arg) {
+          this.push('status', 'usage: /find <term> — searches this session and saved transcripts')
+          break
+        }
+        const needle = arg.toLowerCase()
+        const matches: string[] = []
+        for (const item of this.state.items) {
+          if ((item.role === 'user' || item.role === 'assistant') && item.text.toLowerCase().includes(needle)) {
+            const line = item.text.split('\n').find((l) => l.toLowerCase().includes(needle)) ?? item.text
+            matches.push(`[live] ${item.role === 'user' ? '❯ ' : ''}${line.trim().slice(0, 90)}`)
+            if (matches.length >= 8) break
+          }
+        }
+        if (matches.length < 8) {
+          void (async () => {
+            try {
+              const fs = await import('node:fs')
+              const path = await import('node:path')
+              const dir = path.join(this.opts.cwd, '.squint', 'transcripts')
+              const files = fs.readdirSync(dir).filter((f) => f.endsWith('.md')).sort().reverse().slice(0, 20)
+              for (const file of files) {
+                if (matches.length >= 8) break
+                const text = fs.readFileSync(path.join(dir, file), 'utf8')
+                for (const line of text.split('\n')) {
+                  if (line.toLowerCase().includes(needle)) {
+                    matches.push(`[${file.replace(/\.md$/, '')}] ${line.trim().slice(0, 90)}`)
+                    break // one hit per transcript keeps results scannable
+                  }
+                }
+              }
+            } catch {
+              // no saved transcripts
+            }
+            this.push(
+              'status',
+              matches.length > 0
+                ? `${matches.join('\n')}\n/checkpoints can rewind · /save archives this session`
+                : `no matches for "${arg}"`,
+            )
+          })()
+        } else {
+          this.push('status', matches.join('\n'))
+        }
+        break
+      }
       case 'save': {
         void (async () => {
           const fs = await import('node:fs')

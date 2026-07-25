@@ -90,6 +90,26 @@ describe('Session', () => {
     session.dispose()
   })
 
+  it('finds matches in the live session and saved transcripts', async () => {
+    vi.spyOn(registry, 'getEngine').mockReturnValue(fakeEngine("console.log('the navbar uses flex')"))
+    const session = new Session({ cwd: dir, engineId: 'fake' })
+    session.input('style the navbar')
+    await waitFor(session, () => session.getState().totals.turns === 1)
+
+    const transcriptsDir = path.join(dir, '.squint', 'transcripts')
+    fs.mkdirSync(transcriptsDir, { recursive: true })
+    fs.writeFileSync(path.join(transcriptsDir, '2026-07-25T01-00-00.md'), '## ❯ old navbar work\nolder session\n')
+
+    session.input('/find navbar')
+    await waitFor(session, () => session.getState().items.some((i) => i.text.includes('[live]')))
+    const listing = session.getState().items.at(-1)!.text
+    expect(listing).toContain('[live] ❯ style the navbar')
+    expect(listing).toContain('[2026-07-25T01-00-00] ## ❯ old navbar work')
+    session.input('/find zzznope')
+    await waitFor(session, () => session.getState().items.some((i) => i.text.includes('no matches')))
+    session.dispose()
+  })
+
   it('exports the transcript with /save', async () => {
     vi.spyOn(registry, 'getEngine').mockReturnValue(fakeEngine("console.log('**bold** reply')"))
     const session = new Session({ cwd: dir, engineId: 'fake' })
