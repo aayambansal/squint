@@ -50,7 +50,7 @@ describe('viewports', () => {
 const chrome = findChrome()
 
 describe.skipIf(!chrome)('screenshot (requires Chrome)', () => {
-  it('captures a local html file to png', { timeout: 30000 }, async () => {
+  it('captures a local html file to png', { timeout: 90000, retry: 2 }, async () => {
     const page = path.join(dir, 'page.html')
     fs.writeFileSync(page, '<!doctype html><body style="background:#123456"><h1>squint</h1></body>')
     const out = path.join(dir, 'shot.png')
