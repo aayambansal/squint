@@ -256,6 +256,27 @@ export class Session {
     this.drainQueue()
   }
 
+  /**
+   * Unattended polish: n rounds of screenshot-review-fix. Each round is
+   * a full review turn (its own cost); the per-ask auto-fix cap resets
+   * per round so fixes still flow. Fire it and step away.
+   */
+  private async polish(rounds: number): Promise<void> {
+    for (let round = 1; round <= rounds; round++) {
+      this.fixAttempts = 0
+      const result = await this.capture()
+      if (!result) {
+        this.push('status', `polish stopped at round ${round}: nothing to capture`)
+        return
+      }
+      await this.runTurn(
+        buildReviewPrompt(result.shots, undefined, result.runtime, result.a11y, result.slop),
+        `👁 polish round ${round}/${rounds}`,
+      )
+    }
+    this.push('status', `polish complete — ${rounds} round${rounds === 1 ? '' : 's'} of review and fixes`)
+  }
+
   setMode(mode: RunMode): void {
     this.notify({ mode })
     const hint =
@@ -904,6 +925,20 @@ export class Session {
           fs.writeFileSync(file, lines.join('\n') + '\n')
           this.push('status', `saved transcript → ${path.relative(this.opts.cwd, file)}`)
         })()
+        break
+      }
+      case 'polish': {
+        const rounds = arg ? Number.parseInt(arg, 10) : 2
+        if (!Number.isInteger(rounds) || rounds < 1 || rounds > 5) {
+          this.push('status', 'usage: /polish [1-5] — rounds of screenshot → critique → fix (each costs a turn)')
+          break
+        }
+        if (!this.state.devUrl) {
+          this.push('error', 'dev server not running — /dev first')
+          break
+        }
+        this.push('status', `polishing: ${rounds} round${rounds === 1 ? '' : 's'} of review → fix`)
+        void this.polish(rounds)
         break
       }
       case 'btw':

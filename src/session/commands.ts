@@ -27,6 +27,7 @@ export const COMMANDS: CommandSpec[] = [
   { name: 'fix', args: '[n]', group: 'verify', description: 'send all open problems to the engine, or just problem n' },
   { name: 'shot', args: '[url]', group: 'verify', description: 'screenshot the app (or any url) at mobile/tablet/desktop' },
   { name: 'review', args: '[focus]', group: 'verify', description: 'screenshots + the engine critiques its own rendered work' },
+  { name: 'polish', args: '[1-5]', group: 'verify', description: 'unattended rounds of review → fix (default 2)' },
 
   { name: 'variants', args: '<2-4> <ask>', group: 'explore', description: 'parallel design explorations; apply/list/clean' },
   { name: 'sandbox', args: '[on|diff|apply|discard]', group: 'explore', description: 'asks accumulate in a shadow worktree until you apply' },
