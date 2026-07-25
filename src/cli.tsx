@@ -14,7 +14,7 @@ import { composePrompt } from './prompt/brief.js'
 import { runAgent } from './runner/run.js'
 import { App } from './tui/App.js'
 
-const VERSION = '0.1.0'
+const VERSION = '0.1.1'
 
 const program = new Command()
 
