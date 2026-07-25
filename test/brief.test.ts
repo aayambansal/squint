@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { composePrompt, DEFAULT_BRIEF, loadBrief } from '../src/prompt/brief.js'
+import { composePrompt, DEFAULT_BRIEF, FIRST_TURN_ADDENDUM, loadBrief } from '../src/prompt/brief.js'
 
 let dir: string
 
@@ -24,6 +24,11 @@ describe('composePrompt', () => {
 
   it('passes the ask through untouched with noBrief', () => {
     expect(composePrompt('just this', { cwd: dir, noBrief: true })).toBe('just this')
+  })
+
+  it('adds the first-turn addendum by default and drops it for follow-ups', () => {
+    expect(composePrompt('x', { cwd: dir })).toContain(FIRST_TURN_ADDENDUM)
+    expect(composePrompt('x', { cwd: dir, firstTurn: false })).not.toContain(FIRST_TURN_ADDENDUM)
   })
 
   it('prefers a project brief at .squint/brief.md', () => {

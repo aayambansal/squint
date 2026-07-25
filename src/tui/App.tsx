@@ -83,8 +83,10 @@ export function App({ cwd, initialEngine, initialModel }: AppProps) {
       push({ role: 'user', text: ask })
       setRunning(true)
       const engine = getEngine(engineId)
+      // Resumable engines keep the brief in session context, so follow-up
+      // turns send the raw ask; non-resumable engines get it every turn.
       const isFirstTurn = sessionRef.current === undefined
-      const prompt = isFirstTurn ? composePrompt(ask, { cwd }) : ask
+      const prompt = isFirstTurn ? composePrompt(ask, { cwd, firstTurn: true }) : ask
       const result = await runAgent(
         engine,
         {
