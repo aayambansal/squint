@@ -22,6 +22,8 @@ const ConfigSchema = z.object({
   budgetUsd: z.number().positive().optional(),
   /** Auto-run /review when the visual pulse shows a big change (default off). */
   autoReview: z.boolean().optional(),
+  /** Cheaper model used for auto-fix and /fix turns (mechanical work). */
+  fixModel: z.string().optional(),
   /** TUI theme name (amber, ocean, moss, rose, mono). */
   theme: z.string().optional(),
 })
@@ -82,7 +84,7 @@ export function resolveModel(config: SquintConfig, engineId: string, override?: 
 export function setConfigValue(file: string, key: string, value: string): SquintConfig {
   const current = readConfigFile(file)
   let next: SquintConfig
-  if (key === 'engine' || key === 'theme') {
+  if (key === 'engine' || key === 'theme' || key === 'fixModel') {
     next = { ...current, [key]: value }
   } else if (
     key === 'autoDev' ||
@@ -108,7 +110,7 @@ export function setConfigValue(file: string, key: string, value: string): Squint
     next = { ...current, models: { ...current.models, [engineId]: value } }
   } else {
     throw new Error(
-      `Unknown config key "${key}". Supported: engine, theme, autoDev, autoFix, autoProbe, autoCheck, autoReview, bell, budgetUsd, models.<engineId>`,
+      `Unknown config key "${key}". Supported: engine, theme, autoDev, autoFix, autoProbe, autoCheck, autoReview, bell, budgetUsd, fixModel, models.<engineId>`,
     )
   }
   fs.mkdirSync(path.dirname(file), { recursive: true })
