@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { ensureSquintIgnore } from '../state/state.js'
 import { findChrome, screenshot } from './chrome.js'
 
 /** The review viewports: the standard trio from design-review practice. */
@@ -18,8 +19,7 @@ export interface CaptureResult {
 export function previewDir(cwd: string): string {
   const dir = path.join(cwd, '.squint', 'preview')
   fs.mkdirSync(dir, { recursive: true })
-  const ignore = path.join(cwd, '.squint', '.gitignore')
-  if (!fs.existsSync(ignore)) fs.writeFileSync(ignore, 'preview/\n')
+  ensureSquintIgnore(cwd)
   return dir
 }
 
