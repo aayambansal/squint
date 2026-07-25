@@ -1,5 +1,7 @@
 # squint
 
+[![npm](https://img.shields.io/npm/v/%40aayambansal%2Fsquint)](https://www.npmjs.com/package/@aayambansal/squint) [![ci](https://github.com/aayambansal/squint/actions/workflows/ci.yml/badge.svg)](https://github.com/aayambansal/squint/actions/workflows/ci.yml) [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 **Lovable for your terminal.** squint is a frontend harness that sits on top of the coding agents you already have — Claude Code, Codex CLI, Gemini CLI, OpenCode, Amp, Cursor CLI, Copilot CLI, Aider — and turns them into a design-obsessed app builder that works on **any repo**, local-first.
 
 Lovable proved the loop: prompt → generate → preview → auto-fix → iterate. But it's a closed SaaS. You can't point it at an existing codebase, choose your agent or model, or own the loop. squint is that missing layer, in your terminal.
