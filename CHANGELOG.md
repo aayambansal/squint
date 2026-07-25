@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.6 — 2026-07-26
+
+- Agent-authored persistent checks: engines persist page assertions as `.squint/checks/*.js` (taught on every ask); squint replays them against the live page after every turn and files failures as problems with orders to fix the page, not weaken the assertion
+- WebMCP discovery: a pre-page-script shim records tools the page registers via `navigator.modelContext` (standing in for the API on pre-146 Chromes); declared tools ride into `/review`
+
 ## 0.4.5 — 2026-07-26
 
 - React fiber probe: landmark elements resolve to their owning component chains (`h1 — Hero < App`) via `__reactFiber$` keys, no build-time tagger required; the component map rides into `/review`

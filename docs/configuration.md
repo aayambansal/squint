@@ -44,6 +44,7 @@ Hand-authored (commit these):
 | `hooks/` | executables fired on quality events (see [loops](./loops.md#hooks)) |
 | `routes` | one path per line; `/shot` and `/review` cover them beyond the root |
 | `flows/` | declared user journeys replayed by `/flows` (see [loops](./loops.md#flows-and-the-score)) |
+| `checks/` | page assertions replayed every turn — agent-authored or yours (see [loops](./loops.md#persistent-checks)) |
 | `config.json` | the project config layer |
 | `design-log.jsonl` | the design-decision ledger, appended by `/decide`, variants, restores, sandboxes (see [loops](./loops.md#the-design-ledger)) |
 

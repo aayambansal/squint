@@ -89,6 +89,15 @@ causes rather than weaken checks. Manually: `/problems` lists, `/fix` sends all,
   probes — into a shadow worktree until you `apply` or `discard`.
 - `budgetUsd` flags runaway session cost; Esc interrupts any turn instantly.
 
+## Persistent checks
+
+When the engine verifies something about the page that should stay true, every ask
+teaches it to persist the assertion as `.squint/checks/<name>.js` — plain JS that
+evaluates in the probed page to an array of failure strings (empty = pass). squint
+replays every check after every turn; failures join the problems list with orders to
+fix the page, not weaken the assertion. One-off verifications compound into
+repo-versioned regression checks. Write your own too — they run the same way.
+
 ## Visual approval
 
 Every ask teaches the engine one escape hatch: for a visual decision it should not
