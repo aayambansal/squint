@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.4 — 2026-07-26
+
+- Route-aware review: .squint/routes extends /shot and /review beyond the root (desktop shot per route, capped at 6)
+- Long tool bursts collapse to first three + a counter
+- budgetUsd config: one-time warning when session spend crosses your line
+
 ## 0.2.3 — 2026-07-26
 
 - Slash-command autocomplete: typing / lists commands with descriptions, tab completes (one registry powers /help too)
