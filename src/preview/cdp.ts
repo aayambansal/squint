@@ -116,6 +116,7 @@ function launchChrome(chromePath: string): Promise<{ child: ChildProcess; wsUrl:
       [
         '--headless=new',
         '--disable-gpu',
+        ...(process.env.CI ? ['--no-sandbox'] : []),
         '--no-first-run',
         '--remote-debugging-port=0',
         `--user-data-dir=${profileDir}`,

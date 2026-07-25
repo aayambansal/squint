@@ -30,25 +30,34 @@ program
   .option('-e, --engine <id>', 'engine to use (claude, codex, gemini, opencode)')
   .option('-m, --model <name>', 'model override for the engine')
   .option('--no-brief', 'send the prompt without the squint design brief')
-  .action(async (promptWords: string[], options: { engine?: string; model?: string; brief: boolean }) => {
-    const cwd = process.cwd()
-    const config = loadConfig(defaultPaths(cwd))
-    const engineId = resolveEngineId(config, options.engine)
-    const engine = getEngine(engineId)
-    const model = resolveModel(config, engineId, options.model)
-    const ask = promptWords.join(' ')
-    const prompt = composePrompt(ask, { cwd, noBrief: !options.brief })
+  .option('--json', 'emit normalized agent events as ndjson')
+  .action(
+    async (promptWords: string[], options: { engine?: string; model?: string; brief: boolean; json?: boolean }) => {
+      const cwd = process.cwd()
+      const config = loadConfig(defaultPaths(cwd))
+      const engineId = resolveEngineId(config, options.engine)
+      const engine = getEngine(engineId)
+      const model = resolveModel(config, engineId, options.model)
+      const ask = promptWords.join(' ')
+      const prompt = composePrompt(ask, { cwd, noBrief: !options.brief })
 
-    console.log(pc.dim(`squint · ${engine.id}${model ? ` · ${model}` : ''}`))
-    const result = await runAgent(engine, { prompt, cwd, model }, createPrinter())
-    if (result.ok) {
-      const cost = result.costUsd !== undefined ? ` · $${result.costUsd.toFixed(2)}` : ''
-      const secs = result.durationMs !== undefined ? ` · ${(result.durationMs / 1000).toFixed(0)}s` : ''
-      console.log(pc.green(`✓ done${secs}${cost}`))
-    } else {
-      process.exitCode = 1
-    }
-  })
+      const onEvent = options.json
+        ? (event: AgentEvent) => {
+            if (event.type !== 'delta') console.log(JSON.stringify(event))
+          }
+        : createPrinter()
+      if (!options.json) console.log(pc.dim(`squint · ${engine.id}${model ? ` · ${model}` : ''}`))
+      const result = await runAgent(engine, { prompt, cwd, model }, onEvent)
+      if (options.json) {
+        console.log(JSON.stringify({ type: 'summary', ...result }))
+      } else if (result.ok) {
+        const cost = result.costUsd !== undefined ? ` · $${result.costUsd.toFixed(2)}` : ''
+        const secs = result.durationMs !== undefined ? ` · ${(result.durationMs / 1000).toFixed(0)}s` : ''
+        console.log(pc.green(`✓ done${secs}${cost}`))
+      }
+      if (!result.ok) process.exitCode = 1
+    },
+  )
 
 program
   .command('engines')
