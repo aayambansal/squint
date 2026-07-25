@@ -4,8 +4,9 @@ squint spawns agent CLIs, dev servers, and headless Chrome on your machine, and 
 git patches — bugs here can matter. If you find a vulnerability:
 
 - **Do not open a public issue.**
-- Email **aayambansal@gmail.com** with a description and reproduction. You'll get a reply
-  within a few days.
+- Use GitHub's private reporting: [Report a vulnerability](https://github.com/aayambansal/squint/security/advisories/new),
+  with a description and reproduction. You'll get a reply within a few days. If you can't
+  use that, email me — contact details are on [my GitHub profile](https://github.com/aayambansal).
 
 ## Scope worth probing
 

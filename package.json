@@ -1,10 +1,10 @@
 {
   "name": "@aayambansal/squint",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Lovable for your terminal — a frontend harness on top of Claude Code, Codex, and other coding agents.",
   "type": "module",
   "license": "MIT",
-  "author": "Aayam Bansal <aayambansal@gmail.com>",
+  "author": "Aayam Bansal",
   "repository": {
     "type": "git",
     "url": "https://github.com/aayambansal/squint.git"
