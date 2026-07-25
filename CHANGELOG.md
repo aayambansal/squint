@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1 — 2026-07-26
+
+- Multi-pin annotations in the element picker: pin several elements with notes, alt+enter compiles one numbered blob
+- Repo skills: .squint/skills/*.md inject on trigger match, .squint/rules.md always-on; squint skills list/init
+- /variants inside the TUI (gen/apply/list/clean with per-family streaming status)
+- squint doctor --probe verifies each engine end to end and surfaces the actionable error line
+
 ## 0.2.0 — 2026-07-26
 
 The architecture release: squint rebuilt around a framework-free session core, informed by deep research into gemini-cli, opencode, crush, dyad, Cline, and friends (docs/research/).
