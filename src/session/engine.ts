@@ -14,6 +14,7 @@ import {
   runtimeSummary,
 } from '../preview/preview.js'
 import { composePrompt } from '../prompt/brief.js'
+import { runHook } from './hooks.js'
 import { enrich } from '../prompt/skills.js'
 import { runAgent } from '../runner/run.js'
 import { clearState, loadState, saveState } from '../state/state.js'
@@ -185,6 +186,7 @@ export class Session {
     this.nextProblemId += 1
     this.problemPrompts.set(this.nextProblemId, prompt)
     this.notify({ problems: [...kept, { id: this.nextProblemId, source, summary }] })
+    runHook(this.opts.cwd, 'on-problem', { source, summary })
   }
 
   private clearProblems(source: ProblemSource): void {
@@ -530,6 +532,11 @@ export class Session {
           // never blocks the loop
         }
       }
+      runHook(this.opts.cwd, 'on-turn-end', {
+        cost: String(result.costUsd ?? 0),
+        duration_ms: String(result.durationMs ?? 0),
+        stat: stat ?? '',
+      })
       const before = this.state.totals.costUsd
       this.notify({
         totals: {
@@ -543,6 +550,7 @@ export class Session {
           'error',
           `session cost $${this.state.totals.costUsd.toFixed(2)} crossed your $${budget.toFixed(2)} budget — squint keeps working, this is just the flag you asked for`,
         )
+        runHook(this.opts.cwd, 'on-budget', { total: this.state.totals.costUsd.toFixed(2), budget: budget.toFixed(2) })
       }
       if (this.sessionId) {
         saveState(this.opts.cwd, {
@@ -743,6 +751,7 @@ export class Session {
       'status',
       pct < 0.5 ? 'visual pulse: stable vs last turn' : `visual pulse: ${pct.toFixed(1)}% of the page changed vs last turn`,
     )
+    runHook(this.opts.cwd, 'on-pulse-diff', { pct: pct.toFixed(1) })
     // Show the page when it actually changed; stable turns stay text-only.
     if (pct >= 0.5) this.push('image', pulsePath)
     return pct
