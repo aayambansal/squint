@@ -1,5 +1,20 @@
 import { describe, expect, it } from 'vitest'
+import { toolGlyph } from '../src/tui/messages.js'
 import { DEFAULT_THEME, resolveTheme, THEMES } from '../src/tui/theme.js'
+
+describe('toolGlyph', () => {
+  it('maps tool families to distinct glyphs with a generic fallback', () => {
+    expect(toolGlyph('Read · src/App.tsx')).toBe('⊙')
+    expect(toolGlyph('Edit · src/App.tsx')).toBe('✎')
+    expect(toolGlyph('Write · new.ts')).toBe('✎')
+    expect(toolGlyph('Bash · npm test')).toBe('$')
+    expect(toolGlyph('shell · ls')).toBe('$')
+    expect(toolGlyph('Grep · pattern')).toBe('⌕')
+    expect(toolGlyph('WebFetch · url')).toBe('⇣')
+    expect(toolGlyph('TodoWrite')).toBe('☰')
+    expect(toolGlyph('SomethingNew · x')).toBe('⚙')
+  })
+})
 
 describe('themes', () => {
   it('every theme defines the full color vocabulary', () => {

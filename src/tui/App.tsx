@@ -62,7 +62,8 @@ export function App({
       autoFix,
       autoProbe,
       autoCheck,
-      onQuit: () => exit(),
+      // Delay lets the goodbye summary land in the Static scrollback.
+      onQuit: () => setTimeout(() => exit(), 60),
     })
   }
   const session = sessionRef.current
@@ -74,11 +75,20 @@ export function App({
   const [line, setLine] = useState<Line>(emptyLine)
   const historyRef = useRef<string[]>([])
   const historyIndexRef = useRef(-1)
+  const ctrlCArmedAtRef = useRef(0)
 
   useInput((char, key) => {
     if (key.ctrl && char === 'c') {
-      session.dispose()
-      exit()
+      // Two-step exit: a stray ctrl+c should never kill a session.
+      const now = Date.now()
+      if (now - ctrlCArmedAtRef.current < 2000) {
+        session.note(session.summary())
+        session.dispose()
+        setTimeout(() => exit(), 60)
+      } else {
+        ctrlCArmedAtRef.current = now
+        session.note('press ctrl+c again to exit')
+      }
       return
     }
     if (key.escape && state.running) {
