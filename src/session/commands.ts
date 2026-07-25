@@ -12,7 +12,7 @@ export interface CommandSpec {
 }
 
 export const COMMANDS: CommandSpec[] = [
-  { name: 'dev', description: 'start/stop the project dev server' },
+  { name: 'dev', args: '[restart|logs]', description: 'start/stop the dev server; restart or show recent output' },
   { name: 'check', description: 'run all quality gates (typecheck, lint, test, build)' },
   { name: 'problems', description: 'list open findings from gates, dev server, runtime, a11y' },
   { name: 'fix', args: '[n]', description: 'send all open problems to the engine, or just problem n' },
