@@ -20,7 +20,7 @@ export const COMMANDS: CommandSpec[] = [
   { name: 'engine', args: '<id>', group: 'build', description: 'switch backend (new session)' },
   { name: 'engines', group: 'build', description: 'list installed engines with streaming/resume support' },
   { name: 'model', args: '[name]', group: 'build', description: 'model override for the engine' },
-  { name: 'queue', args: 'clear', group: 'build', description: 'drop queued asks' },
+  { name: 'queue', args: 'clear|drop <n>', group: 'build', description: 'clear the queue or drop one queued ask' },
 
   { name: 'check', group: 'verify', description: 'run all quality gates (typecheck, lint, format, test, build)' },
   { name: 'problems', group: 'verify', description: 'list open findings from gates, dev server, runtime, a11y' },

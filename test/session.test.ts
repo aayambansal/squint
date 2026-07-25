@@ -259,6 +259,25 @@ describe('Session', () => {
     session.dispose()
   })
 
+  it('drops a single queued ask by index mid-turn', async () => {
+    vi.spyOn(registry, 'getEngine').mockReturnValue(
+      fakeEngine("setTimeout(() => console.log('done'), 600)"),
+    )
+    const session = new Session({ cwd: dir, engineId: 'fake' })
+    session.input('first')
+    await waitFor(session, () => session.getState().running)
+    session.input('second')
+    session.input('third')
+    session.input('/queue drop 1')
+    expect(session.getState().queue).toEqual(['third'])
+    session.input('/queue drop 9')
+    expect(session.getState().items.at(-1)?.text).toContain('queue has 1 item(s)')
+    await waitFor(session, () => !session.getState().running && session.getState().totals.turns === 2, 20000)
+    const users = session.getState().items.filter((i) => i.role === 'user').map((i) => i.text)
+    expect(users).toEqual(['first', 'third'])
+    session.dispose()
+  }, 30000)
+
   it('clears the queue on /queue clear mid-turn', async () => {
     vi.spyOn(registry, 'getEngine').mockReturnValue(
       fakeEngine("setTimeout(() => console.log('done'), 500)"),

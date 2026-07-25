@@ -249,7 +249,10 @@ export function App({
       )}
       {state.queue.map((queued, index) => (
         <Box key={index}>
-          <Text color={theme.dim}>⋯ queued: {queued}</Text>
+          <Text color={theme.dim}>
+            ⋯ {index + 1}. {queued}
+            {index === state.queue.length - 1 ? '   (/queue drop <n> removes)' : ''}
+          </Text>
         </Box>
       ))}
       {line.text.startsWith('/') && !line.text.includes(' ') && (
