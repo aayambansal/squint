@@ -668,6 +668,23 @@ export class Session {
         break
       case 'dev': {
         const dev = this.devServer()
+        if (arg === 'logs') {
+          const tail = dev.tail(15)
+          this.push('status', tail.length > 0 ? tail.join('\n') : 'no dev server output captured yet')
+          break
+        }
+        if (arg === 'restart') {
+          if (dev.state !== 'stopped') dev.stop()
+          this.notify({ devUrl: null })
+          const devCommand = detectDevCommand(this.opts.cwd)
+          if (!devCommand) {
+            this.push('error', 'no dev/start script found in package.json')
+          } else {
+            dev.start(devCommand)
+            this.push('status', `dev server restarting · ${devCommand.display}`)
+          }
+          break
+        }
         if (dev.state === 'stopped' || dev.state === 'crashed') {
           const devCommand = detectDevCommand(this.opts.cwd)
           if (!devCommand) {
