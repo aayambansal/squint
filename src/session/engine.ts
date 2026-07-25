@@ -276,7 +276,7 @@ export class Session {
         return
       }
       await this.runTurn(
-        buildReviewPrompt(result.shots, undefined, result.runtime, result.a11y, result.slop, result.narration, result.phantoms, result.viewTransitions),
+        buildReviewPrompt(result.shots, undefined, result.runtime, result.a11y, result.slop, result.narration, result.phantoms, result.viewTransitions, result.components),
         `👁 polish round ${round}/${rounds}`,
       )
     }
@@ -670,7 +670,7 @@ export class Session {
               const captureResult = await this.capture()
               if (captureResult) {
                 await this.runTurn(
-                  buildReviewPrompt(captureResult.shots, undefined, captureResult.runtime, captureResult.a11y, captureResult.slop, captureResult.narration, captureResult.phantoms, captureResult.viewTransitions),
+                  buildReviewPrompt(captureResult.shots, undefined, captureResult.runtime, captureResult.a11y, captureResult.slop, captureResult.narration, captureResult.phantoms, captureResult.viewTransitions, captureResult.components),
                   '👁 auto-review rendered UI',
                 )
               }
@@ -1230,7 +1230,7 @@ export class Session {
           const result = await this.capture()
           if (result) {
             await this.runTurn(
-              buildReviewPrompt(result.shots, arg || undefined, result.runtime, result.a11y, result.slop, result.narration, result.phantoms, result.viewTransitions),
+              buildReviewPrompt(result.shots, arg || undefined, result.runtime, result.a11y, result.slop, result.narration, result.phantoms, result.viewTransitions, result.components),
               `👁 review rendered UI${arg ? ` · ${arg}` : ''}`,
             )
           }

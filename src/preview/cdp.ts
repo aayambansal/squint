@@ -46,6 +46,7 @@ export interface CdpCaptureResult {
   /** Class tokens in the DOM with no matching CSS rule (when audited). */
   phantoms: string[]
   viewTransitions: string[]
+  components: string[]
 }
 
 /** In-page collection of web-vitals-adjacent numbers via PerformanceObserver. */
@@ -510,6 +511,51 @@ const VT_AUDIT = `(() => {
   return findings;
 })()`
 
+/**
+ * Fiber probe: react-dom stamps every host element with a
+ * __reactFiber$ key in dev builds. Walking fiber.return from landmark
+ * elements names the owning components without any build-time tagger —
+ * the map that lets a reviewing engine say "the overflow is in
+ * <Hero>", not "somewhere under main".
+ */
+const FIBER_AUDIT = `(() => {
+  const fiberKey = (el) => Object.keys(el).find((k) => k.startsWith('__reactFiber$'));
+  const all = document.querySelectorAll('*');
+  let reactSeen = false;
+  for (let i = 0; i < all.length && i < 300; i++) {
+    if (fiberKey(all[i])) { reactSeen = true; break; }
+  }
+  if (!reactSeen) return [];
+  const nameOf = (t) => {
+    if (typeof t === 'function') return t.displayName || t.name || '';
+    if (t && typeof t === 'object') return t.displayName || (t.render && (t.render.displayName || t.render.name)) || '';
+    return '';
+  };
+  const chainFor = (el) => {
+    const key = fiberKey(el);
+    if (!key) return null;
+    let fiber = el[key];
+    const names = [];
+    let hops = 0;
+    while (fiber && hops < 50 && names.length < 3) {
+      const n = nameOf(fiber.type);
+      if (n && !names.includes(n)) names.push(n);
+      fiber = fiber.return;
+      hops++;
+    }
+    return names.length > 0 ? names.join(' < ') : null;
+  };
+  const out = [];
+  for (const sel of ['header', 'nav', 'main', 'footer', 'h1', 'h2', 'form', 'aside', '[role="dialog"]', 'table']) {
+    const el = document.querySelector(sel);
+    if (!el) continue;
+    const chain = chainFor(el);
+    if (chain) out.push(sel + ' — ' + chain);
+    if (out.length >= 10) break;
+  }
+  return out;
+})()`
+
 export async function cdpCapture(
   chromePath: string,
   url: string,
@@ -527,6 +573,7 @@ export async function cdpCapture(
   let narration: string[] = []
   let phantoms: string[] = []
   let viewTransitions: string[] = []
+  let components: string[] = []
   const requests = new Map<string, string>()
   let connection: CdpConnection | null = null
 
@@ -630,6 +677,16 @@ export async function cdpCapture(
         // best-effort
       }
       try {
+        const { result } = await connection.send(
+          'Runtime.evaluate',
+          { expression: FIBER_AUDIT, returnByValue: true },
+          sessionId,
+        )
+        if (Array.isArray(result?.value)) components = result.value.map(String)
+      } catch {
+        // best-effort
+      }
+      try {
         await connection.send('Accessibility.enable', {}, sessionId)
         const { nodes } = await connection.send('Accessibility.getFullAXTree', {}, sessionId)
         const interesting = new Set([
@@ -676,5 +733,5 @@ export async function cdpCapture(
     setTimeout(() => fs.rmSync(profileDir, { recursive: true, force: true }), 500).unref?.()
   }
 
-  return { report, shots, a11y, slop, perf, narration, phantoms, viewTransitions }
+  return { report, shots, a11y, slop, perf, narration, phantoms, viewTransitions, components }
 }

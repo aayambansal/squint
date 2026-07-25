@@ -84,6 +84,14 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
       <script>
         console.error('console-boom');
         setTimeout(() => { throw new Error('uncaught-boom') }, 100);
+        // Hand-built fiber chain exercising the same property protocol
+        // react-dom uses to stamp host elements in dev builds.
+        function App() {}
+        function Hero() {}
+        const fiberApp = { type: App, return: null };
+        const fiberHero = { type: Hero, return: fiberApp };
+        const h1 = document.querySelector('h1');
+        h1['__reactFiber$squint'] = { type: 'h1', return: fiberHero };
       </script>
       </body></html>`,
     )
@@ -121,6 +129,8 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
     const phantoms = result.phantoms.join('\n')
     expect(phantoms).toContain('bg-linear-to-r (on <h1>)')
     expect(phantoms).not.toContain('real-thing')
+
+    expect(result.components).toEqual(['h1 — Hero < App'])
 
     const vt = result.viewTransitions.join('\n')
     expect(vt).toContain('duplicate view-transition-name "hero-card" on 2 elements')
