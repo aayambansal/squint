@@ -270,6 +270,10 @@ export function App({ cwd, initialEngine, initialModel, autoDev, autoFix, autoPr
         push('status', 'runtime clean — no console errors, exceptions, or failed requests')
       }
     }
+    if (result.a11y && result.a11y.length > 0) {
+      push('error', `a11y: ${result.a11y.length} finding(s)\n${result.a11y.slice(0, 5).join('\n')}`)
+      push('status', '/review folds these into the fix pass')
+    }
     return result.shots.length > 0 ? result : null
   }, [cwd, devUrl, push])
 
@@ -371,7 +375,7 @@ export function App({ cwd, initialEngine, initialModel, autoDev, autoFix, autoPr
             const result = await capture()
             if (result) {
               await runTurn(
-                buildReviewPrompt(result.shots, arg || undefined, result.runtime),
+                buildReviewPrompt(result.shots, arg || undefined, result.runtime, result.a11y),
                 `👁 review rendered UI${arg ? ` · ${arg}` : ''}`,
               )
             }

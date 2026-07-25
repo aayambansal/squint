@@ -17,6 +17,8 @@ export interface CaptureResult {
   errors: string[]
   /** Runtime observations — present when the CDP path was available. */
   runtime?: RuntimeReport
+  /** Accessibility sweep findings — present when the CDP path was available. */
+  a11y?: string[]
 }
 
 /** Screenshot dir lives under .squint/ and stays out of git. */
@@ -39,8 +41,8 @@ export async function captureViewports(cwd: string, url: string): Promise<Captur
 
   if (hasWebSocket()) {
     try {
-      const { report, shots } = await cdpCapture(chrome, url, dir, VIEWPORTS)
-      return { shots, errors: [], runtime: report }
+      const { report, shots, a11y } = await cdpCapture(chrome, url, dir, VIEWPORTS, 2500, true)
+      return { shots, errors: [], runtime: report, a11y }
     } catch {
       // fall through to the one-shot path
     }
@@ -112,15 +114,21 @@ export function buildRuntimeFixPrompt(report: RuntimeReport): string {
  * The self-critique re-prompt: point the engine at its own rendered work.
  * Engines with vision read the files (Claude Code's Read handles images).
  */
+function a11ySection(findings: string[] | undefined): string {
+  if (!findings || findings.length === 0) return ''
+  return `\n\n## Accessibility sweep findings\n\n${findings.join('\n')}\n\nFix these as part of the pass — they are objective defects, not style preferences.`
+}
+
 export function buildReviewPrompt(
   shots: { name: string; path: string }[],
   extra?: string,
   runtime?: RuntimeReport,
+  a11y?: string[],
 ): string {
   const list = shots.map((s) => `- ${s.name}: ${s.path}`).join('\n')
   return `Screenshots of the running app were just captured:
 
 ${list}
 
-Read each screenshot and review the rendered UI against the design standards you were given. Check: visual hierarchy and spacing rhythm, typography, color and contrast, alignment, empty-looking or broken regions, and whether the mobile capture shows horizontal overflow or cramped layout. List the concrete issues you can SEE (not hypothetical ones), ranked by visual impact${extra ? `, with special attention to: ${extra}` : ''}. Then fix them and verify the app still builds.${runtimeSection(runtime)}`
+Read each screenshot and review the rendered UI against the design standards you were given. Check: visual hierarchy and spacing rhythm, typography, color and contrast, alignment, empty-looking or broken regions, and whether the mobile capture shows horizontal overflow or cramped layout. List the concrete issues you can SEE (not hypothetical ones), ranked by visual impact${extra ? `, with special attention to: ${extra}` : ''}. Then fix them and verify the app still builds.${runtimeSection(runtime)}${a11ySection(a11y)}`
 }
