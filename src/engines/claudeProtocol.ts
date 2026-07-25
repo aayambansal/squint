@@ -72,6 +72,10 @@ export function createClaudeStreamParser(readyLabel: string): LineParser {
         // Tool results echoed back to the model; not useful in the transcript.
         return []
 
+      case 'rate_limit_event':
+        // Housekeeping noise, not conversation.
+        return []
+
       default:
         return [{ type: 'raw', data }]
     }
