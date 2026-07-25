@@ -49,6 +49,7 @@ export interface CdpCaptureResult {
   components: string[]
   checkFailures: string[]
   webmcp: string[]
+  jank: string[]
 }
 
 /** In-page collection of web-vitals-adjacent numbers via PerformanceObserver. */
@@ -273,6 +274,7 @@ export async function runFlow(
     const { sessionId } = await connection.send('Target.attachToTarget', { targetId, flatten: true })
     await connection.send('Page.enable', {}, sessionId)
     await connection.send('Page.addScriptToEvaluateOnNewDocument', { source: WEBMCP_SHIM }, sessionId).catch(() => null)
+    await connection.send('Page.addScriptToEvaluateOnNewDocument', { source: LOAF_SHIM }, sessionId).catch(() => null)
     await connection.send(
       'Emulation.setDeviceMetricsOverride',
       { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false },
@@ -586,6 +588,50 @@ const WEBMCP_SHIM = `(() => {
   wrap(navigator.modelContext || (navigator.modelContext = {}));
 })()`
 
+/**
+ * LoAF jank attribution: Long Animation Frames (W3C FPWD, Chrome 123+)
+ * name the script and function behind every main-thread frame ≥50ms —
+ * the difference between "the page janks" and "the onScroll you just
+ * wrote costs 120ms a frame". Buffered observer installed before any
+ * page script; a scripted scroll after settle provokes interaction
+ * frames the load never shows.
+ */
+const LOAF_SHIM = `(() => {
+  window.__squintLoaf = [];
+  try {
+    new PerformanceObserver((list) => {
+      for (const e of list.getEntries()) {
+        if (e.duration < 50) continue;
+        const s = (e.scripts && e.scripts[0]) || {};
+        window.__squintLoaf.push({
+          duration: Math.round(e.duration),
+          fn: s.sourceFunctionName || '',
+          url: (s.sourceURL || s.name || '').split('/').pop() || '',
+          invoker: s.invoker || '',
+        });
+      }
+    }).observe({ type: 'long-animation-frame', buffered: true });
+  } catch {}
+})()`
+
+const SCRIPTED_SCROLL = `(async () => {
+  const half = Math.max(0, (document.body.scrollHeight - innerHeight) / 2);
+  window.scrollTo({ top: half, behavior: 'smooth' });
+  await new Promise((r) => setTimeout(r, 400));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  await new Promise((r) => setTimeout(r, 300));
+  const seen = new Map();
+  for (const e of window.__squintLoaf || []) {
+    const key = e.fn + '@' + e.url + '@' + e.invoker;
+    const prev = seen.get(key);
+    if (!prev || e.duration > prev.duration) seen.set(key, e);
+  }
+  return [...seen.values()]
+    .sort((a, b) => b.duration - a.duration)
+    .slice(0, 6)
+    .map((e) => e.duration + 'ms frame — ' + (e.fn || e.invoker || 'script') + (e.url ? ' @ ' + e.url : ''));
+})()`
+
 export async function cdpCapture(
   chromePath: string,
   url: string,
@@ -607,6 +653,7 @@ export async function cdpCapture(
   let components: string[] = []
   const checkFailures: string[] = []
   let webmcp: string[] = []
+  let jank: string[] = []
   const requests = new Map<string, string>()
   let connection: CdpConnection | null = null
 
@@ -650,6 +697,7 @@ export async function cdpCapture(
     await connection.send('Network.enable', {}, sessionId)
     await connection.send('Page.enable', {}, sessionId)
     await connection.send('Page.addScriptToEvaluateOnNewDocument', { source: WEBMCP_SHIM }, sessionId).catch(() => null)
+    await connection.send('Page.addScriptToEvaluateOnNewDocument', { source: LOAF_SHIM }, sessionId).catch(() => null)
     await connection.send('Page.navigate', { url }, sessionId)
 
     const deadline = Date.now() + 12000
@@ -667,6 +715,16 @@ export async function cdpCapture(
       if (result?.value && typeof result.value === 'object') perf = result.value as PerfMetrics
     } catch {
       // perf numbers are best-effort
+    }
+    try {
+      const { result } = await connection.send(
+        'Runtime.evaluate',
+        { expression: SCRIPTED_SCROLL, returnByValue: true, awaitPromise: true },
+        sessionId,
+      )
+      if (Array.isArray(result?.value)) jank = result.value.map(String)
+    } catch {
+      // best-effort
     }
     try {
       const { result } = await connection.send(
@@ -795,5 +853,5 @@ export async function cdpCapture(
     setTimeout(() => fs.rmSync(profileDir, { recursive: true, force: true }), 500).unref?.()
   }
 
-  return { report, shots, a11y, slop, perf, narration, phantoms, viewTransitions, components, checkFailures, webmcp }
+  return { report, shots, a11y, slop, perf, narration, phantoms, viewTransitions, components, checkFailures, webmcp, jank }
 }

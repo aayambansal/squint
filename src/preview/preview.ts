@@ -30,6 +30,7 @@ export interface CaptureResult {
   components?: string[]
   checkFailures?: string[]
   webmcp?: string[]
+  jank?: string[]
 }
 
 /**
@@ -82,7 +83,7 @@ export async function captureViewports(cwd: string, url: string): Promise<Captur
       // Root gets the full viewport trio + runtime watch + a11y sweep;
       // additional routes get one desktop shot each.
       const checks = loadChecks(cwd)
-      const { report, shots, a11y, slop, narration, phantoms, viewTransitions, components, checkFailures, webmcp } = await cdpCapture(chrome, url, dir, VIEWPORTS, 2500, true, checks)
+      const { report, shots, a11y, slop, narration, phantoms, viewTransitions, components, checkFailures, webmcp, jank } = await cdpCapture(chrome, url, dir, VIEWPORTS, 2500, true, checks)
       const errors: string[] = []
       for (const route of routes.slice(1)) {
         try {
@@ -97,7 +98,7 @@ export async function captureViewports(cwd: string, url: string): Promise<Captur
           errors.push(`${route}: capture failed`)
         }
       }
-      return { shots, errors, runtime: report, a11y, slop, narration, phantoms, viewTransitions, components, checkFailures, webmcp }
+      return { shots, errors, runtime: report, a11y, slop, narration, phantoms, viewTransitions, components, checkFailures, webmcp, jank }
     } catch {
       // fall through to the one-shot path
     }
@@ -205,6 +206,11 @@ function narrationSection(narration: string[] | undefined): string {
   return `\n\n## What a screen reader would say (accessibility tree, in order)\n\n${narration.join('\n')}\n\nJudge this narration as an experience: does the reading order make sense? do names actually describe their targets? is anything announced as "(no accessible name)"? Fix real incoherence — this is how non-visual users meet the page.`
 }
 
+function jankSection(jank: string[] | undefined): string {
+  if (!jank || jank.length === 0) return ''
+  return `\n\n## Jank attribution (main-thread frames ≥50ms)\n\n${jank.join('\n')}\n\nEach line names the function behind a long animation frame observed during load and a scripted scroll. Fix the work (memoize, virtualize, move off the main thread) — do not remove the animation.`
+}
+
 function webmcpSection(webmcp: string[] | undefined): string {
   if (!webmcp || webmcp.length === 0) return ''
   return `\n\n## Page-declared WebMCP tools\n\n${webmcp.join('\n')}\n\nThe page registers these for agents via navigator.modelContext — keep them working, and prefer extending them over inventing parallel affordances.`
@@ -241,11 +247,12 @@ export function buildReviewPrompt(
   viewTransitions?: string[],
   components?: string[],
   webmcp?: string[],
+  jank?: string[],
 ): string {
   const list = shots.map((s) => `- ${s.name}: ${s.path}`).join('\n')
   return `Screenshots of the running app were just captured:
 
 ${list}
 
-Read each screenshot and review the rendered UI against the design standards you were given. Check: visual hierarchy and spacing rhythm, typography, color and contrast, alignment, empty-looking or broken regions, and whether the mobile capture shows horizontal overflow or cramped layout. List the concrete issues you can SEE (not hypothetical ones), ranked by visual impact${extra ? `, with special attention to: ${extra}` : ''}. Then fix them and verify the app still builds.${runtimeSection(runtime)}${a11ySection(a11y)}${slopSection(slop)}${narrationSection(narration)}${phantomSection(phantoms)}${vtSection(viewTransitions)}${componentSection(components)}${webmcpSection(webmcp)}`
+Read each screenshot and review the rendered UI against the design standards you were given. Check: visual hierarchy and spacing rhythm, typography, color and contrast, alignment, empty-looking or broken regions, and whether the mobile capture shows horizontal overflow or cramped layout. List the concrete issues you can SEE (not hypothetical ones), ranked by visual impact${extra ? `, with special attention to: ${extra}` : ''}. Then fix them and verify the app still builds.${runtimeSection(runtime)}${a11ySection(a11y)}${slopSection(slop)}${narrationSection(narration)}${phantomSection(phantoms)}${vtSection(viewTransitions)}${componentSection(components)}${webmcpSection(webmcp)}${jankSection(jank)}`
 }

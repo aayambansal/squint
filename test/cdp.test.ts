@@ -147,3 +147,27 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
     expect(narration).toContain('textbox (no accessible name)')
   })
 })
+
+describe.skipIf(!chrome || !hasWebSocket())('LoAF jank attribution (requires Chrome)', () => {
+  it('names the function behind a long frame on an http origin', { timeout: 120000, retry: 2 }, async () => {
+    const http = await import('node:http')
+    const html = `<!doctype html><html lang="en"><head><title>j</title></head><body><h1>jank</h1>
+      <script>
+        function burnMainThread() { const start = performance.now(); while (performance.now() - start < 90) {} }
+        requestAnimationFrame(burnMainThread);
+      </script></body></html>`
+    const server = http.createServer((_req, res) => {
+      res.writeHead(200, { 'content-type': 'text/html' })
+      res.end(html)
+    })
+    const port: number = await new Promise((resolve) => {
+      server.listen(0, '127.0.0.1', () => resolve((server.address() as { port: number }).port))
+    })
+    try {
+      const result = await cdpCapture(chrome!, `http://127.0.0.1:${port}/`, dir, [], 1500, false)
+      expect(result.jank.some((j) => /\d+ms frame — burnMainThread/.test(j))).toBe(true)
+    } finally {
+      server.close()
+    }
+  })
+})
