@@ -132,6 +132,7 @@ squint config set models.claude claude-sonnet-5
 squint config set autoDev true    # dev server starts with the TUI
 squint config set autoFix true    # errors auto-route back (max 2 tries)
 squint config set autoCheck false # skip the per-turn typecheck+lint pass
+squint config set autoReview true # big visual change → automatic self-critique
 squint config set theme ocean     # amber · ocean · moss · rose · mono
 squint config set bell false      # no bell on turn completion
 squint doctor                     # engines + Chrome + WebSocket check
