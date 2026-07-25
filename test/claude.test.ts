@@ -121,4 +121,24 @@ describe('claude parser', () => {
     const parse = claude.createParser!()
     expect(parse('plain output')).toEqual([{ type: 'text', text: 'plain output' }])
   })
+
+  it('handles a realistic full-turn burst in order', () => {
+    const parse = claude.createParser!()
+    const events = [
+      { type: 'system', subtype: 'init', model: 'claude-sonnet-5' },
+      { type: 'stream_event', event: { type: 'content_block_delta', delta: { type: 'text_delta', text: 'Work' } } },
+      { type: 'stream_event', event: { type: 'content_block_delta', delta: { type: 'text_delta', text: 'ing.' } } },
+      { type: 'assistant', message: { content: [{ type: 'text', text: 'Working.' }] } },
+      { type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: 'npm test' } }] } },
+      { type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 't', content: 'ok' }] } },
+      { type: 'assistant', message: { content: [{ type: 'text', text: 'Done.' }] } },
+      { type: 'result', subtype: 'success', is_error: false, result: 'Done.', session_id: 's', total_cost_usd: 0.1, duration_ms: 900 },
+    ]
+    const out = events.flatMap((e) => parse(JSON.stringify(e)))
+    expect(out.map((e) => e.type)).toEqual(['status', 'delta', 'delta', 'text', 'tool', 'text', 'result'])
+    // The streamed block dedupes; the post-tool block does not.
+    expect(out[3]).toMatchObject({ type: 'text', streamed: true })
+    expect(out[5]).toMatchObject({ type: 'text', text: 'Done.' })
+    expect((out[5] as { streamed?: boolean }).streamed).toBeUndefined()
+  })
 })
