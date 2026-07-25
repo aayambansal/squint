@@ -94,15 +94,36 @@ function runtimeSection(report: RuntimeReport | undefined): string {
  * the cheap post-turn probe. Null when Chrome/WebSocket are unavailable
  * or the probe itself fails (never blocks the loop).
  */
-export async function probeRuntime(url: string): Promise<RuntimeReport | null> {
+export interface ProbeResult {
+  report: RuntimeReport
+  /** Path of the pulse screenshot taken during the probe, when available. */
+  pulsePath?: string
+}
+
+export async function probeRuntime(url: string, cwd?: string): Promise<ProbeResult | null> {
   const chrome = findChrome()
   if (!chrome || !hasWebSocket()) return null
   try {
-    const { report } = await cdpCapture(chrome, url, os.tmpdir(), [], 1500)
-    return report
+    const dir = cwd ? previewDir(cwd) : os.tmpdir()
+    const { report, shots } = await cdpCapture(
+      chrome,
+      url,
+      dir,
+      cwd ? [{ name: 'pulse', width: 1280, height: 800 }] : [],
+      1500,
+    )
+    return { report, pulsePath: shots[0]?.path }
   } catch {
     return null
   }
+}
+
+/** Compare two pulse screenshots; null when Chrome or either file is missing. */
+export async function comparePulse(previous: Buffer, current: Buffer): Promise<number | null> {
+  const chrome = findChrome()
+  if (!chrome || !hasWebSocket()) return null
+  const { pixelDiffPct } = await import('./cdp.js')
+  return pixelDiffPct(chrome, previous, current)
 }
 
 /** Fix prompt for runtime errors found without a visual pass. */

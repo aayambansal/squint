@@ -43,6 +43,23 @@ describe('runtimeSummary / prompts', () => {
 
 const chrome = findChrome()
 
+describe.skipIf(!chrome || !hasWebSocket())('pixelDiffPct (requires Chrome)', () => {
+  it('scores identical pages near 0 and different pages near 100', { timeout: 120000, retry: 2 }, async () => {
+    const { pixelDiffPct } = await import('../src/preview/cdp.js')
+    const { screenshot } = await import('../src/preview/chrome.js')
+    const red = path.join(dir, 'red.png')
+    const blue = path.join(dir, 'blue.png')
+    await screenshot(chrome!, 'data:text/html,<body style="background:%23ff0000">', red, { width: 200, height: 200 })
+    await screenshot(chrome!, 'data:text/html,<body style="background:%230000ff">', blue, { width: 200, height: 200 })
+    const same = await pixelDiffPct(chrome!, fs.readFileSync(red), fs.readFileSync(red))
+    const different = await pixelDiffPct(chrome!, fs.readFileSync(red), fs.readFileSync(blue))
+    expect(same).not.toBeNull()
+    expect(same!).toBeLessThan(0.5)
+    expect(different).not.toBeNull()
+    expect(different!).toBeGreaterThan(90)
+  })
+})
+
 describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSocket)', () => {
   it('captures screenshots and observes console/page/network errors', { timeout: 120000, retry: 2 }, async () => {
     const page = path.join(dir, 'page.html')

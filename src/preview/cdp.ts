@@ -202,6 +202,61 @@ const describe = (value: any): string => {
  * Load `url` once, watching the runtime; screenshot at each viewport by
  * emulating device metrics. Chrome is fully cleaned up afterward.
  */
+/**
+ * Percentage of pixels that differ between two PNGs, computed inside
+ * Chrome via canvas (no image dependency in Node). Samples every other
+ * pixel; returns null when either image fails to decode.
+ */
+export async function pixelDiffPct(chromePath: string, pngA: Buffer, pngB: Buffer): Promise<number | null> {
+  const { child, wsUrl, profileDir } = await launchChrome(chromePath)
+  let connection: CdpConnection | null = null
+  try {
+    connection = await CdpConnection.connect(wsUrl, 10000)
+    const { targetId } = await connection.send('Target.createTarget', { url: 'about:blank' })
+    const { sessionId } = await connection.send('Target.attachToTarget', { targetId, flatten: true })
+    await connection.send('Runtime.enable', {}, sessionId)
+    const expression = `(async () => {
+      const load = (src) => new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('decode'));
+        img.src = src;
+      });
+      const a = await load('data:image/png;base64,${pngA.toString('base64')}');
+      const b = await load('data:image/png;base64,${pngB.toString('base64')}');
+      const w = Math.min(a.width, b.width), h = Math.min(a.height, b.height);
+      if (w === 0 || h === 0) return null;
+      const draw = (img) => {
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        return ctx.getImageData(0, 0, w, h).data;
+      };
+      const da = draw(a), db = draw(b);
+      let differ = 0, total = 0;
+      for (let i = 0; i < da.length; i += 8) {
+        total++;
+        if (Math.abs(da[i] - db[i]) > 8 || Math.abs(da[i + 1] - db[i + 1]) > 8 || Math.abs(da[i + 2] - db[i + 2]) > 8) differ++;
+      }
+      const sizePenalty = (a.width !== b.width || a.height !== b.height) ? 1 : 0;
+      return Math.min(100, (differ / total) * 100 + sizePenalty);
+    })()`
+    const { result } = await connection.send(
+      'Runtime.evaluate',
+      { expression, awaitPromise: true, returnByValue: true },
+      sessionId,
+    )
+    return typeof result?.value === 'number' ? result.value : null
+  } catch {
+    return null
+  } finally {
+    connection?.close()
+    child.kill('SIGKILL')
+    setTimeout(() => fs.rmSync(profileDir, { recursive: true, force: true }), 500).unref?.()
+  }
+}
+
 export async function cdpCapture(
   chromePath: string,
   url: string,

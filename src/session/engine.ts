@@ -8,6 +8,7 @@ import {
   buildRuntimeFixPrompt,
   type CaptureResult,
   captureViewports,
+  comparePulse,
   probeRuntime,
   runtimeSummary,
 } from '../preview/preview.js'
@@ -96,6 +97,7 @@ export class Session {
   private checkpoints: Array<{ snapshot: Snapshot; label: string; at: number }> = []
   private fixAttempts = 0
   private reviewTipShown = false
+  private lastPulse: Buffer | null = null
   private readonly startedAt = Date.now()
 
   constructor(private readonly opts: SessionOptions) {
@@ -447,15 +449,16 @@ export class Session {
         // Build output is clean — probe the page itself for client-side
         // breakage the server never sees (blank page, exceptions, 404s).
         if (this.opts.autoProbe !== false && this.state.devUrl) {
-          const report = await probeRuntime(this.state.devUrl)
-          const summary = report ? runtimeSummary(report) : null
-          if (report && summary) {
-            this.addProblem('runtime', summary, buildRuntimeFixPrompt(report))
+          const probe = await probeRuntime(this.state.devUrl, this.opts.cwd)
+          const summary = probe ? runtimeSummary(probe.report) : null
+          if (probe && summary) {
+            this.addProblem('runtime', summary, buildRuntimeFixPrompt(probe.report))
             this.push('error', `runtime: ${summary}`)
             if (this.maybeAutoFix()) return
             this.push('status', '/fix sends open problems to the engine · /problems lists them')
-          } else if (report) {
+          } else if (probe) {
             this.clearProblems('runtime')
+            await this.visualPulse(probe.pulsePath)
           }
         }
         if (!this.reviewTipShown && this.state.devUrl) {
@@ -513,6 +516,33 @@ export class Session {
     } else {
       this.push('error', `restore failed: ${result.detail ?? 'unknown error'}`)
     }
+  }
+
+  /**
+   * Cross-turn visual drift check: compare this turn's pulse screenshot
+   * with the previous one and report how much of the page changed.
+   * Informational — changes are usually intended; surprises shouldn't be.
+   */
+  private async visualPulse(pulsePath: string | undefined): Promise<void> {
+    if (!pulsePath) return
+    let current: Buffer
+    try {
+      current = (await import('node:fs')).readFileSync(pulsePath)
+    } catch {
+      return
+    }
+    const previous = this.lastPulse
+    this.lastPulse = current
+    if (!previous) {
+      this.push('status', 'visual pulse: baseline captured')
+      return
+    }
+    const pct = await comparePulse(previous, current)
+    if (pct === null) return
+    this.push(
+      'status',
+      pct < 0.5 ? 'visual pulse: stable vs last turn' : `visual pulse: ${pct.toFixed(1)}% of the page changed vs last turn`,
+    )
   }
 
   /** Screenshot the running app (and watch its runtime where CDP is available). */
