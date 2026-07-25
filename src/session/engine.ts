@@ -222,6 +222,40 @@ export class Session {
     return true
   }
 
+  /**
+   * A side question: read-only, no session resume, so the main thread's
+   * context is untouched (Cursor's /btw). Costs count; loops don't run.
+   */
+  private async btw(question: string): Promise<void> {
+    this.push('user', `💬 btw: ${question}`)
+    this.notify({ running: true, runStartedAt: Date.now() })
+    const engine = getEngine(this.state.engineId)
+    this.abort = new AbortController()
+    const result = await runAgent(
+      engine,
+      {
+        prompt: `Answer this question about the repository. Investigate as needed but make no changes:\n\n${question}`,
+        cwd: this.execCwd(),
+        model: this.state.model,
+        mode: 'plan',
+      },
+      this.handleEvent,
+      this.abort.signal,
+    )
+    this.abort = null
+    this.commitLive()
+    this.flushToolCollapse()
+    if (result.ok) {
+      const cost = result.costUsd !== undefined ? ` · $${result.costUsd.toFixed(2)}` : ''
+      this.push('status', `btw answered${cost}`)
+      this.notify({
+        totals: { costUsd: this.state.totals.costUsd + (result.costUsd ?? 0), turns: this.state.totals.turns },
+      })
+    }
+    this.notify({ running: false })
+    this.drainQueue()
+  }
+
   setMode(mode: RunMode): void {
     this.notify({ mode })
     const hint =
@@ -872,6 +906,13 @@ export class Session {
         })()
         break
       }
+      case 'btw':
+        if (!arg) {
+          this.push('status', 'usage: /btw <question> — read-only side question, main thread untouched')
+        } else {
+          void this.btw(arg)
+        }
+        break
       case 'copy': {
         const last = this.state.items.findLast((i) => i.role === 'assistant')
         if (!last) {

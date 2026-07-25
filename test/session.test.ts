@@ -107,6 +107,17 @@ describe('Session', () => {
     session.dispose()
   })
 
+  it('/btw answers without consuming a turn or touching the thread', async () => {
+    vi.spyOn(registry, 'getEngine').mockReturnValue(fakeEngine("console.log('the answer')"))
+    const session = new Session({ cwd: dir, engineId: 'fake' })
+    session.input('/btw where does state live?')
+    await waitFor(session, () => !session.getState().running && session.getState().items.some((i) => i.text.includes('btw answered')))
+    expect(session.getState().totals.turns).toBe(0)
+    expect(session.getState().items.some((i) => i.text.includes('💬 btw: where does state live?'))).toBe(true)
+    expect(session.getState().items.some((i) => i.role === 'assistant' && i.text.includes('the answer'))).toBe(true)
+    session.dispose()
+  })
+
   it('lists engines from the TUI with trait markers', async () => {
     const session = new Session({ cwd: dir, engineId: 'claude' })
     session.input('/engines')
