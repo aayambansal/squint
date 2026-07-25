@@ -53,8 +53,8 @@ export function screenshot(
     const args = [
       '--headless=new',
       '--disable-gpu',
-      // CI runners commonly need this; local runs keep the sandbox.
-      ...(process.env.CI ? ['--no-sandbox'] : []),
+      // CI containers need these; local runs keep the sandbox and shm.
+      ...(process.env.CI ? ['--no-sandbox', '--disable-dev-shm-usage'] : []),
       '--hide-scrollbars',
       '--force-device-scale-factor=1',
       `--window-size=${opts.width},${opts.height}`,

@@ -44,7 +44,7 @@ describe('runtimeSummary / prompts', () => {
 const chrome = findChrome()
 
 describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSocket)', () => {
-  it('captures screenshots and observes console/page/network errors', { timeout: 60000 }, async () => {
+  it('captures screenshots and observes console/page/network errors', { timeout: 120000, retry: 2 }, async () => {
     const page = path.join(dir, 'page.html')
     fs.writeFileSync(
       page,

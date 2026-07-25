@@ -156,7 +156,7 @@ function launchChrome(chromePath: string): Promise<{ child: ChildProcess; wsUrl:
       [
         '--headless=new',
         '--disable-gpu',
-        ...(process.env.CI ? ['--no-sandbox'] : []),
+        ...(process.env.CI ? ['--no-sandbox', '--disable-dev-shm-usage'] : []),
         '--no-first-run',
         '--remote-debugging-port=0',
         `--user-data-dir=${profileDir}`,
@@ -165,10 +165,14 @@ function launchChrome(chromePath: string): Promise<{ child: ChildProcess; wsUrl:
       { stdio: ['ignore', 'ignore', 'pipe'] },
     )
     let stderr = ''
-    const timer = setTimeout(() => {
-      child.kill('SIGKILL')
-      reject(new Error('Chrome did not announce DevTools endpoint'))
-    }, 15000)
+    // CI runners can take a while to cold-start Chrome.
+    const timer = setTimeout(
+      () => {
+        child.kill('SIGKILL')
+        reject(new Error('Chrome did not announce DevTools endpoint'))
+      },
+      process.env.CI ? 45000 : 15000,
+    )
     child.stderr.setEncoding('utf8')
     child.stderr.on('data', (chunk: string) => {
       stderr += chunk
