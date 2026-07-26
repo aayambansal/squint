@@ -368,6 +368,11 @@ const describe = (value: any): string => {
  */
 const SOFTNAV_SHIM = `(() => {
   window.__squintSoftNav = [];
+  window.__squintUrlChanges = 0;
+  const bump = () => { window.__squintUrlChanges++; };
+  const wrap = (fn) => function () { bump(); return fn.apply(this, arguments); };
+  try { history.pushState = wrap(history.pushState); history.replaceState = wrap(history.replaceState); } catch {}
+  addEventListener('popstate', bump);
   const push = (type, e) => window.__squintSoftNav.push({
     type,
     navigationId: e.navigationId || '',
@@ -493,6 +498,17 @@ export async function runFlow(
         transitions = summarizeSoftNav(result.value)
         for (const entry of result.value as { type: string; value: number }[]) {
           if (entry.type === 'icp' && entry.value > worstIcp) worstIcp = entry.value
+        }
+        const softNavCount = (result.value as { type: string }[]).filter((e) => e.type === 'soft-navigation').length
+        const { result: urlResult } = await connection.send(
+          'Runtime.evaluate',
+          { expression: 'window.__squintUrlChanges || 0', returnByValue: true },
+          sessionId,
+        )
+        if (Number(urlResult?.value ?? 0) >= 2 && softNavCount === 0) {
+          transitions.push(
+            `invisible navigation: ${Number(urlResult?.value)} URL change(s) but no soft-navigation fired — the route changed without a meaningful content paint (the URL swapped without updating the main region or moving focus)`,
+          )
         }
       }
     } catch {
