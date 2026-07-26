@@ -221,3 +221,31 @@ describe('summarizeShifts', () => {
     expect(summarizeShifts([{ value: 0.01, label: 'p' }])).toEqual([])
   })
 })
+
+describe.skipIf(!findChrome() || !hasWebSocket())('invisible navigation (requires Chrome)', () => {
+  it('flags URL changes with no soft-navigation paint', { timeout: 120000, retry: 2 }, async () => {
+    const http = await import('node:http')
+    const html = `<!doctype html><html lang="en"><head><title>spa</title></head><body><h1>App</h1>
+      <script>
+        // Swap the URL twice without repainting meaningful content — the
+        // silent-SPA-transition antipattern.
+        history.pushState({}, '', '/a');
+        history.pushState({}, '', '/b');
+      </script></body></html>`
+    const server = http.createServer((_req, res) => {
+      res.writeHead(200, { 'content-type': 'text/html', 'cache-control': 'no-store' })
+      res.end(html)
+    })
+    const port: number = await new Promise((resolve) => {
+      server.listen(0, '127.0.0.1', () => resolve((server.address() as { port: number }).port))
+    })
+    try {
+      const { runFlow } = await import('../src/preview/cdp.js')
+      const { parseFlow } = await import('../src/preview/flows.js')
+      const result = await runFlow(findChrome()!, `http://127.0.0.1:${port}`, parseFlow('spa', 'goto /\nexpect App')!, dir)
+      expect(result.transitions.some((t) => t.startsWith('invisible navigation'))).toBe(true)
+    } finally {
+      server.close()
+    }
+  })
+})
