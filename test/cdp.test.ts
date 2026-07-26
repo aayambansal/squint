@@ -105,6 +105,7 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
       <label><input type="checkbox" checked /> Remember my theme preference</label>
       <div class="fake-btn" onclick="void 0">Delete account</div>
       <span id="real-desc">describes things</span>
+      <div id="dupe">one</div><div id="dupe">two</div>
       <input type="search" aria-labelledby="renamed-label" aria-describedby="real-desc" />
       <button popovertarget="no-such-popover">open</button>
       <button></button><button></button><button></button><button></button>
@@ -172,6 +173,7 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
     expect(findings).toMatch(/clickable <div\.fake-btn> is not focusable/)
     expect(findings).toContain('aria-labelledby="renamed-label" — no element has that id')
     expect(findings).toContain('popovertarget="no-such-popover"')
+    expect(findings).toContain('duplicate id: "dupe" appears 2 times')
     expect(findings).toContain('form errors silent: <form#silent-form> has 1 required field(s)')
     expect(findings).toContain('autocomplete="off" on an identity field')
     expect(findings).toContain('top-layer: <div.modal-overlay> is a hand-rolled full-screen modal')

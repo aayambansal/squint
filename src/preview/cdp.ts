@@ -206,6 +206,20 @@ const A11Y_AUDIT = `(() => {
       imgFlags++;
     }
   }
+  // Duplicate IDs: getElementById returns the first, so label[for],
+  // aria-* references, and anchor links silently bind the wrong node.
+  const idCounts = new Map();
+  for (const el of document.querySelectorAll('[id]')) {
+    const id = el.id;
+    if (id) idCounts.set(id, (idCounts.get(id) || 0) + 1);
+  }
+  let dupFlags = 0;
+  for (const [id, count] of idCounts) {
+    if (count > 1 && dupFlags < 3) {
+      out.push('duplicate id: "' + id + '" appears ' + count + ' times — references (label for, aria-*, #anchors) bind only the first');
+      dupFlags++;
+    }
+  }
   // The semantic accessibility gap (CHI 2026): interactive things in the
   // DOM that the accessibility tree can't see. A high ratio means the UI
   // looks operable but isn't, for anyone not using a mouse.
