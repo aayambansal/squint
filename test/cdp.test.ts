@@ -100,6 +100,7 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
       <span id="real-desc">describes things</span>
       <input type="search" aria-labelledby="renamed-label" aria-describedby="real-desc" />
       <button popovertarget="no-such-popover">open</button>
+      <form id="silent-form"><input type="email" required /><button type="submit">Sign up</button></form>
       <script>window.__cfg = { stripe: "${leakedKey}" };</script>
       <div class="admin-panel" style="display:none"><button>Delete all users</button><a href="/wipe">wipe database</a></div>
       <div class="ok-btn" role="button" tabindex="0" onclick="void 0">Fine actually</div>
@@ -157,6 +158,7 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
     expect(findings).toMatch(/clickable <div\.fake-btn> is not focusable/)
     expect(findings).toContain('aria-labelledby="renamed-label" — no element has that id')
     expect(findings).toContain('popovertarget="no-such-popover"')
+    expect(findings).toContain('form errors silent: <form#silent-form> has 1 required field(s)')
     expect(findings).not.toContain('real-desc')
     expect(findings).not.toContain('ok-btn')
 
