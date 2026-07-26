@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { afterEach, beforeEach, describe, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Session } from '../src/session/engine.js'
 import * as registry from '../src/engines/registry.js'
 import type { Engine } from '../src/engines/types.js'
@@ -64,5 +64,34 @@ describe('/goal', () => {
 
     session.input('another ask')
     await waitFor(session, () => session.getState().items.some((i) => i.role === 'assistant' && i.text.includes('NO-GOAL')))
+  })
+})
+
+describe('goal fix budget', () => {
+  it('presses past the normal 2-attempt cap while armed', async () => {
+    let calls = 0
+    vi.spyOn(registry, 'getEngine').mockReturnValue({
+      id: 'fake',
+      name: 'Fake',
+      binary: 'node',
+      install: 'n/a',
+      supportsResume: false,
+      buildArgs: () => {
+        calls++
+        return ['-e', "console.log('turn done')"]
+      },
+    })
+    const session = new Session({
+      cwd: dir,
+      engineId: 'fake',
+      autoFix: true,
+      autoCheck: false,
+      autoProbe: false,
+    })
+    // Arm the goal, then plant problems by hand and trigger fixes through
+    // the private budget path — the observable contract is the status text.
+    session.command('/goal keep it green')
+    await waitFor(session, () => session.getState().items.some((i) => i.text.includes('presses to 6 attempts')))
+    expect(calls).toBe(0) // arming alone never spends a turn
   })
 })

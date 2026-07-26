@@ -76,3 +76,22 @@ describe('the sentinel', () => {
     expect(scanEvasion(dir, 'HEAD')).toEqual([])
   })
 })
+
+describe('lock glob matching', () => {
+  it('matches nested paths under ** and exact files, not siblings', () => {
+    fs.writeFileSync(path.join(dir, '.squint', 'locks'), 'src/legacy/**\n')
+    fs.mkdirSync(path.join(dir, 'src', 'legacy', 'deep'), { recursive: true })
+    fs.writeFileSync(path.join(dir, 'src', 'legacy', 'deep', 'nested.ts'), 'export {}\n')
+    fs.writeFileSync(path.join(dir, 'src', 'modern.ts'), 'export {}\n')
+    git('add', '-A')
+    git('commit', '-qm', 'setup')
+
+    fs.writeFileSync(path.join(dir, 'src', 'legacy', 'deep', 'nested.ts'), 'export const a = 1\n')
+    fs.writeFileSync(path.join(dir, 'src', 'modern.ts'), 'export const b = 2\n')
+    git('add', '-A')
+
+    const findings = scanEvasion(dir, 'HEAD')
+    const locked = findings.filter((f) => f.kind === 'lock-touched').map((f) => f.file)
+    expect(locked).toEqual(['src/legacy/deep/nested.ts'])
+  })
+})
