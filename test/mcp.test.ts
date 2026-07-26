@@ -55,7 +55,7 @@ describe('squint mcp', () => {
     rpc({ jsonrpc: '2.0', id: 2, method: 'tools/list' })
     const list = await nextResponse()
     const tools = (list.result as { tools: { name: string }[] }).tools.map((t) => t.name)
-    expect(tools).toEqual(['squint_check', 'squint_shot', 'squint_flows', 'squint_context'])
+    expect(tools).toEqual(['squint_check', 'squint_shot', 'squint_flows', 'squint_flow_suggest', 'squint_receipt_verify', 'squint_context'])
 
     rpc({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'squint_context', arguments: {} } })
     const call = await nextResponse()
@@ -76,6 +76,23 @@ describe('squint mcp', () => {
     expect(text).toContain('✗')
     expect(text).toContain('TS9999: fake failure')
   }, 40000)
+
+  it('squint_receipt_verify vouches for intact receipts and calls out edits', async () => {
+    const { writeReceipt } = await import('../src/quality/receipts.js')
+    const file = writeReceipt(dir, { ok: true, gates: [] })
+    runMcpServer(dir, input, output)
+
+    rpc({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'squint_receipt_verify', arguments: { path: file } } })
+    const good = await nextResponse()
+    expect((good.result as { content: { text: string }[] }).content[0]!.text).toContain('digest intact')
+
+    const receipt = JSON.parse(fs.readFileSync(file, 'utf8'))
+    receipt.report.ok = false
+    fs.writeFileSync(file, JSON.stringify(receipt))
+    rpc({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'squint_receipt_verify', arguments: { path: file } } })
+    const bad = await nextResponse()
+    expect((bad.result as { content: { text: string }[] }).content[0]!.text).toContain('DIGEST MISMATCH')
+  })
 
   it('rejects unknown tools and methods with JSON-RPC errors', async () => {
     runMcpServer(dir, input, output)
