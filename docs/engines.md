@@ -62,7 +62,7 @@ opencode auth login  # pick any provider (Anthropic, OpenAI, local, …)
 ## Amp (`amp`)
 
 ```sh
-npm i -g @sourcegraph/amp
+npm i -g @ampcode/cli
 export AMP_API_KEY=…   # from ampcode.com
 ```
 
