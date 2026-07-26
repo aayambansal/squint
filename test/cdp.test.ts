@@ -72,6 +72,7 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
       `<!doctype html><html><head><title>t</title>
       <meta name="viewport" content="width=device-width, user-scalable=no" />
       <script type="application/ld+json">{ not valid json }</script>
+      <link rel="manifest" href="/app.webmanifest" />
       <style>
         .c1{color:#111}.c2{color:#222}.c3{color:#333}.c4{color:#444}.c5{color:#555}
         .c6{color:#666}.c7{color:#777}.c8{color:#888}.c9{color:#999}.c10{color:#aaa}
@@ -222,6 +223,9 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
     expect(metaSeo).toContain('no meta description')
     expect(metaSeo).toContain('no og:image')
     expect(metaSeo).toContain('JSON-LD structured-data block is invalid JSON')
+    expect(metaSeo).toContain('manifest is linked but no theme-color')
+    expect(metaSeo).toContain('no apple-touch-icon')
+    expect(metaSeo).toContain('no charset declaration')
 
     const security = result.security.join('\n')
     expect(security).toContain('Stripe live secret key in an inline script')

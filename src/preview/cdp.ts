@@ -118,6 +118,20 @@ const META_AUDIT = `(() => {
     try { JSON.parse(ld.textContent || ''); }
     catch { seo.push('meta: a JSON-LD structured-data block is invalid JSON — search engines discard it silently'); break; }
   }
+  // PWA: a linked manifest with no theme-color leaves the browser
+  // chrome unstyled; a manifest link pointing nowhere installs nothing.
+  const manifest = document.querySelector('link[rel="manifest"]');
+  if (manifest) {
+    if (!document.querySelector('meta[name="theme-color"]')) {
+      seo.push('meta: a web app manifest is linked but no theme-color meta — the browser toolbar stays default instead of matching the brand');
+    }
+    if (!document.querySelector('link[rel*="apple-touch-icon"]')) {
+      seo.push('meta: manifest present but no apple-touch-icon — iOS home-screen installs get a blank icon');
+    }
+  }
+  // A charset declaration must come first; late charset forces a reparse.
+  const charset = document.querySelector('meta[charset], meta[http-equiv="Content-Type" i]');
+  if (!charset) seo.push('meta: no charset declaration — the browser guesses the encoding');
   return { a11y, seo };
 })()`
 
