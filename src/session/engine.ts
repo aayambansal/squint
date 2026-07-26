@@ -1231,6 +1231,22 @@ Do not restyle anything — this task only writes rules and checks.`
             }
           }
           lines.push('', `> ${this.summary()}`)
+          // Evidence pointers: the ledger and receipts that back this session.
+          try {
+            const { loadDecisions } = await import('./designLog.js')
+            const decisions = loadDecisions(this.opts.cwd, 8)
+            if (decisions.length > 0) {
+              lines.push('', '## Design decisions on record', '')
+              for (const d of decisions) lines.push(`- ${d.decision} _(${d.source})_`)
+            }
+            const receiptsDir = path.join(this.opts.cwd, '.squint', 'receipts')
+            const receipts = fs.existsSync(receiptsDir) ? fs.readdirSync(receiptsDir).filter((f) => f.endsWith('.json')) : []
+            if (receipts.length > 0) {
+              lines.push('', `> verification receipts: ${receipts.length} in .squint/receipts/ (latest: ${receipts.sort().at(-1)})`)
+            }
+          } catch {
+            // evidence pointers never block the export
+          }
           fs.writeFileSync(file, lines.join('\n') + '\n')
           this.push('status', `saved transcript → ${path.relative(this.opts.cwd, file)}`)
         })()
