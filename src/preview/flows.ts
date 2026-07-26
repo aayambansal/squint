@@ -26,6 +26,7 @@ export type FlowStep =
   | { kind: 'hover'; target: string }
   | { kind: 'scroll'; target: string }
   | { kind: 'wait'; ms: number }
+  | { kind: 'budget'; metric: 'icp'; ms: number }
 
 export interface Flow {
   name: string
@@ -71,6 +72,14 @@ export function parseFlow(name: string, text: string): Flow | null {
         const ms = Number.parseInt(arg, 10)
         if (!Number.isInteger(ms) || ms < 0 || ms > 10000) return null
         steps.push({ kind: 'wait', ms })
+        break
+      }
+      case 'budget': {
+        // budget icp 400 — worst per-transition ICP the journey tolerates.
+        const [metric, msRaw] = arg.split(/\s+/)
+        const ms = Number.parseInt(msRaw ?? '', 10)
+        if (metric !== 'icp' || !Number.isInteger(ms) || ms <= 0) return null
+        steps.push({ kind: 'budget', metric: 'icp', ms })
         break
       }
       default:
@@ -169,6 +178,7 @@ export function stepExpression(step: FlowStep): string | null {
       })()`
     case 'goto':
     case 'shot':
+    case 'budget':
     case 'wait':
       return null // handled by the runner, not in-page
   }
