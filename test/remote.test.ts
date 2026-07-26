@@ -81,3 +81,22 @@ describe('RemoteSession', () => {
     expect(driver.getState().items.some((i) => i.text.includes('observer'))).toBe(false)
   })
 })
+
+describe('observer verdicts through RemoteSession', () => {
+  it('an observer /decide lands with seat attribution in shared state', async () => {
+    vi.spyOn(registry, 'getEngine').mockReturnValue(fakeEngine("console.log('ok')"))
+    daemon = await startDaemon({ cwd: dir, engineId: 'fake' })
+
+    const driver = await RemoteSession.connect(dir)
+    const observer = await RemoteSession.connect(dir)
+    sessions.push(driver, observer)
+
+    observer.input('/decide keep the mono theme')
+    await waitFor(driver, () =>
+      driver.getState().items.some((i) => i.text.includes('seat 2 (observer): /decide keep the mono theme')),
+    )
+    await waitFor(driver, () =>
+      driver.getState().items.some((i) => i.text.includes('decision recorded: keep the mono theme')),
+    )
+  })
+})

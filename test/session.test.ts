@@ -483,3 +483,26 @@ describe('Session', () => {
     session.dispose()
   })
 })
+
+describe('/save evidence pointers', () => {
+  it('exports end with decisions on record and a receipts pointer', async () => {
+    const { appendDecision } = await import('../src/session/designLog.js')
+    const { writeReceipt } = await import('../src/quality/receipts.js')
+    appendDecision(dir, { decision: 'mono theme stays', source: 'decide' })
+    writeReceipt(dir, { ok: true })
+
+    vi.spyOn(registry, 'getEngine').mockReturnValue(fakeEngine("console.log('done work')"))
+    const session = new Session({ cwd: dir, engineId: 'fake' })
+    session.input('do something')
+    await waitFor(session, () => session.getState().items.some((i) => i.text.includes('done work')))
+
+    session.command('/save')
+    await waitFor(session, () => session.getState().items.some((i) => i.text.includes('saved transcript')))
+    const transcripts = path.join(dir, '.squint', 'transcripts')
+    const file = fs.readdirSync(transcripts).find((f) => f.endsWith('.md'))!
+    const text = fs.readFileSync(path.join(transcripts, file), 'utf8')
+    expect(text).toContain('## Design decisions on record')
+    expect(text).toContain('- mono theme stays _(decide)_')
+    expect(text).toContain('verification receipts: 1 in .squint/receipts/')
+  })
+})
