@@ -51,6 +51,7 @@ export interface CdpCaptureResult {
   webmcp: string[]
   locale: string[]
   speculation: string[]
+  containers: string[]
   jank: string[]
 }
 
@@ -1082,6 +1083,42 @@ const DECEPTION_AUDIT = `(() => {
   return out.slice(0, 6);
 })()`
 
+/**
+ * Container-query disconnect check: @container rules with no element
+ * declaring container-type are ALL dead — the component never responds
+ * to its container, and nothing errors. The reverse (declared
+ * containers, zero rules) is setup without payoff. Both are the
+ * write-the-CSS-forget-the-wiring class agents produce.
+ */
+const CONTAINER_AUDIT = `(() => {
+  const out = [];
+  let containerRules = 0;
+  const walk = (rules) => {
+    for (const rule of rules) {
+      try {
+        if (rule.cssText && rule.cssText.trim().startsWith('@container')) containerRules++;
+        if (rule.cssRules) walk(rule.cssRules);
+      } catch {}
+    }
+  };
+  for (const sheet of document.styleSheets) {
+    let rules; try { rules = sheet.cssRules; } catch { continue; }
+    walk(rules);
+  }
+  let containers = 0;
+  const all = document.querySelectorAll('*');
+  for (let i = 0; i < all.length && i < 1500; i++) {
+    const ct = getComputedStyle(all[i]).containerType;
+    if (ct && ct !== 'normal') containers++;
+  }
+  if (containerRules > 0 && containers === 0) {
+    out.push('container queries: ' + containerRules + ' @container rule(s) but no element declares container-type — every rule is dead; add container-type to the component wrappers');
+  } else if (containers > 0 && containerRules === 0) {
+    out.push('container queries: ' + containers + ' element(s) declare container-type but no @container rules exist — setup without payoff');
+  }
+  return out;
+})()`
+
 export async function cdpCapture(
   chromePath: string,
   url: string,
@@ -1105,6 +1142,7 @@ export async function cdpCapture(
   let webmcp: string[] = []
   let locale: string[] = []
   const speculation: string[] = []
+  let containers: string[] = []
   let jank: string[] = []
   const requests = new Map<string, string>()
   let connection: CdpConnection | null = null
@@ -1302,6 +1340,16 @@ export async function cdpCapture(
       try {
         const { result } = await connection.send(
           'Runtime.evaluate',
+          { expression: CONTAINER_AUDIT, returnByValue: true },
+          sessionId,
+        )
+        if (Array.isArray(result?.value)) containers = result.value.map(String)
+      } catch {
+        // best-effort
+      }
+      try {
+        const { result } = await connection.send(
+          'Runtime.evaluate',
           { expression: DECEPTION_AUDIT, returnByValue: true },
           sessionId,
         )
@@ -1459,5 +1507,5 @@ export async function cdpCapture(
     setTimeout(() => fs.rmSync(profileDir, { recursive: true, force: true }), 500).unref?.()
   }
 
-  return { report, shots, a11y, slop, perf, narration, phantoms, viewTransitions, components, checkFailures, webmcp, jank, locale, speculation }
+  return { report, shots, a11y, slop, perf, narration, phantoms, viewTransitions, components, checkFailures, webmcp, jank, locale, speculation, containers }
 }

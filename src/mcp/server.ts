@@ -55,6 +55,7 @@ const TOOLS: McpTool[] = [
         ['jank', result.jank],
         ['locale', result.locale],
         ['speculation', result.speculation],
+        ['container queries', result.containers],
         ['components', result.components],
       ] as const) {
         if (list && list.length > 0) sections.push(`${label}:\n${list.join('\n')}`)
