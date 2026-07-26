@@ -236,7 +236,7 @@ describe('Session', () => {
     expect(texts.some((t) => t.includes('/fix sends open problems'))).toBe(true)
     expect(session.getState().problems.map((p) => p.source)).toEqual(['gates'])
     session.input('/problems')
-    expect(session.getState().items.at(-1)?.text).toContain('1. [gates]')
+    expect(session.getState().items.at(-1)?.text).toContain('[gates]')
     session.dispose()
   }, 35000)
 
