@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.2 — 2026-07-26
+
+- MCP surface grows to six tools: squint_flow_suggest (journeys drafted from live routes) and squint_receipt_verify (prove a receipt wasn't edited after sealing)
+- squint init teaches by example: new projects start with a persistent check (did the app mount) and a two-line rules.md
+- The sentinel watches .squint/rules.md — shrinking or deleting standing rules flags like watering down a check
+
 ## 0.7.1 — 2026-07-26
 
 - Interval checks: `// squint-trigger: interval[:seconds]` runs a page assertion on wall-clock time between turns while `squint serve` is up — failures surface as a note to every attached terminal
