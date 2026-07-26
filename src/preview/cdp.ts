@@ -90,6 +90,37 @@ const PERF_PROBE = `(() => {
  * association, document lang/title, heading order, tap-target size,
  * positive tabindex. Returns human-readable findings, capped at 20.
  */
+const META_AUDIT = `(() => {
+  const a11y = [], seo = [];
+  const viewport = document.querySelector('meta[name="viewport"]');
+  if (!viewport) {
+    a11y.push('meta: no viewport meta — mobile browsers render at desktop width and zoom out');
+  } else {
+    const content = (viewport.getAttribute('content') || '').toLowerCase();
+    if (content.includes('user-scalable=no') || /maximum-scale=\\s*1(\\.0)?\\b/.test(content)) {
+      a11y.push('meta: viewport blocks zoom (user-scalable=no / maximum-scale=1) — a WCAG 1.4.4 failure; low-vision users cannot pinch-zoom');
+    }
+  }
+  const robots = document.querySelector('meta[name="robots"]');
+  if (robots && /noindex/i.test(robots.getAttribute('content') || '')) {
+    seo.push('meta: <meta robots> is noindex — this page is hidden from search engines (intentional? agents leave staging noindex in production)');
+  }
+  const desc = document.querySelector('meta[name="description"]');
+  if (!desc || !(desc.getAttribute('content') || '').trim()) {
+    seo.push('meta: no meta description — search results and link previews have no summary to show');
+  }
+  // OpenGraph: a page worth sharing needs a title and image.
+  if (document.querySelector('h1') && !document.querySelector('meta[property="og:image"]')) {
+    seo.push('meta: no og:image — shared links render as a bare URL with no preview card');
+  }
+  // JSON-LD structured data, if present, must parse.
+  for (const ld of document.querySelectorAll('script[type="application/ld+json"]')) {
+    try { JSON.parse(ld.textContent || ''); }
+    catch { seo.push('meta: a JSON-LD structured-data block is invalid JSON — search engines discard it silently'); break; }
+  }
+  return { a11y, seo };
+})()`
+
 const A11Y_AUDIT = `(() => {
   const out = [];
   const name = (el) => (el.getAttribute('aria-label') || el.textContent || el.getAttribute('title') || '').trim();
@@ -1698,6 +1729,18 @@ export async function cdpCapture(
           sessionId,
         )
         if (Array.isArray(result?.value)) slop = result.value.map(String)
+      } catch {
+        // best-effort
+      }
+      try {
+        const { result } = await connection.send(
+          'Runtime.evaluate',
+          { expression: META_AUDIT, returnByValue: true },
+          sessionId,
+        )
+        const meta = result?.value as { a11y?: string[]; seo?: string[] } | undefined
+        if (Array.isArray(meta?.a11y)) a11y.push(...meta.a11y)
+        if (Array.isArray(meta?.seo)) slop.push(...meta.seo)
       } catch {
         // best-effort
       }

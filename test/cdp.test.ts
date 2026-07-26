@@ -70,6 +70,8 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
     fs.writeFileSync(
       page,
       `<!doctype html><html><head><title>t</title>
+      <meta name="viewport" content="width=device-width, user-scalable=no" />
+      <script type="application/ld+json">{ not valid json }</script>
       <style>
         .c1{color:#111}.c2{color:#222}.c3{color:#333}.c4{color:#444}.c5{color:#555}
         .c6{color:#666}.c7{color:#777}.c8{color:#888}.c9{color:#999}.c10{color:#aaa}
@@ -209,6 +211,12 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
     expect(result.speculation.some((f) => f.includes('speculation: rule set invalid'))).toBe(true)
     expect(result.containers.join('')).toContain('every rule is dead')
     expect(result.containers.join('\n')).toContain('targets --ghost-anchor but nothing declares that anchor-name')
+
+    expect(result.a11y.join('\n')).toContain('viewport blocks zoom')
+    const metaSeo = result.slop.join('\n')
+    expect(metaSeo).toContain('no meta description')
+    expect(metaSeo).toContain('no og:image')
+    expect(metaSeo).toContain('JSON-LD structured-data block is invalid JSON')
 
     const security = result.security.join('\n')
     expect(security).toContain('Stripe live secret key in an inline script')
