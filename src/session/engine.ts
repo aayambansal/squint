@@ -284,7 +284,7 @@ export class Session {
         return
       }
       await this.runTurn(
-        buildReviewPrompt(result.shots, undefined, result.runtime, result.a11y, result.slop, result.narration, result.phantoms, result.viewTransitions, result.components, result.webmcp, result.jank),
+        buildReviewPrompt(result.shots, undefined, result.runtime, result.a11y, result.slop, result.narration, result.phantoms, result.viewTransitions, result.components, result.webmcp, result.jank, result.locale),
         `👁 polish round ${round}/${rounds}`,
       )
     }
@@ -717,7 +717,7 @@ export class Session {
               const captureResult = await this.capture()
               if (captureResult) {
                 await this.runTurn(
-                  buildReviewPrompt(captureResult.shots, undefined, captureResult.runtime, captureResult.a11y, captureResult.slop, captureResult.narration, captureResult.phantoms, captureResult.viewTransitions, captureResult.components, captureResult.webmcp, captureResult.jank),
+                  buildReviewPrompt(captureResult.shots, undefined, captureResult.runtime, captureResult.a11y, captureResult.slop, captureResult.narration, captureResult.phantoms, captureResult.viewTransitions, captureResult.components, captureResult.webmcp, captureResult.jank, captureResult.locale),
                   '👁 auto-review rendered UI',
                 )
               }
@@ -1414,7 +1414,7 @@ Do not restyle anything — this task only writes rules and checks.`
           const result = await this.capture()
           if (result) {
             await this.runTurn(
-              buildReviewPrompt(result.shots, arg || undefined, result.runtime, result.a11y, result.slop, result.narration, result.phantoms, result.viewTransitions, result.components, result.webmcp, result.jank),
+              buildReviewPrompt(result.shots, arg || undefined, result.runtime, result.a11y, result.slop, result.narration, result.phantoms, result.viewTransitions, result.components, result.webmcp, result.jank, result.locale),
               `👁 review rendered UI${arg ? ` · ${arg}` : ''}`,
             )
           }

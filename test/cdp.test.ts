@@ -82,6 +82,9 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
       <button class="bad-focus" style="outline:none">go</button>
       <ul><li>🚀 fast</li><li>✨ shiny</li><li>🔥 hot</li></ul>
       <div class="card-a">a</div><div class="card-b">b</div>
+      <button class="tight" style="width:110px;overflow:hidden;white-space:nowrap;display:block">Save all changes</button>
+      <p class="hardleft" style="text-align:left">This paragraph pins itself to the left edge no matter the reading direction.</p>
+      <p class="fluid">This paragraph inherits direction like a well-behaved block of text should.</p>
       <script>
         console.error('console-boom');
         setTimeout(() => { throw new Error('uncaught-boom') }, 100);
@@ -143,6 +146,11 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
     const vt = result.viewTransitions.join('\n')
     expect(vt).toContain('duplicate view-transition-name "hero-card" on 2 elements')
     expect(vt).toContain('no prefers-reduced-motion')
+
+    const locale = result.locale.join('\n')
+    expect(locale).toContain('<button.tight> clips at +40% text expansion')
+    expect(locale).toContain('<p.hardleft> hardcodes text-align:left')
+    expect(locale).not.toContain('p.fluid')
 
     const narration = result.narration.join('\n')
     expect(narration).toContain('heading 1: "squint cdp"')
