@@ -1014,6 +1014,30 @@ export class Session {
         }
         break
       }
+      case 'distill': {
+        void (async () => {
+          const { loadDecisions } = await import('./designLog.js')
+          const decisions = loadDecisions(this.opts.cwd, 24)
+          if (decisions.length < 3) {
+            this.push('status', `only ${decisions.length} decision(s) on record — distillation needs a few more (/decide, variants, approvals, rollbacks all feed the ledger)`)
+            return
+          }
+          const ledger = decisions
+            .map((d) => `- [${d.source}] ${d.decision}`)
+            .join('\n')
+          const prompt = `The design ledger below is every decision this project has recorded — approvals, rejections, chosen variants, rollbacks. Distill the accumulated taste into standing enforcement:
+
+${ledger}
+
+1. Append at most 3 SHORT always-on rules to .squint/rules.md capturing patterns that repeat across decisions (rejections matter most — "no gradient buttons" beats restating one-off choices). Create the file if missing; never delete existing rules.
+2. Where a decision is mechanically checkable in the DOM, write a persistent check at .squint/checks/<name>.js — plain JS that evaluates IN THE PAGE to an array of failure strings (empty = pass). At most 2 new checks; skip anything that needs judgment rather than a selector.
+3. Reply with exactly what you wrote and why, briefly.
+
+Do not restyle anything — this task only writes rules and checks.`
+          await this.runTurn(prompt, '/distill — compress the ledger into rules and checks', this.opts.fixModel)
+        })()
+        break
+      }
       case 'goal': {
         if (!arg || arg === 'show') {
           this.push('status', this.goal ? `standing goal: ${this.goal}` : 'no standing goal — /goal <objective> arms one; /goal off clears')
