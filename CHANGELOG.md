@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.5 — 2026-07-27
+
+- `squint ci --compare`: every pipeline run diffs against the previous sealed receipt — regressions print red and fail the run
+- `/fix <source>`: target one problem stream (a11y, dev, check, …)
+
 ## 0.9.4 — 2026-07-27
 
 - `squint receipts [compare]`: list sealed runs; diff the two newest — gate flips, hard-finding deltas, flow regressions — digests verified first, non-zero exit on regression
