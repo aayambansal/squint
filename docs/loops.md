@@ -164,6 +164,9 @@ becomes a rule every ask carries and a check the probe replays.
 `click Sign up`, `fill #email me@x.com`, `press Enter`, `expect Check your inbox`,
 `shot done`). `/flows` replays every journey headlessly — passes show step counts and
 screenshots inline; a failing step names its exact position and joins the problems list.
+Journeys also report per-transition soft-nav timings (Chrome 151+) and the leak pulse:
+DOM subtrees removed from the document but still referenced by JS — the
+listener-holds-the-list class — with top tag counts.
 `/flows suggest` drafts a smoke flow per declared route from the live page's own
 headings; ask the engine to deepen them from there.
 
