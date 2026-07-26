@@ -53,6 +53,7 @@ const TOOLS: McpTool[] = [
         ['phantom classes', result.phantoms],
         ['view transitions', result.viewTransitions],
         ['jank', result.jank],
+        ['locale', result.locale],
         ['components', result.components],
       ] as const) {
         if (list && list.length > 0) sections.push(`${label}:\n${list.join('\n')}`)

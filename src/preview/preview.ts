@@ -31,6 +31,7 @@ export interface CaptureResult {
   checkFailures?: string[]
   webmcp?: string[]
   jank?: string[]
+  locale?: string[]
 }
 
 /**
@@ -83,7 +84,7 @@ export async function captureViewports(cwd: string, url: string): Promise<Captur
       // Root gets the full viewport trio + runtime watch + a11y sweep;
       // additional routes get one desktop shot each.
       const checks = loadChecks(cwd)
-      const { report, shots, a11y, slop, narration, phantoms, viewTransitions, components, checkFailures, webmcp, jank } = await cdpCapture(chrome, url, dir, VIEWPORTS, 2500, true, checks)
+      const { report, shots, a11y, slop, narration, phantoms, viewTransitions, components, checkFailures, webmcp, jank, locale } = await cdpCapture(chrome, url, dir, VIEWPORTS, 2500, true, checks)
       const errors: string[] = []
       for (const route of routes.slice(1)) {
         try {
@@ -98,7 +99,7 @@ export async function captureViewports(cwd: string, url: string): Promise<Captur
           errors.push(`${route}: capture failed`)
         }
       }
-      return { shots, errors, runtime: report, a11y, slop, narration, phantoms, viewTransitions, components, checkFailures, webmcp, jank }
+      return { shots, errors, runtime: report, a11y, slop, narration, phantoms, viewTransitions, components, checkFailures, webmcp, jank, locale }
     } catch {
       // fall through to the one-shot path
     }
@@ -219,6 +220,11 @@ function narrationSection(narration: string[] | undefined): string {
   return `\n\n## What a screen reader would say (accessibility tree, in order)\n\n${narration.join('\n')}\n\nJudge this narration as an experience: does the reading order make sense? do names actually describe their targets? is anything announced as "(no accessible name)"? Fix real incoherence — this is how non-visual users meet the page.`
 }
 
+function localeSection(locale: string[] | undefined): string {
+  if (!locale || locale.length === 0) return ''
+  return `\n\n## Locale findings (pseudo-localization + RTL)\n\n${locale.join('\n')}\n\nText that clips at +40% expansion truncates in real translations; explicit left-alignment ignores RTL users. Fix with flexible widths and logical properties (text-align: start, margin-inline), not by shortening copy.`
+}
+
 function jankSection(jank: string[] | undefined): string {
   if (!jank || jank.length === 0) return ''
   return `\n\n## Jank attribution (main-thread frames ≥50ms)\n\n${jank.join('\n')}\n\nEach line names the function behind a long animation frame observed during load and a scripted scroll. Fix the work (memoize, virtualize, move off the main thread) — do not remove the animation.`
@@ -261,11 +267,12 @@ export function buildReviewPrompt(
   components?: string[],
   webmcp?: string[],
   jank?: string[],
+  locale?: string[],
 ): string {
   const list = shots.map((s) => `- ${s.name}: ${s.path}`).join('\n')
   return `Screenshots of the running app were just captured:
 
 ${list}
 
-Read each screenshot and review the rendered UI against the design standards you were given. Check: visual hierarchy and spacing rhythm, typography, color and contrast, alignment, empty-looking or broken regions, and whether the mobile capture shows horizontal overflow or cramped layout. List the concrete issues you can SEE (not hypothetical ones), ranked by visual impact${extra ? `, with special attention to: ${extra}` : ''}. Then fix them and verify the app still builds.${runtimeSection(runtime)}${a11ySection(a11y)}${slopSection(slop)}${narrationSection(narration)}${phantomSection(phantoms)}${vtSection(viewTransitions)}${componentSection(components)}${webmcpSection(webmcp)}${jankSection(jank)}`
+Read each screenshot and review the rendered UI against the design standards you were given. Check: visual hierarchy and spacing rhythm, typography, color and contrast, alignment, empty-looking or broken regions, and whether the mobile capture shows horizontal overflow or cramped layout. List the concrete issues you can SEE (not hypothetical ones), ranked by visual impact${extra ? `, with special attention to: ${extra}` : ''}. Then fix them and verify the app still builds.${runtimeSection(runtime)}${a11ySection(a11y)}${slopSection(slop)}${narrationSection(narration)}${phantomSection(phantoms)}${vtSection(viewTransitions)}${componentSection(components)}${webmcpSection(webmcp)}${jankSection(jank)}${localeSection(locale)}`
 }

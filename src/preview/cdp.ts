@@ -49,6 +49,7 @@ export interface CdpCaptureResult {
   components: string[]
   checkFailures: string[]
   webmcp: string[]
+  locale: string[]
   jank: string[]
 }
 
@@ -930,6 +931,69 @@ const SCRIPTED_SCROLL = `(async () => {
     .map((e) => e.duration + 'ms frame — ' + (e.fn || e.invoker || 'script') + (e.url ? ' @ ' + e.url : ''));
 })()`
 
+/**
+ * Locale pulse: pseudo-localization surfaces truncation and hardcoded
+ * direction without a single real translation. Text nodes get accents
+ * plus ~40% expansion (the industry survival bar), then clipped
+ * elements report; dir=rtl exposes text-align:left hardcodes (computed
+ * 'start' flips to right under RTL — explicit left doesn't). Runs LAST:
+ * it mutates the page.
+ */
+const LOCALE_AUDIT = `(async () => {
+  const findings = [];
+  const label = (el) => {
+    let out = el.tagName.toLowerCase();
+    if (el.id) out += '#' + el.id;
+    else if (el.classList[0]) out += '.' + el.classList[0];
+    return out;
+  };
+  const MAP = { a:'á', e:'é', i:'í', o:'ó', u:'ü', A:'Á', E:'É', I:'Í', O:'Ó', U:'Ü', n:'ñ', N:'Ñ' };
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+    acceptNode: (n) => {
+      const parent = n.parentElement;
+      if (!parent || /^(SCRIPT|STYLE|NOSCRIPT)$/.test(parent.tagName)) return NodeFilter.FILTER_REJECT;
+      return n.textContent.trim().length > 1 ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+    },
+  });
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  for (const node of nodes.slice(0, 400)) {
+    const text = node.textContent;
+    const accented = text.replace(/[aeiouAEIOUnN]/g, (c) => MAP[c] || c);
+    const pad = '·'.repeat(Math.ceil(text.trim().length * 0.4));
+    node.textContent = accented + pad;
+  }
+  await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 120)));
+  const clipped = new Set();
+  for (const el of document.querySelectorAll('button, a, h1, h2, h3, [class*="btn"], [class*="badge"], nav *, th, td, li, label, span, p')) {
+    if (clipped.size >= 6) break;
+    if (el.children.length > 0) continue;
+    if (el.scrollWidth > el.clientWidth + 3 && el.clientWidth > 0) {
+      const key = label(el);
+      if (!clipped.has(key)) {
+        clipped.add(key);
+        findings.push('locale: <' + key + '> clips at +40% text expansion — real translations will truncate here');
+      }
+    }
+  }
+  document.documentElement.setAttribute('dir', 'rtl');
+  await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 120)));
+  let leftHardcodes = 0;
+  for (const el of document.querySelectorAll('p, h1, h2, h3, li, td, label, div')) {
+    if (leftHardcodes >= 3) break;
+    const text = (el.textContent || '').trim();
+    if (text.length < 10 || el.children.length > 2) continue;
+    if (getComputedStyle(el).textAlign === 'left') {
+      findings.push('locale: <' + label(el) + '> hardcodes text-align:left — ignores RTL (use start)');
+      leftHardcodes++;
+    }
+  }
+  if (document.documentElement.scrollWidth > innerWidth + 4) {
+    findings.push('locale: the page overflows horizontally under RTL');
+  }
+  return findings;
+})()`
+
 export async function cdpCapture(
   chromePath: string,
   url: string,
@@ -951,6 +1015,7 @@ export async function cdpCapture(
   let components: string[] = []
   const checkFailures: string[] = []
   let webmcp: string[] = []
+  let locale: string[] = []
   let jank: string[] = []
   const requests = new Map<string, string>()
   let connection: CdpConnection | null = null
@@ -1192,11 +1257,25 @@ export async function cdpCapture(
       fs.writeFileSync(outPath, Buffer.from(data, 'base64'))
       shots.push({ name: viewport.name, path: outPath })
     }
+
+    if (audit) {
+      // The locale pulse runs dead last: it rewrites the page's text.
+      try {
+        const { result } = await connection.send(
+          'Runtime.evaluate',
+          { expression: LOCALE_AUDIT, returnByValue: true, awaitPromise: true },
+          sessionId,
+        )
+        if (Array.isArray(result?.value)) locale = result.value.map(String)
+      } catch {
+        // best-effort
+      }
+    }
   } finally {
     connection?.close()
     child.kill('SIGKILL')
     setTimeout(() => fs.rmSync(profileDir, { recursive: true, force: true }), 500).unref?.()
   }
 
-  return { report, shots, a11y, slop, perf, narration, phantoms, viewTransitions, components, checkFailures, webmcp, jank }
+  return { report, shots, a11y, slop, perf, narration, phantoms, viewTransitions, components, checkFailures, webmcp, jank, locale }
 }
