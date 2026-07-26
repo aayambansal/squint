@@ -114,6 +114,13 @@ screenshot inline on capable terminals — and blocks on your verdict: `/yes [no
 approves, `/no [note]` rejects, either way the outcome joins the design ledger and
 rides back to the engine as the next message.
 
+## The review lane
+
+`/lane on` adds a second reviewer to every real ask, in fresh context: it reads the
+turn's diff — not the conversation — so it can't inherit the implementer's blind
+spots. At most 3 findings ranked by severity, file and line, read-only by contract,
+on the fix model when one is configured. Off by default; it costs a turn.
+
 ## The sentinel
 
 Verification loops shift the failure mode from bad output to gate evasion: delete the
