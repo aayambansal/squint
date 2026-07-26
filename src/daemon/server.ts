@@ -35,7 +35,12 @@ export interface Daemon {
   session: Session
 }
 
-export function startDaemon(opts: SessionOptions): Promise<Daemon> {
+export interface DaemonOptions extends SessionOptions {
+  /** How often the daemon looks for due interval checks (test hook). */
+  intervalSweepMs?: number
+}
+
+export function startDaemon(opts: DaemonOptions): Promise<Daemon> {
   const session = new Session(opts)
   const sock = socketPath(opts.cwd)
   fs.mkdirSync(path.dirname(sock), { recursive: true })
@@ -97,6 +102,25 @@ export function startDaemon(opts: SessionOptions): Promise<Daemon> {
     socket.on('error', drop)
   })
 
+  // Interval checks: the daemon owns wall-clock time, so checks with
+  // `// squint-trigger: interval[:s]` run between turns against the dev
+  // server — a crashed page gets noticed while everyone is asleep.
+  const lastRun = new Map<string, number>()
+  const sweep = setInterval(async () => {
+    const state = session.getState()
+    if (!state.devUrl || state.running) return
+    try {
+      const { runIntervalSweep } = await import('../preview/checks.js')
+      const failures = await runIntervalSweep(opts.cwd, state.devUrl, lastRun)
+      if (failures.length > 0) {
+        session.note(`⏰ interval check(s) failing:\n${failures.join('\n')}`)
+      }
+    } catch {
+      // the clock never crashes the session
+    }
+  }, opts.intervalSweepMs ?? 60000)
+  sweep.unref?.()
+
   const unsubscribe = session.subscribe(() => {
     const payload = serialize()
     for (const client of clients) {
@@ -111,6 +135,7 @@ export function startDaemon(opts: SessionOptions): Promise<Daemon> {
         session,
         clientCount: () => clients.length,
         close: () => {
+          clearInterval(sweep)
           unsubscribe()
           for (const client of clients) client.destroy()
           server.close()
