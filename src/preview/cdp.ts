@@ -1533,6 +1533,26 @@ const SECURITY_AUDIT = `(async () => {
       scan(localStorage.getItem(key) || '', 'localStorage["' + key + '"]');
     }
   } catch {}
+  // Mixed content: http subresources on an https page get blocked or
+  // downgrade the padlock; agents hardcode http:// URLs constantly.
+  if (location.protocol === 'https:') {
+    let mixed = 0;
+    for (const el of document.querySelectorAll('img[src], script[src], link[href], iframe[src]')) {
+      if (mixed >= 3) break;
+      const url = el.getAttribute('src') || el.getAttribute('href') || '';
+      if (/^http:\\/\\//i.test(url)) {
+        out.push('mixed content: ' + el.tagName.toLowerCase() + ' loads over http on an https page (' + url.slice(0, 50) + ') — blocked or downgrades the connection');
+        mixed++;
+      }
+    }
+  }
+  // Inline event handlers + javascript: URLs are the DOM-visible tell of
+  // a missing/loose Content-Security-Policy (a strict CSP forbids both).
+  if (document.querySelector('[onclick], [onload], [onerror]') && document.querySelectorAll('[onclick], [onload], [onerror]').length >= 3) {
+    if (!document.querySelector('meta[http-equiv="Content-Security-Policy" i]')) {
+      out.push('CSP: many inline event handlers and no Content-Security-Policy meta — a strict CSP (which blocks inline handlers) is not in play; XSS has no second line of defense');
+    }
+  }
   // Client-side gates: privileged content shipped hidden to everyone.
   for (const el of document.querySelectorAll('[id*="admin" i], [class*="admin" i], [id*="premium" i], [class*="premium" i]')) {
     if (out.length >= 10) break;
