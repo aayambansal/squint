@@ -1327,13 +1327,24 @@ Do not restyle anything — this task only writes rules and checks.`
           const a11yCount = result.a11y?.length ?? 0
           const slopCount = result.slop?.length ?? 0
           const runtimeBad = result.runtime ? (runtimeSummary(result.runtime) ? 1 : 0) : 0
+          const hardCount =
+            (result.phantoms?.length ?? 0) +
+            (result.viewTransitions?.filter((v) => v.startsWith('duplicate')).length ?? 0) +
+            (result.checkFailures?.length ?? 0)
+          const softCount = (result.jank?.length ?? 0) + (result.locale?.length ?? 0) + (result.speculation?.length ?? 0)
           const problems = this.state.problems.length
           // Deterministic axes only: 5.0 minus measured debt, floored at 0.
           // Judgment (hierarchy, taste) stays /review's job — LLM judges
           // are unreliable on absolute quality, per the eval research.
           const score = Math.max(
             0,
-            5 - problems * 0.75 - Math.min(a11yCount, 4) * 0.25 - Math.min(slopCount, 4) * 0.25 - runtimeBad,
+            5 -
+              problems * 0.75 -
+              Math.min(a11yCount, 4) * 0.25 -
+              Math.min(slopCount, 4) * 0.25 -
+              runtimeBad -
+              Math.min(hardCount, 3) * 0.5 -
+              Math.min(softCount, 4) * 0.125,
           )
           const lcp = this.lastPerf?.lcpMs !== undefined ? ` · LCP ${this.lastPerf.lcpMs}ms` : ''
           this.push(
@@ -1342,6 +1353,7 @@ Do not restyle anything — this task only writes rules and checks.`
               `score: ${score.toFixed(2)}/5 (deterministic axes)`,
               `  open problems: ${problems}${problems > 0 ? ` (${this.state.problems.map((p) => p.source).join(', ')})` : ''}`,
               `  a11y findings: ${a11yCount} · distinctiveness tells: ${slopCount} · runtime ${runtimeBad ? 'dirty' : 'clean'}${lcp}`,
+              `  hard findings: ${hardCount} (phantoms, broken transitions, failed checks) · advisories: ${softCount} (jank, locale, speculation)`,
               '  /review judges what numbers cannot — hierarchy, taste, coherence',
             ].join('\n'),
           )
