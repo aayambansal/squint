@@ -206,7 +206,11 @@ to match any ask, and always-on context past the attention budget.
 command with an exit code — gates, the page audit (hard findings fail the run;
 a11y/slop/jank ride as advisories), and flow replay. Every run seals a **receipt** at
 `.squint/receipts/`: the full report plus versions, git head, and screenshot hashes
-under a recomputable digest — a green run you can hand to someone as evidence. `squint mcp` serves the same
+under a recomputable digest — a green run you can hand to someone as evidence.
+`squint receipts compare` (or `squint ci --compare`) diffs the two newest: gate flips,
+hard-finding deltas, and flow regressions print with digests verified first, and any
+REGRESSED line fails the run — nightly pipelines ask "is it greener than yesterday",
+not "is it green". `squint mcp` serves the same
 verification as MCP tools over stdio (`squint_check`, `squint_shot`, `squint_flows`,
 `squint_context`), so agents that speak MCP call squint instead of squint wrapping
 them.
