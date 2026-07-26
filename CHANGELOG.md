@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.6 — 2026-07-27
+
+- Container-query and anchor-positioning disconnect checks: dead @container rules, containers without rules, and position-anchor targets nothing declares — the write-the-CSS-forget-the-wiring class, named with the fix
+- Flows report wall-clock duration in the TUI and MCP tool
+
 ## 0.9.5 — 2026-07-27
 
 - `squint ci --compare`: every pipeline run diffs against the previous sealed receipt — regressions print red and fail the run
