@@ -93,6 +93,30 @@ describe('daemon', () => {
     expect((await promoted).role).toBe('driver')
   })
 
+  it('a late attach receives the full transcript immediately', async () => {
+    vi.spyOn(registry, 'getEngine').mockReturnValue(fakeEngine("console.log('early work')"))
+    daemon = await startDaemon({ cwd: dir, engineId: 'fake' })
+    const driver = await attach()
+    const turnDone = new Promise<void>((resolve) => {
+      driver.onMessage((msg) => {
+        if (msg.type !== 'state') return
+        const state = msg.state as { items: { role: string; text: string }[]; running: boolean }
+        if (!state.running && state.items.some((i) => i.role === 'assistant' && i.text.includes('early work'))) resolve()
+      })
+    })
+    driver.send({ type: 'input', text: 'do early work' })
+    await turnDone
+
+    const late = await attach()
+    const firstState = new Promise<Record<string, unknown>>((resolve) => {
+      late.onMessage((msg) => {
+        if (msg.type === 'state') resolve(msg)
+      })
+    })
+    const state = (await firstState).state as { items: { role: string; text: string }[] }
+    expect(state.items.some((i) => i.role === 'assistant' && i.text.includes('early work'))).toBe(true)
+  })
+
   it('connectDaemon rejects when nothing listens', async () => {
     await expect(connectDaemon(path.join(dir, 'nothing.sock'), 500)).rejects.toThrow()
   })
