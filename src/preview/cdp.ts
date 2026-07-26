@@ -119,6 +119,21 @@ const A11Y_AUDIT = `(() => {
   for (const el of document.querySelectorAll('[tabindex]')) {
     if (Number(el.getAttribute('tabindex')) > 0) out.push('positive tabindex ' + short(el));
   }
+  // The semantic accessibility gap (CHI 2026): interactive things in the
+  // DOM that the accessibility tree can't see. A high ratio means the UI
+  // looks operable but isn't, for anyone not using a mouse.
+  const domInteractive = document.querySelectorAll('a[href], button, input:not([type=hidden]), select, textarea, [role="button"], [role="link"], [onclick]').length;
+  let axHidden = 0;
+  for (const el of document.querySelectorAll('a[href], button, input:not([type=hidden]), select, textarea')) {
+    const cs = getComputedStyle(el);
+    if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+    const name = el.getAttribute('aria-label') || el.getAttribute('aria-labelledby') || (el.textContent || '').trim() || el.getAttribute('title') || el.getAttribute('placeholder') || (el.labels && el.labels.length);
+    if (!name && el.getAttribute('aria-hidden') !== 'true') axHidden++;
+    if (el.getAttribute('aria-hidden') === 'true' && el.tabIndex >= 0) axHidden++;
+  }
+  if (domInteractive >= 8 && axHidden / domInteractive > 0.25) {
+    out.push('semantic gap: ' + axHidden + ' of ' + domInteractive + ' interactive elements have no accessible name — the UI looks operable but is invisible to assistive tech');
+  }
   // Top-layer semantics: a fixed full-screen overlay that traps content
   // but isn't <dialog>/[popover] is a hand-rolled modal — no focus
   // trap, no Esc, no AT modality. The platform has <dialog> for this.
