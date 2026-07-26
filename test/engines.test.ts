@@ -5,7 +5,7 @@ import { opencode } from '../src/engines/opencode.js'
 import { engines, getEngine } from '../src/engines/registry.js'
 
 describe('registry', () => {
-  it('exposes all eight engines with unique ids', () => {
+  it('exposes all nine engines with unique ids', () => {
     const ids = engines.map((e) => e.id)
     expect(ids).toEqual(['claude', 'codex', 'gemini', 'opencode', 'amp', 'cursor', 'copilot', 'aider'])
     expect(new Set(ids).size).toBe(ids.length)
