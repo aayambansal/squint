@@ -118,6 +118,28 @@ const A11Y_AUDIT = `(() => {
   for (const el of document.querySelectorAll('[tabindex]')) {
     if (Number(el.getAttribute('tabindex')) > 0) out.push('positive tabindex ' + short(el));
   }
+  // Phantom IDREFs: aria-labelledby pointing at a renamed id announces
+  // nothing; popovertarget pointing at nothing opens nothing. The
+  // sibling of the phantom-class check, one DOM walk.
+  const IDREF_ATTRS = ['aria-labelledby', 'aria-describedby', 'aria-controls', 'aria-errormessage', 'aria-activedescendant', 'popovertarget', 'commandfor', 'for', 'list'];
+  let danglers = 0;
+  for (const attr of IDREF_ATTRS) {
+    if (danglers >= 5) break;
+    for (const el of document.querySelectorAll('[' + attr + ']')) {
+      if (danglers >= 5) break;
+      if (attr === 'for' && el.tagName !== 'LABEL' && el.tagName !== 'OUTPUT') continue;
+      const raw = el.getAttribute(attr) || '';
+      for (const id of raw.split(/\\s+/)) {
+        if (!id) continue;
+        const root = el.getRootNode();
+        if (!root.getElementById || !root.getElementById(id)) {
+          out.push('phantom idref: ' + short(el) + ' ' + attr + '="' + id + '" — no element has that id');
+          danglers++;
+          break;
+        }
+      }
+    }
+  }
   // Fake buttons: click handlers on non-interactive elements with no
   // role and no tabindex — mouse-only UI, invisible to keyboards and
   // screen readers alike. The div-onclick classic.
