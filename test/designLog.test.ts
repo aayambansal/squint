@@ -47,3 +47,58 @@ describe('design ledger', () => {
     expect(decisionsSection(os.tmpdir())).toBe('')
   })
 })
+
+describe('/distill', () => {
+  it('sends the ledger to the engine with the enforcement contract', async () => {
+    const { Session } = await import('../src/session/engine.js')
+    const registry = await import('../src/engines/registry.js')
+    const { vi } = await import('vitest')
+    appendDecision(dir, { decision: 'no purple, ever', source: 'decide' })
+    appendDecision(dir, { decision: 'rejected the gradient hero', source: 'restore' })
+    appendDecision(dir, { decision: 'approved: split hero layout', source: 'approval' })
+
+    const seen: string[] = []
+    vi.spyOn(registry, 'getEngine').mockReturnValue({
+      id: 'fake',
+      name: 'Fake',
+      binary: 'node',
+      install: 'n/a',
+      supportsResume: false,
+      buildArgs: (opts) => {
+        seen.push(opts.prompt)
+        return ['-e', "console.log('distilled')"]
+      },
+    })
+    const session = new Session({ cwd: dir, engineId: 'fake' })
+    session.command('/distill')
+    await new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('timeout')), 8000)
+      session.subscribe(() => {
+        if (session.getState().items.some((i) => i.role === 'assistant' && i.text.includes('distilled'))) {
+          clearTimeout(timer)
+          resolve()
+        }
+      })
+    })
+    const prompt = seen[0] ?? ''
+    expect(prompt).toContain('[restore] rejected the gradient hero')
+    expect(prompt).toContain('.squint/rules.md')
+    expect(prompt).toContain('.squint/checks/')
+    vi.restoreAllMocks()
+  })
+
+  it('refuses with a thin ledger', async () => {
+    const { Session } = await import('../src/session/engine.js')
+    const session = new Session({ cwd: dir, engineId: 'claude' })
+    session.command('/distill')
+    await new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('timeout')), 8000)
+      session.subscribe(() => {
+        if (session.getState().items.some((i) => i.text.includes('distillation needs a few more'))) {
+          clearTimeout(timer)
+          resolve()
+        }
+      })
+    })
+  })
+})
