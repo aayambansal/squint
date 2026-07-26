@@ -73,6 +73,7 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
         .card-a{view-transition-name:hero-card}
         .card-b{view-transition-name:hero-card}
         ::view-transition-old(hero-card){animation-duration:.3s}
+        @container (min-width: 400px) { .card-a { padding: 2rem } }
       </style>
       </head><body style="font-family: Arial, sans-serif"><h1 class="real-thing bg-linear-to-r">squint cdp</h1>
       <h4>skipped levels</h4>
@@ -171,6 +172,7 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
     expect(deception).toContain('<button.cta-decline> is visually buried next to <button.cta-accept>')
 
     expect(result.speculation.some((f) => f.includes('speculation: rule set invalid'))).toBe(true)
+    expect(result.containers.join('')).toContain('every rule is dead')
 
     const locale = result.locale.join('\n')
     expect(locale).toContain('<button.tight> clips at +40% text expansion')
