@@ -149,3 +149,35 @@ describe.skipIf(!chrome || !hasWebSocket())('new audits stay silent on correct p
     expect(slop).not.toContain('font loading:')
   })
 })
+
+describe.skipIf(!chrome || !hasWebSocket())('meta/image/security checks stay silent when correct (requires Chrome)', () => {
+  it('a well-formed page trips none of them', { timeout: 120000, retry: 2 }, async () => {
+    const page = path.join(dir, 'proper.html')
+    fs.writeFileSync(
+      page,
+      `<!doctype html><html lang="en"><head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="description" content="A properly built page for the negative-space test." />
+        <meta property="og:image" content="/card.png" />
+        <meta name="theme-color" content="#123456" />
+        <link rel="manifest" href="/m.webmanifest" />
+        <link rel="apple-touch-icon" href="/icon.png" />
+        <title>proper</title>
+      </head><body>
+        <h1>Proper</h1>
+        <img src="hero.jpg" width="800" height="400" srcset="hero-400.jpg 400w, hero-800.jpg 800w" alt="hero" />
+      </body></html>`,
+    )
+    const result = await cdpCapture(chrome!, `file://${page}`, dir, [], 500, true)
+    const all = [...result.a11y, ...result.slop, ...result.security].join('\n')
+    expect(all).not.toContain('viewport blocks zoom')
+    expect(all).not.toContain('no meta description')
+    expect(all).not.toContain('no og:image')
+    expect(all).not.toContain('no charset')
+    expect(all).not.toContain('manifest is linked but no theme-color')
+    expect(all).not.toContain('no srcset')
+    expect(all).not.toContain('target spacing')
+    expect(all).not.toContain('CSP:')
+  })
+})
