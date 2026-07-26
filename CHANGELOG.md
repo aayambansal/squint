@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.0 — 2026-07-26
+
+- The review lane: `/lane on` gives every ask a second read-only reviewer in fresh context — it sees the turn's diff, not the conversation, so it can't inherit the implementer's blind spots; at most 3 findings with file and line, on the cheap fix model when configured
+
 ## 0.6.1 — 2026-07-26
 
 - Diff triptychs: big pulse changes render as a labeled before | after | heatmap composite inline in the terminal — the comparison is the message

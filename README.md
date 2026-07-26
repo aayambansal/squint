@@ -182,6 +182,8 @@ squint doctor --probe             # run every engine end to end, verify auth act
   whole loop headlessly in a pipeline — JSON report, non-zero exit on hard findings,
   and a digest-sealed receipt per run at `.squint/receipts/` tying the green claim
   to the exact pixels it was green about.
+- **The review lane**: `/lane on` — every ask gets a second read-only reviewer in
+  fresh context over the diff alone; blind spots don't inherit.
 - **The sentinel**: gate evasion (deleted tests, added skips, suppressed
   diagnostics, weakened checks, locked-path touches) detected deterministically per
   turn and reported to you — never sent back to the engine that did it.
