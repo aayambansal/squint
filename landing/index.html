@@ -291,11 +291,33 @@
           then a critique of what it can actually see, ranked by visual impact, then fixes.</p>
       </div>
       <div class="beat">
-        <code>· visual pulse <span class="dim">· 7.3% changed vs last turn</span></code>
-        <p><b>Drift gets noticed.</b> Every clean turn is screenshotted and compared with the
-          previous one, pixel by pixel, inside Chrome itself — and on kitty, Ghostty, WezTerm,
-          or iTerm2 the screenshot renders as real pixels inside the transcript. Load
-          performance rides along: LCP and transfer deltas per turn.</p>
+        <code>· visual pulse <span class="dim">· &lt;nav.top-nav&gt; region changed</span></code>
+        <p><b>Drift gets named.</b> Every clean turn is screenshotted, compared with the last,
+          and the changed regions hit-tested against the live page — the pulse says which
+          element moved, not just a percentage. On kitty, Ghostty, WezTerm, or iTerm2 the
+          screenshot renders as real pixels inside the transcript. LCP deltas and long-frame
+          jank ride along, attributed by function.</p>
+      </div>
+      <div class="beat">
+        <code><span class="err">⚠ sentinel</span> <span class="dim">· test deleted this turn</span></code>
+        <p><b>Evasion gets caught.</b> Deleted tests, added skips, suppression comments,
+          watered-down checks, touched locks — detected deterministically each turn and
+          reported to you, never sent back to the engine that did it. Decisions live in a
+          committed ledger the engine cannot silently undo; contested changes pause for
+          your <b>/yes</b> or <b>/no</b>.</p>
+      </div>
+      <div class="beat">
+        <code>❯ squint serve <span class="dim">· attach from anywhere</span></code>
+        <p><b>The session outlives the terminal.</b> The daemon owns the run on a unix socket;
+          attach the full TUI from any terminal or over ssh. Teammates get observer seats;
+          the driver seat passes on detach. A dropped connection no longer kills the work.</p>
+      </div>
+      <div class="beat">
+        <code>❯ squint ci <span class="dim">·</span> squint mcp</code>
+        <p><b>Two more doors in.</b> <b>squint ci</b> runs the whole loop headlessly in a
+          pipeline — gates, page audit, flow replay, JSON report, honest exit code. <b>squint
+          mcp</b> serves the gates as MCP tools, so agents that speak MCP call squint instead
+          of squint wrapping them.</p>
       </div>
       <div class="beat">
         <code>/undo <span class="dim">·</span> /variants <span class="dim">·</span> Alt+S</code>
