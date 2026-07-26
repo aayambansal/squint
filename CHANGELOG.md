@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.1 — 2026-07-27
+
+- Meta/SEO/social audit: viewport zoom-blocking (WCAG 1.4.4), missing description/og:image, invalid JSON-LD, production noindex leaks
+- Responsive-image correctness: dimensionless images (CLS), above-fold lazy-loading (LCP), large rasters with no srcset
+- The semantic accessibility gap metric; the invisible-navigation check; OSC 9;4 progress bars in squint ci
+
 ## 1.0.0 — 2026-07-27
 
 First stable release. squint wraps ten coding-agent CLIs in a deterministic

@@ -41,6 +41,14 @@ failed prerender), WebMCP parity (deprecated surface, invalid schemas, form cove
 **Security (served bytes)**: secrets in bundles/inline/localStorage (redacted),
 client-side-only gates.
 
+**Meta / SEO / social**: viewport zoom-blocking (WCAG 1.4.4), missing description,
+missing og:image, invalid JSON-LD, production noindex leaks.
+
+**Responsive images**: dimensionless (CLS), above-fold lazy-loading (LCP), large
+rasters without srcset.
+
+**Semantic gap**: the share of interactive elements with no accessible name.
+
 **Component map**: React fiber ownership for pins and review pointers.
 
 ## Visual pulse
