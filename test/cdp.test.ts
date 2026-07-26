@@ -86,6 +86,7 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
       </head><body style="font-family: Arial, sans-serif"><h1 class="real-thing bg-linear-to-r">squint cdp</h1>
       <h4>skipped levels</h4>
       <img src="definitely-missing.png" />
+      <img src="hero.jpg" width="900" height="300" style="display:block" />
       <button></button>
       <input type="text" />
       <button class="bad-focus" style="outline:none">go</button>
@@ -213,6 +214,7 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
     expect(result.containers.join('\n')).toContain('targets --ghost-anchor but nothing declares that anchor-name')
 
     expect(result.a11y.join('\n')).toContain('viewport blocks zoom')
+    expect(findings).toMatch(/image: <img hero\.jpg> renders at \d+px with no srcset/)
     const metaSeo = result.slop.join('\n')
     expect(metaSeo).toContain('no meta description')
     expect(metaSeo).toContain('no og:image')

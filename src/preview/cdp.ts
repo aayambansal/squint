@@ -150,6 +150,30 @@ const A11Y_AUDIT = `(() => {
   for (const el of document.querySelectorAll('[tabindex]')) {
     if (Number(el.getAttribute('tabindex')) > 0) out.push('positive tabindex ' + short(el));
   }
+  // Responsive-image correctness: dimensionless images reserve no space
+  // (guaranteed CLS), lazy-loading an above-the-fold image delays the
+  // LCP, and a large raster with no srcset ships desktop bytes to phones.
+  let imgFlags = 0;
+  for (const img of document.querySelectorAll('img')) {
+    if (imgFlags >= 4) break;
+    const r = img.getBoundingClientRect();
+    if (r.width < 1 || r.height < 1) continue;
+    const src = (img.getAttribute('src') || '').split('/').pop() || 'image';
+    const hasDims = (img.getAttribute('width') && img.getAttribute('height')) || img.style.aspectRatio || getComputedStyle(img).aspectRatio !== 'auto';
+    if (!hasDims && r.height > 40) {
+      out.push('image: <img ' + src + '> has no width/height or aspect-ratio — it reserves no space and shifts layout when it loads');
+      imgFlags++; continue;
+    }
+    const aboveFold = r.top < innerHeight && r.top >= 0;
+    if (aboveFold && img.getAttribute('loading') === 'lazy' && r.width * r.height > 40000) {
+      out.push('image: <img ' + src + '> is above the fold but loading="lazy" — this delays the LCP; lazy-load only below-fold images');
+      imgFlags++; continue;
+    }
+    if (r.width >= 700 && !img.getAttribute('srcset') && !img.closest('picture') && /\\.(jpe?g|png)(\\?|$)/i.test(img.currentSrc || img.src || '')) {
+      out.push('image: <img ' + src + '> renders at ' + Math.round(r.width) + 'px with no srcset — phones download the full desktop raster');
+      imgFlags++;
+    }
+  }
   // The semantic accessibility gap (CHI 2026): interactive things in the
   // DOM that the accessibility tree can't see. A high ratio means the UI
   // looks operable but isn't, for anyone not using a mouse.
