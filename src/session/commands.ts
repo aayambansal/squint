@@ -43,6 +43,7 @@ export const COMMANDS: CommandSpec[] = [
   { name: 'save', group: 'session', description: 'export the transcript to .squint/transcripts/' },
   { name: 'find', args: '<term>', group: 'session', description: 'search this session and saved transcripts' },
   { name: 'decide', args: '<text>', group: 'session', description: 'record a design decision; injected into every future ask' },
+  { name: 'goal', args: '[text|off]', group: 'build', description: 'arm a standing objective; auto-fix presses until checks are clean' },
   { name: 'context', group: 'session', description: 'what squint injects per ask, token-costed, with staleness warnings' },
   { name: 'yes', args: '[note]', group: 'build', description: "approve the engine's pending visual-approval request" },
   { name: 'no', args: '[note]', group: 'build', description: "reject the engine's pending visual-approval request" },
