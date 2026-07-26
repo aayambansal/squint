@@ -44,13 +44,17 @@ Hand-authored (commit these):
 | `hooks/` | executables fired on quality events (see [loops](./loops.md#hooks)) |
 | `routes` | one path per line; `/shot` and `/review` cover them beyond the root |
 | `flows/` | declared user journeys replayed by `/flows` (see [loops](./loops.md#flows-and-the-score)) |
-| `checks/` | page assertions replayed every turn — agent-authored or yours (see [loops](./loops.md#persistent-checks)) |
+| `checks/` | page assertions replayed every turn — agent-authored or yours; `// squint-trigger: audit` on line one defers a check to full audits (see [loops](./loops.md#persistent-checks)) |
 | `config.json` | the project config layer |
 | `design-log.jsonl` | the design-decision ledger, appended by `/decide`, variants, restores, sandboxes (see [loops](./loops.md#the-design-ledger)) |
 
-Working files (auto-gitignored by squint): `preview/` (screenshots), `state.json`
-(session resume), `variants/` (exploration worktrees), `sandbox/` (the /sandbox worktree),
-`transcripts/` (`/save` exports).
+Machine-written but **committable**: `design-log.jsonl` (the ledger — committed on
+purpose so decisions survive sessions and teammates) and `receipts/` (digest-sealed
+evidence from every `squint ci` run; commit them or gitignore them, your call).
+
+Working files (auto-gitignored by squint): `preview/` (screenshots, pulse, triptych),
+`state.json` (session resume), `variants/` (exploration worktrees), `sandbox/` (the
+/sandbox worktree), `transcripts/` (`/save` exports), `daemon.sock`.
 
 ## Environment
 
