@@ -99,7 +99,8 @@ export class RemoteSession implements SessionHandle {
   }
 
   input(raw: string): void {
-    this.client.send({ type: 'input', text: raw })
+    // Slash verbs travel as commands — same routing the plain attach does.
+    this.client.send(raw.trimStart().startsWith('/') ? { type: 'command', text: raw.trim() } : { type: 'input', text: raw })
   }
 
   interrupt(): void {
