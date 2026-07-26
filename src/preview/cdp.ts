@@ -119,6 +119,22 @@ const A11Y_AUDIT = `(() => {
   for (const el of document.querySelectorAll('[tabindex]')) {
     if (Number(el.getAttribute('tabindex')) > 0) out.push('positive tabindex ' + short(el));
   }
+  // Form error announcement readiness: a form with required fields that
+  // has no live region anywhere AND whose fields reference no error
+  // container can never announce a validation failure to a screen
+  // reader — the errors happen silently. Static, deterministic.
+  const liveRegions = document.querySelectorAll('[aria-live], [role="alert"], [role="status"], output');
+  let formFlags = 0;
+  for (const form of document.querySelectorAll('form')) {
+    if (formFlags >= 3) break;
+    const required = [...form.querySelectorAll('[required], [aria-required="true"]')];
+    if (required.length === 0) continue;
+    const anyReferencesError = required.some((f) => f.getAttribute('aria-describedby') || f.getAttribute('aria-errormessage'));
+    if (liveRegions.length === 0 && !anyReferencesError) {
+      out.push('form errors silent: <form' + (form.id ? '#' + form.id : '') + '> has ' + required.length + ' required field(s) but no aria-live region and no aria-errormessage wiring — validation failures announce nothing');
+      formFlags++;
+    }
+  }
   // Phantom IDREFs: aria-labelledby pointing at a renamed id announces
   // nothing; popovertarget pointing at nothing opens nothing. The
   // sibling of the phantom-class check, one DOM walk.
