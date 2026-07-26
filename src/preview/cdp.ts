@@ -132,6 +132,17 @@ const META_AUDIT = `(() => {
   // A charset declaration must come first; late charset forces a reparse.
   const charset = document.querySelector('meta[charset], meta[http-equiv="Content-Type" i]');
   if (!charset) seo.push('meta: no charset declaration — the browser guesses the encoding');
+  // Canonical + hreflang integrity.
+  const canonicals = document.querySelectorAll('link[rel="canonical"]');
+  if (canonicals.length > 1) {
+    seo.push('meta: ' + canonicals.length + ' canonical links — search engines see conflicting canonical URLs and may ignore all of them');
+  }
+  for (const hl of document.querySelectorAll('link[rel="alternate"][hreflang]')) {
+    if (!(hl.getAttribute('href') || '').trim()) {
+      seo.push('meta: an hreflang alternate has an empty href — the language variant points nowhere');
+      break;
+    }
+  }
   return { a11y, seo };
 })()`
 
@@ -204,6 +215,20 @@ const A11Y_AUDIT = `(() => {
     if (r.width >= 700 && !img.getAttribute('srcset') && !img.closest('picture') && /\\.(jpe?g|png)(\\?|$)/i.test(img.currentSrc || img.src || '')) {
       out.push('image: <img ' + src + '> renders at ' + Math.round(r.width) + 'px with no srcset — phones download the full desktop raster');
       imgFlags++;
+    }
+  }
+  // Duplicate IDs: getElementById returns the first, so label[for],
+  // aria-* references, and anchor links silently bind the wrong node.
+  const idCounts = new Map();
+  for (const el of document.querySelectorAll('[id]')) {
+    const id = el.id;
+    if (id) idCounts.set(id, (idCounts.get(id) || 0) + 1);
+  }
+  let dupFlags = 0;
+  for (const [id, count] of idCounts) {
+    if (count > 1 && dupFlags < 3) {
+      out.push('duplicate id: "' + id + '" appears ' + count + ' times — references (label for, aria-*, #anchors) bind only the first');
+      dupFlags++;
     }
   }
   // The semantic accessibility gap (CHI 2026): interactive things in the

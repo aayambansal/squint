@@ -73,6 +73,7 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
       <meta name="viewport" content="width=device-width, user-scalable=no" />
       <script type="application/ld+json">{ not valid json }</script>
       <link rel="manifest" href="/app.webmanifest" />
+      <link rel="canonical" href="/a" /><link rel="canonical" href="/b" />
       <style>
         .c1{color:#111}.c2{color:#222}.c3{color:#333}.c4{color:#444}.c5{color:#555}
         .c6{color:#666}.c7{color:#777}.c8{color:#888}.c9{color:#999}.c10{color:#aaa}
@@ -105,6 +106,7 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
       <label><input type="checkbox" checked /> Remember my theme preference</label>
       <div class="fake-btn" onclick="void 0">Delete account</div>
       <span id="real-desc">describes things</span>
+      <div id="dupe">one</div><div id="dupe">two</div>
       <input type="search" aria-labelledby="renamed-label" aria-describedby="real-desc" />
       <button popovertarget="no-such-popover">open</button>
       <button></button><button></button><button></button><button></button>
@@ -172,6 +174,7 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
     expect(findings).toMatch(/clickable <div\.fake-btn> is not focusable/)
     expect(findings).toContain('aria-labelledby="renamed-label" — no element has that id')
     expect(findings).toContain('popovertarget="no-such-popover"')
+    expect(findings).toContain('duplicate id: "dupe" appears 2 times')
     expect(findings).toContain('form errors silent: <form#silent-form> has 1 required field(s)')
     expect(findings).toContain('autocomplete="off" on an identity field')
     expect(findings).toContain('top-layer: <div.modal-overlay> is a hand-rolled full-screen modal')
@@ -226,6 +229,7 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
     expect(metaSeo).toContain('manifest is linked but no theme-color')
     expect(metaSeo).toContain('no apple-touch-icon')
     expect(metaSeo).toContain('no charset declaration')
+    expect(metaSeo).toContain('2 canonical links')
 
     const security = result.security.join('\n')
     expect(security).toContain('Stripe live secret key in an inline script')
