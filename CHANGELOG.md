@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.0.0 — 2026-07-27
+
+First stable release. squint wraps ten coding-agent CLIs in a deterministic
+verification loop with ~35 headless-Chrome checks, element-attributed visual diffs,
+a detachable daemon, MCP tools, CI receipts, and six research sweeps' worth of features.
+
+- Ten engines: claude, codex, codex-app (JSON-RPC), gemini, antigravity (pty), opencode, amp, cursor, copilot, aider
+- ~35 deterministic checks — see docs/checks.md
+- Element-attributed pixel diffs + triptychs; the attribution triad (pixels, time via LoAF, space via CLS)
+- The sentinel, the design ledger, /goal, the review lane, persistent checks
+- Detachable daemon (serve/attach, observer seats, shared verdicts, webhook approvals)
+- squint mcp (6 tools), squint ci (+ digest-sealed receipts + compare)
+
 ## 0.9.9 — 2026-07-27
 
 - Autofill grammar validator + WCAG 1.3.5 (autocomplete=off on identity fields)
