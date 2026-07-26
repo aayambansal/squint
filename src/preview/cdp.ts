@@ -319,9 +319,10 @@ export async function runFlow(
   baseUrl: string,
   flow: import('./flows.js').Flow,
   outDir: string,
-): Promise<{ ok: boolean; failedStep?: number; detail?: string; shots: string[]; transitions: string[]; leaks: string[] }> {
+): Promise<{ ok: boolean; failedStep?: number; detail?: string; shots: string[]; transitions: string[]; leaks: string[]; durationMs: number }> {
   const { stepExpression } = await import('./flows.js')
   const { child, wsUrl, profileDir } = await launchChrome(chromePath)
+  const startedAt = Date.now()
   const shots: string[] = []
   let transitions: string[] = []
   const leaks: string[] = []
@@ -370,7 +371,7 @@ export async function runFlow(
       )
       const value = result?.value as { ok: boolean; detail?: string } | undefined
       if (!value?.ok) {
-        return { ok: false, failedStep: stepNumber, detail: value?.detail ?? 'step failed', shots, transitions, leaks }
+        return { ok: false, failedStep: stepNumber, detail: value?.detail ?? 'step failed', shots, transitions, leaks, durationMs: Date.now() - startedAt }
       }
       await new Promise((resolve) => setTimeout(resolve, 300))
     }
@@ -406,9 +407,9 @@ export async function runFlow(
     } catch {
       // older Chromes lack the domain
     }
-    return { ok: true, shots, transitions, leaks }
+    return { ok: true, shots, transitions, leaks, durationMs: Date.now() - startedAt }
   } catch (err) {
-    return { ok: false, detail: err instanceof Error ? err.message : String(err), shots, transitions, leaks }
+    return { ok: false, detail: err instanceof Error ? err.message : String(err), shots, transitions, leaks, durationMs: Date.now() - startedAt }
   } finally {
     connection?.close()
     child.kill('SIGKILL')

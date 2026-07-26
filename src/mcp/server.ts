@@ -80,7 +80,7 @@ const TOOLS: McpTool[] = [
         const result = await runFlow(chrome, url, flow, previewDir(cwd))
         lines.push(
           result.ok
-            ? `✓ ${flow.name} (${flow.steps.length} steps)${result.transitions.length > 0 ? `\n${result.transitions.map((t) => `  ${t}`).join('\n')}` : ''}${result.leaks.length > 0 ? `\n${result.leaks.map((l) => `  ${l}`).join('\n')}` : ''}`
+            ? `✓ ${flow.name} (${flow.steps.length} steps, ${(result.durationMs / 1000).toFixed(1)}s)${result.transitions.length > 0 ? `\n${result.transitions.map((t) => `  ${t}`).join('\n')}` : ''}${result.leaks.length > 0 ? `\n${result.leaks.map((l) => `  ${l}`).join('\n')}` : ''}`
             : `✗ ${flow.name} at step ${result.failedStep}: ${result.detail}`,
         )
       }
