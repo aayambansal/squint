@@ -74,6 +74,7 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
         .card-b{view-transition-name:hero-card}
         ::view-transition-old(hero-card){animation-duration:.3s}
         @container (min-width: 400px) { .card-a { padding: 2rem } }
+        .tooltip { position: absolute; position-anchor: --ghost-anchor; }
       </style>
       </head><body style="font-family: Arial, sans-serif"><h1 class="real-thing bg-linear-to-r">squint cdp</h1>
       <h4>skipped levels</h4>
@@ -82,7 +83,7 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
       <input type="text" />
       <button class="bad-focus" style="outline:none">go</button>
       <ul><li>🚀 fast</li><li>✨ shiny</li><li>🔥 hot</li></ul>
-      <div class="card-a">a</div><div class="card-b">b</div>
+      <div class="card-a">a</div><div class="card-b">b</div><div class="tooltip">tip</div>
       <button class="tight" style="width:110px;overflow:hidden;white-space:nowrap;display:block">Save all changes</button>
       <p class="hardleft" style="text-align:left">This paragraph pins itself to the left edge no matter the reading direction.</p>
       <p class="fluid">This paragraph inherits direction like a well-behaved block of text should.</p>
@@ -173,6 +174,7 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
 
     expect(result.speculation.some((f) => f.includes('speculation: rule set invalid'))).toBe(true)
     expect(result.containers.join('')).toContain('every rule is dead')
+    expect(result.containers.join('\n')).toContain('targets --ghost-anchor but nothing declares that anchor-name')
 
     const locale = result.locale.join('\n')
     expect(locale).toContain('<button.tight> clips at +40% text expansion')

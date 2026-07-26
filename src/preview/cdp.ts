@@ -1116,6 +1116,23 @@ const CONTAINER_AUDIT = `(() => {
   } else if (containers > 0 && containerRules === 0) {
     out.push('container queries: ' + containers + ' element(s) declare container-type but no @container rules exist — setup without payoff');
   }
+  // Anchor positioning: position-anchor pointing at an anchor-name
+  // nobody declares leaves the positioned element at its fallback
+  // forever — silently, like every disconnect in this family.
+  const anchorNames = new Set();
+  const anchorRefs = new Map();
+  for (let i = 0; i < all.length && i < 1500; i++) {
+    const cs = getComputedStyle(all[i]);
+    const name = cs.anchorName;
+    if (name && name !== 'none') for (const n of name.split(',')) anchorNames.add(n.trim());
+    const ref = cs.positionAnchor;
+    if (ref && ref !== 'auto' && ref !== 'none') anchorRefs.set(ref.trim(), all[i].tagName.toLowerCase());
+  }
+  for (const [ref, tag] of anchorRefs) {
+    if (!anchorNames.has(ref)) {
+      out.push('anchor positioning: <' + tag + '> targets ' + ref + ' but nothing declares that anchor-name — it will sit at its fallback forever');
+    }
+  }
   return out;
 })()`
 
