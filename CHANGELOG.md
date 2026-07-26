@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.2 — 2026-07-27
+
+- Mixed-content + CSP heuristics in the security sniff
+- Target-spacing check (WCAG 2.5.8); PWA manifest theme-color/apple-touch-icon + charset checks
+- Verdict banners: squint ci ends with a double-height OSC 66 PASS/FAIL (boxed fallback)
+
 ## 1.0.1 — 2026-07-27
 
 - Meta/SEO/social audit: viewport zoom-blocking (WCAG 1.4.4), missing description/og:image, invalid JSON-LD, production noindex leaks
