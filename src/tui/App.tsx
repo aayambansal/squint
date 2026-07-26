@@ -303,6 +303,11 @@ export function App({
           {state.problems.length > 0 && (
             <Text color={theme.error}> · {state.problems.length} problem{state.problems.length === 1 ? '' : 's'}</Text>
           )}
+          {state.pendingApproval && (
+            <Text color={theme.accent} bold>
+              {' '}· ⏸ approval waiting — /yes or /no
+            </Text>
+          )}
           {' '}· shift+tab mode · /help
         </Text>
       </Box>
