@@ -62,3 +62,47 @@ describe.skipIf(!chrome || !hasWebSocket())('checks in the probe (requires Chrom
     expect(result.checkFailures.some((f) => f.startsWith('has-h1'))).toBe(false)
   })
 })
+
+describe('interval checks', () => {
+  it('parses interval pragmas with custom seconds and keeps them out of other contexts', () => {
+    const checksDir = path.join(dir, '.squint', 'checks')
+    fs.mkdirSync(checksDir, { recursive: true })
+    fs.writeFileSync(path.join(checksDir, 'uptime.js'), '// squint-trigger: interval:45\n[]')
+    fs.writeFileSync(path.join(checksDir, 'default-interval.js'), '// squint-trigger: interval\n[]')
+    fs.writeFileSync(path.join(checksDir, 'everyturn.js'), '[]')
+
+    const interval = loadChecks(dir, 'interval')
+    expect(interval.map((c) => `${c.name}:${c.intervalSec}`)).toEqual(['default-interval:300', 'uptime:45'])
+    expect(loadChecks(dir, 'turn').map((c) => c.name)).toEqual(['everyturn'])
+    expect(loadChecks(dir, 'audit').map((c) => c.name)).toEqual(['everyturn'])
+  })
+})
+
+describe.skipIf(!chrome || !hasWebSocket())('runIntervalSweep (requires Chrome)', () => {
+  it('runs due interval checks against a live URL and honors the clock', { timeout: 120000, retry: 2 }, async () => {
+    const http = await import('node:http')
+    const server = http.createServer((_req, res) => {
+      res.writeHead(200, { 'content-type': 'text/html' })
+      res.end('<!doctype html><html lang="en"><head><title>t</title></head><body><h1>up</h1></body></html>')
+    })
+    const port: number = await new Promise((resolve) => {
+      server.listen(0, '127.0.0.1', () => resolve((server.address() as { port: number }).port))
+    })
+    try {
+      const checksDir = path.join(dir, '.squint', 'checks')
+      fs.mkdirSync(checksDir, { recursive: true })
+      fs.writeFileSync(
+        path.join(checksDir, 'cta-alive.js'),
+        '// squint-trigger: interval:60\n(() => document.querySelector(".cta") ? [] : ["cta missing from the live page"])()',
+      )
+      const { runIntervalSweep } = await import('../src/preview/checks.js')
+      const lastRun = new Map<string, number>()
+      const failures = await runIntervalSweep(dir, `http://127.0.0.1:${port}/`, lastRun)
+      expect(failures).toEqual(['cta-alive: cta missing from the live page'])
+      // Immediately due again? No — the clock was stamped.
+      expect(await runIntervalSweep(dir, `http://127.0.0.1:${port}/`, lastRun)).toEqual([])
+    } finally {
+      server.close()
+    }
+  })
+})
