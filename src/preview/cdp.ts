@@ -132,6 +132,17 @@ const META_AUDIT = `(() => {
   // A charset declaration must come first; late charset forces a reparse.
   const charset = document.querySelector('meta[charset], meta[http-equiv="Content-Type" i]');
   if (!charset) seo.push('meta: no charset declaration — the browser guesses the encoding');
+  // Canonical + hreflang integrity.
+  const canonicals = document.querySelectorAll('link[rel="canonical"]');
+  if (canonicals.length > 1) {
+    seo.push('meta: ' + canonicals.length + ' canonical links — search engines see conflicting canonical URLs and may ignore all of them');
+  }
+  for (const hl of document.querySelectorAll('link[rel="alternate"][hreflang]')) {
+    if (!(hl.getAttribute('href') || '').trim()) {
+      seo.push('meta: an hreflang alternate has an empty href — the language variant points nowhere');
+      break;
+    }
+  }
   return { a11y, seo };
 })()`
 
