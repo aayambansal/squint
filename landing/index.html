@@ -155,6 +155,15 @@
   .beat p { color: var(--muted); font-size: 0.98rem; max-width: 46ch; text-wrap: pretty; }
   .beat p b { color: var(--ink); font-weight: 700; }
 
+  /* checks grid */
+  .checks {
+    margin-top: 2.25rem; display: grid; gap: 0.5rem 2rem;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    font-size: 0.92rem; color: var(--muted);
+  }
+  .checks li { list-style: none; padding-left: 1.1rem; position: relative; text-wrap: pretty; }
+  .checks li::before { content: '✓'; position: absolute; left: 0; color: var(--amber-deep); font-weight: 700; }
+
   /* engines */
   .engines-row {
     margin-top: 2.25rem; font-family: var(--font-mono);
@@ -337,6 +346,40 @@
           notes and compiles them into one annotated ask.</p>
       </div>
     </div>
+  </section>
+
+  <section aria-labelledby="checks-h">
+    <h2 id="checks-h">What gets checked, deterministically</h2>
+    <p class="lede">Every one of these runs without a judgment call — findings name the element
+      and carry the fix. The engine critiques taste; squint measures everything else.</p>
+    <ul class="checks">
+      <li>typecheck + lint gates per turn</li>
+      <li>dev-server build errors, swept</li>
+      <li>runtime exceptions and 404s</li>
+      <li>phantom CSS classes</li>
+      <li>Tailwind v4 / Vite rule-packs</li>
+      <li>pixel drift, element-attributed</li>
+      <li>LCP deltas and transfer weight</li>
+      <li>long-frame jank, by function</li>
+      <li>soft-nav ICP per SPA transition</li>
+      <li>detached-DOM leaks after journeys</li>
+      <li>alt text, labels, headings, tap targets</li>
+      <li>keyboard journeys and focus visibility</li>
+      <li>fake buttons (div-onclick)</li>
+      <li>APCA contrast on body text</li>
+      <li>forced-colors invisibility</li>
+      <li>print output sanity</li>
+      <li>pseudo-locale truncation (+40%)</li>
+      <li>RTL hardcodes and overflow</li>
+      <li>view-transition breakage</li>
+      <li>container-query disconnects</li>
+      <li>anchor-positioning orphans</li>
+      <li>speculation-rules failures</li>
+      <li>dark-pattern tripwires</li>
+      <li>gate evasion (the sentinel)</li>
+      <li>declared user journeys (.flow)</li>
+      <li>your own page checks, every turn</li>
+    </ul>
   </section>
 
   <section aria-labelledby="engines-h">
