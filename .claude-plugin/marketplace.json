@@ -1,0 +1,21 @@
+{
+  "name": "squint",
+  "owner": {
+    "name": "Aayam Bansal",
+    "url": "https://github.com/aayambansal"
+  },
+  "plugins": [
+    {
+      "name": "squint",
+      "source": "./",
+      "description": "Terminal-native frontend verification: gates, headless-Chrome audits (a11y, jank, phantoms, locale, leaks), flows, and digest-sealed receipts — served as MCP tools.",
+      "version": "0.9.1",
+      "mcpServers": {
+        "squint": {
+          "command": "npx",
+          "args": ["-y", "@aayambansal/squint", "mcp"]
+        }
+      }
+    }
+  ]
+}
