@@ -27,7 +27,10 @@ export function runAgent(
     let result: AgentResult | null = null
     let stderrTail = ''
 
-    const child = spawn(binaryPath, engine.buildArgs(opts), {
+    const command = engine.wrapCommand
+      ? engine.wrapCommand(binaryPath, engine.buildArgs(opts))
+      : { binary: binaryPath, args: engine.buildArgs(opts) }
+    const child = spawn(command.binary, command.args, {
       cwd: opts.cwd,
       env: { ...process.env, ...engine.env },
       stdio: ['ignore', 'pipe', 'pipe'],

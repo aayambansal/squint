@@ -52,6 +52,11 @@ export interface Engine {
   supportsResume: boolean
   /** Extra environment for every run of this engine. */
   env?: Record<string, string>
+  /**
+   * Rewrites the spawn for engines that need a wrapper process —
+   * e.g. a pty via `script` for CLIs that gate stdout on isatty().
+   */
+  wrapCommand?(binaryPath: string, args: string[]): { binary: string; args: string[] }
   buildArgs(opts: RunOptions): string[]
   /**
    * Create a parser for one run. Engines that emit plain text leave this
