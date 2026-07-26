@@ -122,6 +122,8 @@ export class Session {
   private reviewTipShown = false
   private pendingApproval: string | null = null
   private goal: string | null = null
+  private laneEnabled = false
+  private inLane = false
   private lastPulse: Buffer | null = null
   private lastPerf: { lcpMs?: number; cls?: number; transferBytes?: number } | null = null
   private autoReviewedThisAsk = false
@@ -730,7 +732,44 @@ export class Session {
       }
     }
     this.notify({ running: false })
+    await this.maybeLaneReview(display)
     this.drainQueue()
+  }
+
+  /**
+   * The review lane: a second read-only pass in fresh context after
+   * each real ask — the diff, not the conversation, so it can't inherit
+   * the implementer's blind spots. Findings render as critique; nothing
+   * here edits. Costs a cheap turn (fixModel when set); off by default.
+   */
+  private async maybeLaneReview(display: string): Promise<void> {
+    if (!this.laneEnabled || this.inLane) return
+    if (display.startsWith('⛑') || display.startsWith('👁') || display.startsWith('🔎') || display.startsWith('/distill')) return
+    const checkpoint = this.checkpoints.at(-1)
+    if (!checkpoint) return
+    let diff: string
+    try {
+      const { execFileSync } = await import('node:child_process')
+      diff = execFileSync('git', ['diff', checkpoint.snapshot.stashHash ?? 'HEAD'], {
+        cwd: this.execCwd(),
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+      })
+    } catch {
+      return
+    }
+    if (diff.trim().length === 0) return
+    const capped = diff.length > 20000 ? `${diff.slice(0, 20000)}\n[diff truncated]` : diff
+    this.inLane = true
+    try {
+      await this.runTurn(
+        `You are a second reviewer in fresh context. The diff below just landed for the ask "${display}". Review ONLY the diff — do not edit anything, do not run commands that modify state. Report at most 3 concrete findings ranked by severity (bugs, regressions, accessibility, design-system violations), each with file and line. If it is clean, say so in one line.\n\n\`\`\`diff\n${capped}\n\`\`\``,
+        '🔎 lane review',
+        this.opts.fixModel,
+      )
+    } finally {
+      this.inLane = false
+    }
   }
 
   async submit(ask: string): Promise<void> {
@@ -1017,6 +1056,18 @@ export class Session {
           this.dispatchFix([target])
         } else {
           this.dispatchFix([...this.state.problems])
+        }
+        break
+      }
+      case 'lane': {
+        if (arg === 'on') {
+          this.laneEnabled = true
+          this.push('status', 'review lane on — every ask gets a second read-only pass over its diff (fixModel when set)')
+        } else if (arg === 'off') {
+          this.laneEnabled = false
+          this.push('status', 'review lane off')
+        } else {
+          this.push('status', `review lane is ${this.laneEnabled ? 'on' : 'off'} — /lane on|off`)
         }
         break
       }

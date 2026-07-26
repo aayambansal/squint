@@ -45,6 +45,7 @@ export const COMMANDS: CommandSpec[] = [
   { name: 'decide', args: '<text>', group: 'session', description: 'record a design decision; injected into every future ask' },
   { name: 'goal', args: '[text|off]', group: 'build', description: 'arm a standing objective; auto-fix presses until checks are clean' },
   { name: 'distill', group: 'session', description: 'compress the design ledger into rules.md lines and proposed checks' },
+  { name: 'lane', args: 'on|off', group: 'verify', description: 'second read-only reviewer over each turn\'s diff, fresh context' },
   { name: 'context', group: 'session', description: 'what squint injects per ask, token-costed, with staleness warnings' },
   { name: 'yes', args: '[note]', group: 'build', description: "approve the engine's pending visual-approval request" },
   { name: 'no', args: '[note]', group: 'build', description: "reject the engine's pending visual-approval request" },
