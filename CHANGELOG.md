@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.2 — 2026-07-26
+
+- Verification receipts: every `squint ci` run seals its report (gates, audit, flows, versions, git head, screenshot SHA-256s) under a recomputable digest at `.squint/receipts/` — a green run becomes evidence
+- Check triggers: `// squint-trigger: audit` keeps expensive assertions out of the per-turn probe; full audits still run everything
+- `/flows suggest`: smoke flows drafted per declared route from the live page's own headings — goto/expect/shot, existing flows untouched
+
 ## 0.5.1 — 2026-07-26
 
 - Keyboard journey in the a11y sweep: twelve real Tab keystrokes assert a visible focus indicator at every stop; invisible focus, traps, and untabbable pages all flag

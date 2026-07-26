@@ -1,6 +1,6 @@
 {
   "name": "@aayambansal/squint",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Lovable for your terminal \u2014 a frontend harness on top of Claude Code, Codex, and other coding agents.",
   "type": "module",
   "license": "MIT",

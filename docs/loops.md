@@ -100,8 +100,9 @@ causes rather than weaken checks. Manually: `/problems` lists, `/fix` sends all,
 When the engine verifies something about the page that should stay true, every ask
 teaches it to persist the assertion as `.squint/checks/<name>.js` — plain JS that
 evaluates in the probed page to an array of failure strings (empty = pass). squint
-replays every check after every turn; failures join the problems list with orders to
-fix the page, not weaken the assertion. One-off verifications compound into
+replays every check after every turn (`// squint-trigger: audit` on the first line
+defers one to full audits only); failures join the problems list with orders to fix
+the page, not weaken the assertion. One-off verifications compound into
 repo-versioned regression checks. Write your own too — they run the same way.
 
 ## Visual approval
@@ -151,7 +152,8 @@ becomes a rule every ask carries and a check the probe replays.
 `click Sign up`, `fill #email me@x.com`, `press Enter`, `expect Check your inbox`,
 `shot done`). `/flows` replays every journey headlessly — passes show step counts and
 screenshots inline; a failing step names its exact position and joins the problems list.
-Ask the engine to write flows for you.
+`/flows suggest` drafts a smoke flow per declared route from the live page's own
+headings; ask the engine to deepen them from there.
 
 `/score` composes a deterministic 0-5 snapshot from what squint measures (open problems,
 a11y findings, distinctiveness tells, runtime state, LCP). Judgment stays with `/review`.
@@ -185,7 +187,9 @@ to match any ask, and always-on context past the attention budget.
 
 `squint ci [--url <app>] [--json <report>]` runs everything above as one headless
 command with an exit code — gates, the page audit (hard findings fail the run;
-a11y/slop/jank ride as advisories), and flow replay. `squint mcp` serves the same
+a11y/slop/jank ride as advisories), and flow replay. Every run seals a **receipt** at
+`.squint/receipts/`: the full report plus versions, git head, and screenshot hashes
+under a recomputable digest — a green run you can hand to someone as evidence. `squint mcp` serves the same
 verification as MCP tools over stdio (`squint_check`, `squint_shot`, `squint_flows`,
 `squint_context`), so agents that speak MCP call squint instead of squint wrapping
 them.
