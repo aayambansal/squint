@@ -15,7 +15,8 @@
 
 ### Lovable for your terminal
 
-Any repo. Any coding agent. The whole loop, owned by you.
+Any repo. Any of ten coding agents. Thirty-five deterministic checks between every
+turn and "looks done." The whole loop, owned by you.
 
 [![npm](https://img.shields.io/npm/v/%40aayambansal%2Fsquint?color=2f5fe0)](https://www.npmjs.com/package/@aayambansal/squint)
 [![ci](https://github.com/aayambansal/squint/actions/workflows/ci.yml/badge.svg)](https://github.com/aayambansal/squint/actions/workflows/ci.yml)
