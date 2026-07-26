@@ -383,6 +383,22 @@ const SOFTNAV_SHIM = `(() => {
   } catch {}
 })()`
 
+/** Fold layout-shift entries into a per-element shift ledger, worst-first. */
+export function summarizeShifts(entries: { value: number; label: string }[]): string[] {
+  const byEl = new Map<string, number>()
+  let total = 0
+  for (const e of entries) {
+    byEl.set(e.label, (byEl.get(e.label) ?? 0) + e.value)
+    total += e.value
+  }
+  if (total < 0.05) return []
+  const top = [...byEl.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3)
+  return [
+    `layout shift: CLS ${total.toFixed(3)} over the journey`,
+    ...top.map(([label, v]) => `  ${label} shifted (${v.toFixed(3)})`),
+  ]
+}
+
 /** Fold raw soft-nav entries into one line per transition. */
 export function summarizeSoftNav(entries: { type: string; navigationId: string; start: number; value: number; url: string }[]): string[] {
   const byNav = new Map<string, { url: string; start: number; icp?: number }>()
@@ -408,12 +424,13 @@ export async function runFlow(
   baseUrl: string,
   flow: import('./flows.js').Flow,
   outDir: string,
-): Promise<{ ok: boolean; failedStep?: number; detail?: string; shots: string[]; transitions: string[]; leaks: string[]; durationMs: number }> {
+): Promise<{ ok: boolean; failedStep?: number; detail?: string; shots: string[]; transitions: string[]; leaks: string[]; shifts: string[]; durationMs: number }> {
   const { stepExpression } = await import('./flows.js')
   const { child, wsUrl, profileDir } = await launchChrome(chromePath)
   const startedAt = Date.now()
   const shots: string[] = []
   let transitions: string[] = []
+  let shifts: string[] = []
   const leaks: string[] = []
   let connection: CdpConnection | null = null
   try {
@@ -424,6 +441,7 @@ export async function runFlow(
     await connection.send('Page.addScriptToEvaluateOnNewDocument', { source: WEBMCP_SHIM }, sessionId).catch(() => null)
     await connection.send('Page.addScriptToEvaluateOnNewDocument', { source: LOAF_SHIM }, sessionId).catch(() => null)
     await connection.send('Page.addScriptToEvaluateOnNewDocument', { source: SOFTNAV_SHIM }, sessionId).catch(() => null)
+    await connection.send('Page.addScriptToEvaluateOnNewDocument', { source: CLS_SHIM }, sessionId).catch(() => null)
     await connection.send(
       'Emulation.setDeviceMetricsOverride',
       { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false },
@@ -460,7 +478,7 @@ export async function runFlow(
       )
       const value = result?.value as { ok: boolean; detail?: string } | undefined
       if (!value?.ok) {
-        return { ok: false, failedStep: stepNumber, detail: value?.detail ?? 'step failed', shots, transitions, leaks, durationMs: Date.now() - startedAt }
+        return { ok: false, failedStep: stepNumber, detail: value?.detail ?? 'step failed', shots, transitions, leaks, shifts, durationMs: Date.now() - startedAt }
       }
       await new Promise((resolve) => setTimeout(resolve, 300))
     }
@@ -480,6 +498,16 @@ export async function runFlow(
     } catch {
       // pre-151 Chromes have nothing to report
     }
+    try {
+      const { result } = await connection.send(
+        'Runtime.evaluate',
+        { expression: 'window.__squintCls || []', returnByValue: true },
+        sessionId,
+      )
+      if (Array.isArray(result?.value)) shifts = summarizeShifts(result.value)
+    } catch {
+      // pre-layout-shift-API Chromes report nothing
+    }
     const budget = flow.steps.find((s) => s.kind === 'budget')
     if (budget && budget.kind === 'budget' && worstIcp > budget.ms) {
       return {
@@ -488,6 +516,7 @@ export async function runFlow(
         shots,
         transitions,
         leaks,
+        shifts,
         durationMs: Date.now() - startedAt,
       }
     }
@@ -513,9 +542,9 @@ export async function runFlow(
     } catch {
       // older Chromes lack the domain
     }
-    return { ok: true, shots, transitions, leaks, durationMs: Date.now() - startedAt }
+    return { ok: true, shots, transitions, leaks, shifts, durationMs: Date.now() - startedAt }
   } catch (err) {
-    return { ok: false, detail: err instanceof Error ? err.message : String(err), shots, transitions, leaks, durationMs: Date.now() - startedAt }
+    return { ok: false, detail: err instanceof Error ? err.message : String(err), shots, transitions, leaks, shifts, durationMs: Date.now() - startedAt }
   } finally {
     connection?.close()
     child.kill('SIGKILL')
@@ -1117,6 +1146,24 @@ const WEBMCP_PARITY = `(() => {
  * page script; a scripted scroll after settle provokes interaction
  * frames the load never shows.
  */
+const CLS_SHIM = `(() => {
+  window.__squintCls = [];
+  try {
+    new PerformanceObserver((l) => {
+      for (const e of l.getEntries()) {
+        if (e.hadRecentInput || !e.sources) continue;
+        for (const src of e.sources) {
+          const node = src.node;
+          if (!node || !node.tagName) continue;
+          let label = node.tagName.toLowerCase();
+          if (node.id) label += '#' + node.id; else if (node.className && typeof node.className === 'string') label += '.' + node.className.split(/\\s+/)[0];
+          window.__squintCls.push({ value: e.value, label });
+        }
+      }
+    }).observe({ type: 'layout-shift', buffered: true });
+  } catch {}
+})()`
+
 const LOAF_SHIM = `(() => {
   window.__squintLoaf = [];
   try {
