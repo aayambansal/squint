@@ -307,11 +307,12 @@ export async function runFlow(
   baseUrl: string,
   flow: import('./flows.js').Flow,
   outDir: string,
-): Promise<{ ok: boolean; failedStep?: number; detail?: string; shots: string[]; transitions: string[] }> {
+): Promise<{ ok: boolean; failedStep?: number; detail?: string; shots: string[]; transitions: string[]; leaks: string[] }> {
   const { stepExpression } = await import('./flows.js')
   const { child, wsUrl, profileDir } = await launchChrome(chromePath)
   const shots: string[] = []
   let transitions: string[] = []
+  const leaks: string[] = []
   let connection: CdpConnection | null = null
   try {
     connection = await CdpConnection.connect(wsUrl, 10000)
@@ -357,7 +358,7 @@ export async function runFlow(
       )
       const value = result?.value as { ok: boolean; detail?: string } | undefined
       if (!value?.ok) {
-        return { ok: false, failedStep: stepNumber, detail: value?.detail ?? 'step failed', shots, transitions }
+        return { ok: false, failedStep: stepNumber, detail: value?.detail ?? 'step failed', shots, transitions, leaks }
       }
       await new Promise((resolve) => setTimeout(resolve, 300))
     }
@@ -371,9 +372,31 @@ export async function runFlow(
     } catch {
       // pre-151 Chromes have nothing to report
     }
-    return { ok: true, shots, transitions }
+    // Leak pulse: DOM nodes detached from the tree but retained by JS
+    // after the journey — the listener-holds-the-list leak class agents
+    // introduce constantly. Deterministic via DOM.getDetachedDomNodes.
+    try {
+      const { detachedNodes } = await connection.send('DOM.getDetachedDomNodes', {}, sessionId)
+      const names = new Map<string, number>()
+      let total = 0
+      for (const retained of detachedNodes ?? []) {
+        const walk = (node: { nodeName?: string; children?: unknown[] }) => {
+          total++
+          const name = (node.nodeName ?? '?').toLowerCase()
+          names.set(name, (names.get(name) ?? 0) + 1)
+        }
+        walk((retained as { treeNode?: { nodeName?: string } }).treeNode ?? (retained as { nodeName?: string }))
+      }
+      if (total >= 10) {
+        const top = [...names.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([n, c]) => `${n} ×${c}`).join(', ')
+        leaks.push(`leak: ${total} detached DOM subtree(s) retained after the journey (${top}) — something holds references to removed nodes`)
+      }
+    } catch {
+      // older Chromes lack the domain
+    }
+    return { ok: true, shots, transitions, leaks }
   } catch (err) {
-    return { ok: false, detail: err instanceof Error ? err.message : String(err), shots, transitions }
+    return { ok: false, detail: err instanceof Error ? err.message : String(err), shots, transitions, leaks }
   } finally {
     connection?.close()
     child.kill('SIGKILL')

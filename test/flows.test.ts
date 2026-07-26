@@ -138,3 +138,46 @@ describe('summarizeSoftNav', () => {
     ).toEqual(['soft-nav → /about'])
   })
 })
+
+describe.skipIf(!findChrome() || !hasWebSocket())('leak pulse (requires Chrome)', () => {
+  it('reports detached DOM retained after a journey; clean pages stay silent', { timeout: 120000, retry: 2 }, async () => {
+    const http = await import('node:http')
+    const leakyPage = `<!doctype html><html lang="en"><head><title>l</title></head><body><h1>Leaky</h1>
+      <script>
+        window.__retained = [];
+        for (let i = 0; i < 15; i++) {
+          const el = document.createElement('div');
+          el.className = 'card';
+          el.append(document.createElement('span'));
+          document.body.append(el);
+          el.remove();
+          window.__retained.push(el);
+        }
+      </script></body></html>`
+    const cleanPage = '<!doctype html><html lang="en"><head><title>c</title></head><body><h1>Clean</h1></body></html>'
+    let page = leakyPage
+    const server = http.createServer((_req, res) => {
+      res.writeHead(200, { 'content-type': 'text/html', 'cache-control': 'no-store' })
+      res.end(page)
+    })
+    const port: number = await new Promise((resolve) => {
+      server.listen(0, '127.0.0.1', () => resolve((server.address() as { port: number }).port))
+    })
+    try {
+      const { runFlow } = await import('../src/preview/cdp.js')
+      const { parseFlow } = await import('../src/preview/flows.js')
+      const flow = parseFlow('smoke', 'goto /\nexpect Leaky')!
+      const leaky = await runFlow(findChrome()!, `http://127.0.0.1:${port}`, flow, dir)
+      expect(leaky.ok).toBe(true)
+      expect(leaky.leaks.length).toBe(1)
+      expect(leaky.leaks[0]).toContain('detached DOM subtree(s) retained')
+
+      page = cleanPage
+      const clean = await runFlow(findChrome()!, `http://127.0.0.1:${port}`, parseFlow('smoke2', 'goto /\nexpect Clean')!, dir)
+      expect(clean.ok).toBe(true)
+      expect(clean.leaks).toEqual([])
+    } finally {
+      server.close()
+    }
+  })
+})
