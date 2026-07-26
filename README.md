@@ -102,6 +102,7 @@ From source: `git clone https://github.com/aayambansal/squint.git && cd squint &
 | --- | --- | --- |
 | Claude Code | `claude` | `npm i -g @anthropic-ai/claude-code` |
 | Codex CLI | `codex` | `npm i -g @openai/codex` |
+| Codex (app-server) | `codex-app` | same binary — drives the published JSON-RPC protocol |
 | Gemini CLI | `gemini` | `npm i -g @google/gemini-cli` |
 | OpenCode | `opencode` | `npm i -g opencode-ai` |
 | Amp | `amp` | `npm i -g @sourcegraph/amp` |
@@ -149,8 +150,10 @@ squint doctor --probe             # run every engine end to end, verify auth act
 - **Editing**: a real line editor — arrows move, `alt+←/→` jump words, `ctrl+a/e/k/u/w`,
   `↑/↓` history. `ctrl+c` twice exits with a session summary.
 - **Flows**: declare user journeys as six readable lines in `.squint/flows/`; `/flows`
-  replays them headlessly and failing steps join the fix loop. `/score` snapshots quality
-  deterministically.
+  replays them headlessly and failing steps join the fix loop; `/flows suggest` drafts
+  a smoke flow per route from the live page's own headings. `/score` snapshots quality
+  deterministically. `/goal <objective>` arms a standing goal — auto-fix presses to 6
+  attempts until squint's checks come back clean.
 - **Problems**: findings from gates, the dev server, the runtime probe, a11y sweeps, and flows
   collect into a list — `/problems` shows it, `/fix` sends everything as one turn,
   `/fix <n>` targets one. The footer counts what's open.
@@ -176,7 +179,9 @@ squint doctor --probe             # run every engine end to end, verify auth act
   the injected-context bill per source, with staleness warnings.
 - **Two more doors in**: `squint mcp` serves the gates as MCP tools (any
   MCP-speaking agent calls squint's verification directly); `squint ci` runs the
-  whole loop headlessly in a pipeline — JSON report, non-zero exit on hard findings.
+  whole loop headlessly in a pipeline — JSON report, non-zero exit on hard findings,
+  and a digest-sealed receipt per run at `.squint/receipts/` tying the green claim
+  to the exact pixels it was green about.
 - **The sentinel**: gate evasion (deleted tests, added skips, suppressed
   diagnostics, weakened checks, locked-path touches) detected deterministically per
   turn and reported to you — never sent back to the engine that did it.
@@ -189,8 +194,10 @@ squint doctor --probe             # run every engine end to end, verify auth act
 - **Visual approval**: engines ask before contested changes — the request renders
   with its screenshot, `/yes` / `/no` answer it, the ledger remembers.
 - **The design ledger**: `/decide` (plus chosen variants, rollbacks, accepted
-  sandboxes) appends to a committed `.squint/design-log.jsonl`; recent decisions ride
-  into every ask so they stop getting silently undone between sessions.
+  sandboxes, approvals) appends to a committed `.squint/design-log.jsonl`; recent
+  decisions ride into every ask so they stop getting silently undone between
+  sessions. `/distill` compresses the ledger into always-on rules and proposed
+  persistent checks — accumulated taste becomes deterministic gates.
 - **`/btw <question>`** asks about the codebase read-only without touching the main
   thread's context. `.squint/locks` lists paths the engine must never touch; `/save`
   exports the transcript as markdown.
@@ -235,11 +242,12 @@ and an avoid-list tuned to that family's failure modes. Plain markdown, made to 
         | stream       |    | headless screenshots    |
         +------+-------+    +-------------------------+
                |
-   claude . codex . gemini . opencode . amp . cursor . copilot . aider
+   claude . codex . codex-app . gemini . opencode . amp . cursor . copilot . aider
 ```
 
 Engines are dumb translators: build a headless invocation, parse the stream into one
-normalized event model. Claude Code, Amp, and Cursor share a single wire-protocol parser.
+normalized event model. Claude Code, Amp, and Cursor share a single wire-protocol
+parser; `codex-app` speaks the app-server JSON-RPC protocol through an embedded driver.
 All product behavior lives in the harness, so a new engine is ~80 lines.
 
 ## Repo layout
