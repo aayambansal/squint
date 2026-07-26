@@ -95,6 +95,8 @@ export interface SessionOptions {
 }
 
 const MAX_AUTO_FIX_ATTEMPTS = 2
+/** With a standing /goal armed, squint is the evaluator — press harder. */
+const MAX_GOAL_FIX_ATTEMPTS = 6
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -119,6 +121,7 @@ export class Session {
   private fixAttempts = 0
   private reviewTipShown = false
   private pendingApproval: string | null = null
+  private goal: string | null = null
   private lastPulse: Buffer | null = null
   private lastPerf: { lcpMs?: number; cls?: number; transferBytes?: number } | null = null
   private autoReviewedThisAsk = false
@@ -221,10 +224,11 @@ export class Session {
 
   /** Launch a capped auto-fix turn over all open problems. Returns true if launched. */
   private maybeAutoFix(): boolean {
-    if (!this.opts.autoFix || this.fixAttempts >= MAX_AUTO_FIX_ATTEMPTS) return false
+    const cap = this.goal ? MAX_GOAL_FIX_ATTEMPTS : MAX_AUTO_FIX_ATTEMPTS
+    if (!this.opts.autoFix || this.fixAttempts >= cap) return false
     if (this.state.problems.length === 0) return false
     this.fixAttempts += 1
-    this.push('status', `auto-fix attempt ${this.fixAttempts}/${MAX_AUTO_FIX_ATTEMPTS}`)
+    this.push('status', `auto-fix attempt ${this.fixAttempts}/${cap}${this.goal ? ' (goal armed)' : ''}`)
     this.notify({ running: false })
     this.dispatchFix([...this.state.problems])
     return true
@@ -753,6 +757,9 @@ export class Session {
       this.push('status', `skills: ${enrichment.matchedSkills.join(', ')}`)
     }
     prompt += enrichment.sections
+    if (this.goal) {
+      prompt += `\n\n## Standing goal (machine-checked)\n\n${this.goal}\n\nsquint verifies every turn — gates, runtime probe, page audits. Do not declare this done while any of its checks fail; squint will keep sending failures back until they are clean.`
+    }
     await this.runTurn(prompt, ask)
   }
 
@@ -1005,6 +1012,20 @@ export class Session {
         } else {
           this.dispatchFix([...this.state.problems])
         }
+        break
+      }
+      case 'goal': {
+        if (!arg || arg === 'show') {
+          this.push('status', this.goal ? `standing goal: ${this.goal}` : 'no standing goal — /goal <objective> arms one; /goal off clears')
+          break
+        }
+        if (arg === 'off') {
+          this.goal = null
+          this.push('status', 'goal cleared — auto-fix back to the normal cap')
+          break
+        }
+        this.goal = arg
+        this.push('status', `goal armed: ${arg}\nevery ask now carries it; auto-fix presses to ${MAX_GOAL_FIX_ATTEMPTS} attempts until squint's checks come back clean`)
         break
       }
       case 'context': {
