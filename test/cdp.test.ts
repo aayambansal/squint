@@ -87,6 +87,8 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
       <input type="text" />
       <button class="bad-focus" style="outline:none">go</button>
       <ul><li>🚀 fast</li><li>✨ shiny</li><li>🔥 hot</li></ul>
+      <a class="cta" style="background-color:#6d4aff">Get started</a>
+      <button style="background-color:#7c3aed">Sign up now</button>
       <div class="card-a">a</div><div class="card-b">b</div><div class="tooltip">tip</div>
       <button class="tight" style="width:110px;overflow:hidden;white-space:nowrap;display:block">Save all changes</button>
       <p class="hardleft" style="text-align:left">This paragraph pins itself to the left edge no matter the reading direction.</p>
@@ -165,6 +167,8 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
     const slop = result.slop.join('\n')
     expect(slop).toContain('generic font stack: arial')
     expect(slop).toContain('emoji-bulleted')
+    expect(slop).toContain('the Purple Problem')
+    expect(slop).toContain('template CTA copy: "Get started"')
 
     const phantoms = result.phantoms.join('\n')
     expect(phantoms).toContain('bg-linear-to-r (on <h1>)')

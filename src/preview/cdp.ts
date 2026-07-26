@@ -818,7 +818,58 @@ const SLOP_AUDIT = `(() => {
   if (rootStyle.getPropertyValue('--radius').trim() === '0.5rem' && rootStyle.getPropertyValue('--primary').trim() === '222.2 47.4% 11.2%') {
     out.push('untouched shadcn default theme tokens');
   }
-  return out.slice(0, 8);
+  // The Purple Problem: the 2026 AI-landing fingerprint. Dominant brand
+  // hue in the 250-280deg indigo/violet band, paired with a gradient.
+  const toHue = (rgb) => {
+    const m = rgb.match(/rgba?\\(([\\d.]+)[,\\s]+([\\d.]+)[,\\s]+([\\d.]+)/);
+    if (!m) return null;
+    const r = +m[1] / 255, g = +m[2] / 255, b = +m[3] / 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+    if (d < 0.08) return null;
+    let h = 0;
+    if (max === r) h = ((g - b) / d) % 6;
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h = Math.round(h * 60); if (h < 0) h += 360;
+    return h;
+  };
+  let indigoHits = 0, gradientHits = 0;
+  for (const el of document.querySelectorAll('a, button, [class*="btn"], [class*="cta"], .hero, header, h1')) {
+    const cs = getComputedStyle(el);
+    const h = toHue(cs.backgroundColor);
+    if (h !== null && h >= 250 && h <= 285) indigoHits++;
+    if ((cs.backgroundImage || '').includes('gradient')) gradientHits++;
+  }
+  if (indigoHits >= 2) {
+    out.push('the Purple Problem: ' + indigoHits + ' prominent element(s) in the indigo/violet band (250-285deg)' + (gradientHits > 0 ? ' plus gradients' : '') + ' — the saturated 2026 AI-landing tell; pick a hue the domain does not predict');
+  }
+  // Exactly-three equal cards with icon + heading, the SaaS reflex.
+  const cardSets = new Map();
+  for (const el of document.querySelectorAll('[class*="card"], [class*="feature"]')) {
+    const parent = el.parentElement;
+    if (!parent) continue;
+    const key = parent;
+    cardSets.set(key, (cardSets.get(key) || 0) + 1);
+  }
+  for (const [parent, count] of cardSets) {
+    if (count === 3) {
+      const kids = [...parent.children].filter((c) => /card|feature/i.test(c.className));
+      const widths = kids.map((c) => Math.round(c.getBoundingClientRect().width));
+      if (widths.length === 3 && Math.max(...widths) - Math.min(...widths) < 8 && widths[0] > 0) {
+        out.push('three equal feature cards in a row — the SaaS-template reflex; vary the rhythm or the count');
+        break;
+      }
+    }
+  }
+  // Weightless CTA copy from the AI dictionary.
+  for (const el of document.querySelectorAll('a, button')) {
+    const t = (el.textContent || '').trim().toLowerCase();
+    if (/^(get started|build faster|ship smarter|start building|get started free)$/.test(t)) {
+      out.push('template CTA copy: "' + (el.textContent || '').trim() + '" — say what the button actually does');
+      break;
+    }
+  }
+  return out.slice(0, 12);
 })()`
 
 /**
