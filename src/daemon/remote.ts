@@ -44,6 +44,7 @@ export class RemoteSession implements SessionHandle {
       mode: 'safe',
       problems: [],
       sandbox: false,
+      pendingApproval: null,
     }
     client.onMessage((msg) => {
       if (msg.type === 'state' && msg.state) {

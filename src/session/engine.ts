@@ -73,6 +73,8 @@ export interface SessionState {
   problems: Problem[]
   /** Asks accumulate in a shadow worktree until /sandbox apply. */
   sandbox: boolean
+  /** An engine-requested visual approval awaiting /yes or /no. */
+  pendingApproval: string | null
 }
 
 export interface SessionOptions {
@@ -120,7 +122,6 @@ export class Session {
   private checkpoints: Array<{ snapshot: Snapshot; label: string; at: number }> = []
   private fixAttempts = 0
   private reviewTipShown = false
-  private pendingApproval: string | null = null
   private goal: string | null = null
   private laneEnabled = false
   private inLane = false
@@ -138,6 +139,7 @@ export class Session {
       engineId: opts.engineId,
       model: opts.model,
       devState: 'stopped',
+      pendingApproval: null,
       devUrl: null,
       totals: { costUsd: 0, turns: 0 },
       queue: [],
@@ -538,7 +540,7 @@ export class Session {
           const req = JSON.parse(fs.readFileSync(reqPath, 'utf8'))
           fs.rmSync(reqPath, { force: true })
           if (typeof req?.summary === 'string' && req.summary.length > 0) {
-            this.pendingApproval = req.summary
+            this.notify({ pendingApproval: req.summary })
             const shot = typeof req.screenshot === 'string' ? path.resolve(this.execCwd(), req.screenshot) : null
             if (shot && fs.existsSync(shot)) this.push('image', shot)
             this.push('status', `⏸ approval requested: ${req.summary}\n/yes approves · /no rejects · or type feedback`)
@@ -1121,12 +1123,12 @@ Do not restyle anything — this task only writes rules and checks.`
       }
       case 'yes':
       case 'no': {
-        if (!this.pendingApproval) {
+        if (!this.state.pendingApproval) {
           this.push('status', `nothing awaiting approval — /${name} answers an engine's approval request`)
           break
         }
-        const summary = this.pendingApproval
-        this.pendingApproval = null
+        const summary = this.state.pendingApproval
+        this.notify({ pendingApproval: null })
         const approved = name === 'yes'
         appendDecision(this.opts.cwd, {
           decision: `${approved ? 'approved' : 'rejected'}: ${summary}${arg ? ` — ${arg}` : ''}`,

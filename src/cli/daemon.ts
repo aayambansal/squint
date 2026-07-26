@@ -32,6 +32,7 @@ export function registerDaemon(program: Command): void {
         autoReview: config.autoReview,
         fixModel: config.fixModel,
         budgetUsd: config.budgetUsd,
+        approvalWebhook: config.approvalWebhook,
         onQuit: () => {
           daemon.close()
           process.exit(0)
@@ -39,6 +40,7 @@ export function registerDaemon(program: Command): void {
       })
       console.log(`squint daemon on ${socketPath(cwd)} (engine: ${engineId})`)
       console.log('attach from another terminal with: squint attach')
+      if (daemon.relayUrl) console.log(`approval relay on ${daemon.relayUrl} → ${config.approvalWebhook}`)
       const stop = () => {
         daemon.close()
         process.exit(0)

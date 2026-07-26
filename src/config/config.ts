@@ -26,6 +26,8 @@ const ConfigSchema = z.object({
   fixModel: z.string().optional(),
   /** TUI theme name (amber, ocean, moss, rose, mono). */
   theme: z.string().optional(),
+  /** POSTed when an engine requests visual approval under squint serve. */
+  approvalWebhook: z.string().url().optional(),
 })
 
 export type SquintConfig = z.infer<typeof ConfigSchema>
@@ -98,6 +100,8 @@ export function setConfigValue(file: string, key: string, value: string): Squint
       throw new Error(`"${key}" must be true or false`)
     }
     next = { ...current, [key]: value === 'true' }
+  } else if (key === 'approvalWebhook') {
+    next = { ...current, approvalWebhook: value }
   } else if (key === 'budgetUsd') {
     const budget = Number.parseFloat(value)
     if (!Number.isFinite(budget) || budget <= 0) {
@@ -110,7 +114,7 @@ export function setConfigValue(file: string, key: string, value: string): Squint
     next = { ...current, models: { ...current.models, [engineId]: value } }
   } else {
     throw new Error(
-      `Unknown config key "${key}". Supported: engine, theme, autoDev, autoFix, autoProbe, autoCheck, autoReview, bell, budgetUsd, fixModel, models.<engineId>`,
+      `Unknown config key "${key}". Supported: engine, theme, autoDev, autoFix, autoProbe, autoCheck, autoReview, bell, budgetUsd, fixModel, approvalWebhook, models.<engineId>`,
     )
   }
   fs.mkdirSync(path.dirname(file), { recursive: true })
