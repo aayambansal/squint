@@ -1182,6 +1182,22 @@ Do not restyle anything — this task only writes rules and checks.`
           this.push('error', 'dev server not running — /dev first')
           break
         }
+        if (arg.trim() === 'suggest') {
+          void (async () => {
+            const chrome = findChrome()
+            if (!chrome) {
+              this.push('error', 'no Chrome/Chromium found')
+              return
+            }
+            const { suggestFlows } = await import('../preview/flows.js')
+            this.push('status', 'drafting flows from the live routes…')
+            const { created, skipped } = await suggestFlows(this.opts.cwd, this.state.devUrl!, chrome)
+            if (created.length > 0) this.push('status', `drafted ${created.length} flow(s): ${created.join(', ')} — edit .squint/flows/*.flow or ask the engine to deepen them`)
+            if (skipped.length > 0) this.push('status', `kept existing: ${skipped.join(', ')}`)
+            if (created.length === 0 && skipped.length === 0) this.push('status', 'no routes to draft from — add .squint/routes')
+          })()
+          break
+        }
         void (async () => {
           const { loadFlows } = await import('../preview/flows.js')
           const flows = loadFlows(this.opts.cwd)
