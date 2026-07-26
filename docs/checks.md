@@ -23,10 +23,11 @@ the framework's own `/_next/mcp` structured errors merge in.
 **Correctness**: uncaught exceptions, console errors, failed requests, blank pages.
 
 **Accessibility**: missing lang/title/alt, unlabeled controls, unnamed buttons, heading
--order jumps, tiny tap targets, positive tabindex, keyboard journeys (invisible focus,
-traps, untabbable pages), fake buttons (div-onclick), phantom IDREFs (dangling
-aria-labelledby/popovertarget/…), form-error announcement readiness, forced-colors
-invisibility, autofill grammar + WCAG 1.3.5, top-layer semantics (hand-rolled modals).
+-order jumps, tiny tap targets, target spacing (WCAG 2.5.8), positive tabindex, keyboard journeys
+(invisible focus, traps, untabbable pages), fake buttons (div-onclick), phantom IDREFs
+(dangling aria-labelledby/popovertarget/…), form-error announcement readiness,
+forced-colors invisibility, autofill grammar + WCAG 1.3.5, top-layer semantics
+(hand-rolled modals), zoom-blocking viewport (WCAG 1.4.4).
 
 **Distinctiveness (anti-slop)**: generic fonts, APCA-fog body text, emoji bullets,
 untouched shadcn tokens, the Purple Problem (indigo hue, three equal cards, template
@@ -39,7 +40,7 @@ or vice versa), anchor positioning (orphaned targets), speculation rules (invali
 failed prerender), WebMCP parity (deprecated surface, invalid schemas, form coverage).
 
 **Security (served bytes)**: secrets in bundles/inline/localStorage (redacted),
-client-side-only gates.
+client-side-only gates, mixed content (http on https), missing-CSP heuristic.
 
 **Meta / SEO / social**: viewport zoom-blocking (WCAG 1.4.4), missing description,
 missing og:image, invalid JSON-LD, production noindex leaks.
