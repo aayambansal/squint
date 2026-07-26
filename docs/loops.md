@@ -180,7 +180,9 @@ a unix socket; `squint attach` joins it from any terminal, or remotely via
 `ssh -L`-forwarded sockets. The first client drives; later attaches observe (they see
 everything, steer nothing) and the oldest observer inherits when the driver detaches.
 A dropped ssh connection or a crashed terminal no longer kills the run. `/detach`
-leaves the session running.
+leaves the session running. Observer seats share the verdict verbs — `/yes`, `/no`,
+`/decide` — each use attributed by seat number in the shared transcript; steering
+stays with the driver.
 
 ## Hooks
 
