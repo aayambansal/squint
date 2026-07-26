@@ -32,6 +32,8 @@ export function registerQuality(program: Command): void {
     .option('--compare', 'after sealing, diff against the previous receipt; regressions fail the run')
     .action(async (opts: { url?: string; json?: string; compare?: boolean }) => {
       const cwd = process.cwd()
+      const { setProgress } = await import('../tui/progress.js')
+      setProgress('indeterminate')
       const startedAt = new Date().toISOString()
       const report: Record<string, unknown> = { startedAt, cwd }
       let failed = false
@@ -124,6 +126,8 @@ export function registerQuality(program: Command): void {
         fs.writeFileSync(opts.json, JSON.stringify(report, null, 2))
         console.log(pc.dim(`report → ${opts.json}`))
       }
+      setProgress(failed ? 'error' : 'normal', 100)
+      setTimeout(() => setProgress('clear'), 1500).unref?.()
       if (failed) process.exitCode = 1
     })
 
