@@ -104,6 +104,7 @@ From source: `git clone https://github.com/aayambansal/squint.git && cd squint &
 | Codex CLI | `codex` | `npm i -g @openai/codex` |
 | Codex (app-server) | `codex-app` | same binary — drives the published JSON-RPC protocol |
 | Gemini CLI | `gemini` | `npm i -g @google/gemini-cli` |
+| Antigravity CLI | `antigravity` | `curl -fsSL https://antigravity.google/cli/install.sh \| bash` |
 | OpenCode | `opencode` | `npm i -g opencode-ai` |
 | Amp | `amp` | `npm i -g @ampcode/cli` |
 | Cursor CLI | `cursor` | `curl https://cursor.com/install -fsS \| bash` |
@@ -244,7 +245,7 @@ and an avoid-list tuned to that family's failure modes. Plain markdown, made to 
         | stream       |    | headless screenshots    |
         +------+-------+    +-------------------------+
                |
-   claude . codex . codex-app . gemini . opencode . amp . cursor . copilot . aider
+   claude . codex . codex-app . gemini . antigravity . opencode . amp . cursor . copilot . aider
 ```
 
 Engines are dumb translators: build a headless invocation, parse the stream into one

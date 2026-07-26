@@ -39,6 +39,16 @@ ships as the single backend for CLI, desktop, and IDE — through an embedded no
 - Opt in with `/engine codex-app`; the exec adapter stays the default while the
   protocol is marked experimental upstream.
 
+## Antigravity CLI (`antigravity`)
+
+```sh
+curl -fsSL https://antigravity.google/cli/install.sh | bash
+```
+
+- The Gemini CLI successor. squint runs `agy -p` under a pty (stock `script` utility)
+  because agy gates stdout on isatty() — piped output is silently empty otherwise.
+- `--conversation` resume; `plan` → `--sandbox`, `yolo` → `--dangerously-skip-permissions`.
+
 ## Gemini CLI (`gemini`)
 
 ```sh

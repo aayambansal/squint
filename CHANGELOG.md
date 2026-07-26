@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.0 — 2026-07-26
+
+- New engine: Antigravity CLI (`antigravity`) — Google's Gemini CLI successor, run under a pty because agy silently emits nothing to pipes; --conversation resume, sandbox/permission mode mapping
+- Soft-nav pulse: Chrome 151's soft-navigation entries observed during /flows — one line per SPA route transition with its worst interaction-contentful-paint (`soft-nav → /products · ICP 410ms`)
+- Amp install strings track the @ampcode/cli rename
+
 ## 0.7.2 — 2026-07-26
 
 - MCP surface grows to six tools: squint_flow_suggest (journeys drafted from live routes) and squint_receipt_verify (prove a receipt wasn't edited after sealing)
