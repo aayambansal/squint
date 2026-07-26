@@ -149,5 +149,21 @@ goto /
 expect Ready
 shot home
 `,
+
+    '.squint/checks/root-renders.js': `// The starter check: replayed against the live page after every turn.
+// Contract: this file evaluates IN THE PAGE to an array of failure
+// strings — empty means pass. First-line pragmas move a check to full
+// audits (// squint-trigger: audit) or the daemon's clock (interval:300).
+(() => {
+  const root = document.querySelector('#root');
+  if (!root) return ['#root is missing from the page'];
+  if (root.children.length === 0) return ['#root rendered empty — the app did not mount'];
+  return [];
+})()
+`,
+
+    '.squint/rules.md': `Build from the design tokens in src/index.css — never hardcode a color a token covers.
+Keep every interactive element reachable by keyboard with a visible focus state.
+`,
   }
 }
