@@ -85,6 +85,45 @@ const TOOLS: McpTool[] = [
     },
   },
   {
+    name: 'squint_flow_suggest',
+    description:
+      'Draft a smoke flow per declared route (.squint/routes) from the live page\'s own headings — goto/expect/shot files in .squint/flows/, existing flows untouched.',
+    inputSchema: { type: 'object', properties: { url: { type: 'string' } }, required: ['url'] },
+    async run(args, cwd) {
+      const chrome = findChrome()
+      if (!chrome) return 'no Chrome/Chromium found'
+      const { suggestFlows } = await import('../preview/flows.js')
+      const { created, skipped } = await suggestFlows(cwd, String(args.url ?? ''), chrome)
+      return [
+        created.length > 0 ? `drafted: ${created.join(', ')}` : 'nothing drafted',
+        skipped.length > 0 ? `kept existing: ${skipped.join(', ')}` : '',
+      ].filter(Boolean).join('\n')
+    },
+  },
+  {
+    name: 'squint_receipt_verify',
+    description:
+      'Verify a .squint/receipts/*.json verification receipt: recompute its digest and report whether the report or screenshots were edited after sealing.',
+    inputSchema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] },
+    async run(args, cwd) {
+      const fs = await import('node:fs')
+      const path = await import('node:path')
+      const { verifyReceipt } = await import('../quality/receipts.js')
+      const file = path.isAbsolute(String(args.path)) ? String(args.path) : path.join(cwd, String(args.path))
+      let receipt
+      try {
+        receipt = JSON.parse(fs.readFileSync(file, 'utf8'))
+      } catch (error) {
+        return `unreadable receipt: ${error instanceof Error ? error.message : String(error)}`
+      }
+      const intact = verifyReceipt(receipt)
+      const ok = (receipt.report as { ok?: boolean })?.ok
+      return intact
+        ? `digest intact — this receipt is what squint sealed (run ok: ${ok}, git ${receipt.gitHead ?? 'n/a'}, squint ${receipt.version})`
+        : 'DIGEST MISMATCH — this receipt was edited after sealing; do not trust it'
+    },
+  },
+  {
     name: 'squint_context',
     description:
       'Itemize what squint injects into engine asks — token cost per source with staleness warnings (stale locks, generic skill triggers, oversized always-on context).',
