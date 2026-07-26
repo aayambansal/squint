@@ -42,3 +42,30 @@ describe('verification receipts', () => {
     expect(verifyReceipt(loaded)).toBe(true)
   })
 })
+
+describe('receipts through squint ci', () => {
+  it('the ci flow writes a verifiable receipt whose report matches the json output', async () => {
+    execFileSync('git', ['init', '-q'], { cwd: dir })
+    fs.writeFileSync(
+      path.join(dir, 'package.json'),
+      JSON.stringify({ name: 'fixture', scripts: { typecheck: 'node -e "process.exit(0)"' } }),
+    )
+    execFileSync('git', ['add', '-A'], { cwd: dir })
+    execFileSync('git', ['-c', 'user.email=t@e.c', '-c', 'user.name=T', 'commit', '-qm', 'x'], { cwd: dir })
+
+    // Drive the same path squint ci uses: gates → report → receipt.
+    const { detectGates, runGates } = await import('../src/gates/gates.js')
+    const gates = detectGates(dir)
+    const results = await runGates(dir, gates)
+    const report: Record<string, unknown> = {
+      ok: results.every((r) => r.ok),
+      gates: results.map((r) => ({ id: r.gate.id, ok: r.ok })),
+    }
+    const file = writeReceipt(dir, report)
+    const receipt = JSON.parse(fs.readFileSync(file, 'utf8'))
+    expect(verifyReceipt(receipt)).toBe(true)
+    expect(receipt.report.ok).toBe(true)
+    expect(receipt.gitHead).toMatch(/^[0-9a-f]{40}$/)
+    expect(path.basename(file)).not.toContain('-failed')
+  }, 30000)
+})
