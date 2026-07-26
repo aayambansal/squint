@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.3 — 2026-07-27
+
+- Fix: slash commands typed in an attached TUI were queued as engine asks instead of executed — RemoteSession now routes them as commands, matching the plain attach
+- /save exports end with the design decisions on record and a receipts pointer — a reviewed artifact, not a chat log
+
 ## 0.9.2 — 2026-07-26
 
 - Shared verdicts: observer seats answer approvals and record decisions (/yes, /no, /decide) with seat attribution in the shared transcript; steering stays with the driver
