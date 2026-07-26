@@ -1304,7 +1304,7 @@ Do not restyle anything — this task only writes rules and checks.`
             if (wanted && flow.name !== wanted) continue
             const result = await runFlow(chrome, this.state.devUrl!, flow, previewDir(this.opts.cwd))
             if (result.ok) {
-              this.push('status', `✓ flow ${flow.name} · ${flow.steps.length} steps${result.shots.length > 0 ? ` · ${result.shots.length} shot(s)` : ''}`)
+              this.push('status', `✓ flow ${flow.name} · ${flow.steps.length} steps · ${(result.durationMs / 1000).toFixed(1)}s${result.shots.length > 0 ? ` · ${result.shots.length} shot(s)` : ''}`)
               if (result.transitions.length > 0) this.push('status', result.transitions.map((t) => `  ${t}`).join('\n'))
               if (result.leaks.length > 0) this.push('error', result.leaks.join('\n'))
               for (const shot of result.shots) this.push('image', shot)
