@@ -85,6 +85,9 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
       <button class="tight" style="width:110px;overflow:hidden;white-space:nowrap;display:block">Save all changes</button>
       <p class="hardleft" style="text-align:left">This paragraph pins itself to the left edge no matter the reading direction.</p>
       <p class="fluid">This paragraph inherits direction like a well-behaved block of text should.</p>
+      <style>@media (forced-colors: active) { .fc-trap { color: CanvasText; background: CanvasText; } }</style>
+      <button class="fc-trap">Trapped text</button>
+      <nav style="height:80px">persistent navigation</nav>
       <script>
         console.error('console-boom');
         setTimeout(() => { throw new Error('uncaught-boom') }, 100);
@@ -146,6 +149,9 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
     const vt = result.viewTransitions.join('\n')
     expect(vt).toContain('duplicate view-transition-name "hero-card" on 2 elements')
     expect(vt).toContain('no prefers-reduced-motion')
+
+    expect(result.a11y.join('\n')).toContain('forced-colors: <button.fc-trap> text matches its background')
+    expect(result.slop.join('\n')).toContain('print: <nav> still renders in print output')
 
     const locale = result.locale.join('\n')
     expect(locale).toContain('<button.tight> clips at +40% text expansion')
