@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.2 — 2026-07-26
+
+- Shared verdicts: observer seats answer approvals and record decisions (/yes, /no, /decide) with seat attribution in the shared transcript; steering stays with the driver
+- A footer badge while an approval waits (⏸ approval waiting — /yes or /no)
+
 ## 0.9.1 — 2026-07-26
 
 - Speculation-rules check: invalid rule sets (silently disabled speculative loading), failed prefetches, and failed prerenders report via the CDP Preload domain
