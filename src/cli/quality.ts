@@ -114,6 +114,40 @@ export function registerQuality(program: Command): void {
     })
 
   program
+    .command('receipts')
+    .description('List verification receipts; `squint receipts compare` diffs the two newest')
+    .argument('[action]', 'compare — diff the two newest receipts')
+    .action(async (action?: string) => {
+      const cwd = process.cwd()
+      const { latestPair, compareReceipts } = await import('../quality/compareReceipts.js')
+      if (action === 'compare') {
+        const pair = latestPair(cwd)
+        if (!pair) {
+          console.log(pc.dim('need at least two receipts in .squint/receipts/ — run squint ci twice'))
+          return
+        }
+        const delta = compareReceipts(pair[0], pair[1])
+        console.log(`${delta.okBefore ? pc.green('green') : pc.red('red')} → ${delta.okAfter ? pc.green('green') : pc.red('red')}`)
+        for (const line of delta.lines) {
+          console.log(line.includes('REGRESSED') || line.includes('⚠') ? pc.red(`  ${line}`) : pc.dim(`  ${line}`))
+        }
+        if (delta.lines.some((l) => l.includes('REGRESSED'))) process.exitCode = 1
+        return
+      }
+      const fs = await import('node:fs')
+      const path = await import('node:path')
+      const dir = path.join(cwd, '.squint', 'receipts')
+      const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => f.endsWith('.json')).sort().reverse() : []
+      if (files.length === 0) {
+        console.log(pc.dim('no receipts yet — squint ci seals one per run'))
+        return
+      }
+      for (const file of files.slice(0, 12)) {
+        console.log(`${file.includes('-failed') ? pc.red('✗') : pc.green('✓')} ${file}`)
+      }
+    })
+
+  program
     .command('shot')
     .description('Screenshot a running app at mobile/tablet/desktop viewports (+ .squint/routes)')
     .argument('<url>', 'URL of the running app (e.g. http://localhost:5173)')
