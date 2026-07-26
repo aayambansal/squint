@@ -94,6 +94,7 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
         <button class="cta-accept" style="font-size:18px;padding:14px 40px">Accept all</button>
         <button class="cta-decline" style="font-size:11px;padding:2px 6px">Decline</button>
       </div>
+      <script type="speculationrules">{ this is not valid json }</script>
       <script>
         console.error('console-boom');
         setTimeout(() => { throw new Error('uncaught-boom') }, 100);
@@ -164,6 +165,8 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
     expect(deception).toContain('Subscribe to marketing')
     expect(deception).not.toContain('Remember my theme')
     expect(deception).toContain('<button.cta-decline> is visually buried next to <button.cta-accept>')
+
+    expect(result.speculation.some((f) => f.includes('speculation: rule set invalid'))).toBe(true)
 
     const locale = result.locale.join('\n')
     expect(locale).toContain('<button.tight> clips at +40% text expansion')

@@ -50,6 +50,7 @@ export interface CdpCaptureResult {
   checkFailures: string[]
   webmcp: string[]
   locale: string[]
+  speculation: string[]
   jank: string[]
 }
 
@@ -1093,6 +1094,7 @@ export async function cdpCapture(
   const checkFailures: string[] = []
   let webmcp: string[] = []
   let locale: string[] = []
+  const speculation: string[] = []
   let jank: string[] = []
   const requests = new Map<string, string>()
   let connection: CdpConnection | null = null
@@ -1112,6 +1114,22 @@ export async function cdpCapture(
       const detail = params.exceptionDetails
       const text = detail?.exception?.description ?? detail?.text
       if (text) report.pageErrors.push(String(text).split('\n').slice(0, 3).join('\n'))
+    })
+    connection.on('Preload.ruleSetUpdated', (params) => {
+      const rs = params.ruleSet
+      if (rs?.errorType) {
+        speculation.push(`speculation: rule set invalid (${rs.errorType}) — ${String(rs.errorMessage ?? '').slice(0, 120)}`)
+      }
+    })
+    connection.on('Preload.prefetchStatusUpdated', (params) => {
+      if (params.status === 'Failure') {
+        speculation.push(`speculation: prefetch failed for ${params.prefetchUrl ?? '?'}`)
+      }
+    })
+    connection.on('Preload.prerenderStatusUpdated', (params) => {
+      if (params.status === 'Failure') {
+        speculation.push(`speculation: prerender failed${params.disallowedMojoInterface ? ` (${params.disallowedMojoInterface})` : ''}${params.prerenderStatus ? ` — ${params.prerenderStatus}` : ''}`)
+      }
     })
     connection.on('Network.requestWillBeSent', (params) => {
       requests.set(params.requestId, params.request?.url ?? 'unknown')
@@ -1136,6 +1154,7 @@ export async function cdpCapture(
     await connection.send('Runtime.enable', {}, sessionId)
     await connection.send('Network.enable', {}, sessionId)
     await connection.send('Page.enable', {}, sessionId)
+    await connection.send('Preload.enable', {}, sessionId).catch(() => null)
     await connection.send('Page.addScriptToEvaluateOnNewDocument', { source: WEBMCP_SHIM }, sessionId).catch(() => null)
     await connection.send('Page.addScriptToEvaluateOnNewDocument', { source: LOAF_SHIM }, sessionId).catch(() => null)
     await connection.send('Page.navigate', { url }, sessionId)
@@ -1430,5 +1449,5 @@ export async function cdpCapture(
     setTimeout(() => fs.rmSync(profileDir, { recursive: true, force: true }), 500).unref?.()
   }
 
-  return { report, shots, a11y, slop, perf, narration, phantoms, viewTransitions, components, checkFailures, webmcp, jank, locale }
+  return { report, shots, a11y, slop, perf, narration, phantoms, viewTransitions, components, checkFailures, webmcp, jank, locale, speculation }
 }
