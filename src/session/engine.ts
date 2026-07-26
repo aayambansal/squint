@@ -1056,6 +1056,15 @@ export class Session {
             break
           }
           this.dispatchFix([target])
+        } else if (arg) {
+          // /fix <source> narrows to one stream: /fix a11y, /fix check, …
+          const bySource = this.state.problems.filter((p) => p.source === arg)
+          if (bySource.length === 0) {
+            const sources = [...new Set(this.state.problems.map((p) => p.source))].join(', ')
+            this.push('status', `no open ${arg} problems — open sources: ${sources}`)
+            break
+          }
+          this.dispatchFix(bySource)
         } else {
           this.dispatchFix([...this.state.problems])
         }

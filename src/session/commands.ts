@@ -24,7 +24,7 @@ export const COMMANDS: CommandSpec[] = [
 
   { name: 'check', group: 'verify', description: 'run all quality gates (typecheck, lint, format, test, build)' },
   { name: 'problems', group: 'verify', description: 'list open findings from gates, dev server, runtime, a11y' },
-  { name: 'fix', args: '[n]', group: 'verify', description: 'send all open problems to the engine, or just problem n' },
+  { name: 'fix', args: '[n|source]', group: 'verify', description: 'send all open problems to the engine, one by number, or one source (a11y, dev, check, …)' },
   { name: 'shot', args: '[url]', group: 'verify', description: 'screenshot the app (or any url) at mobile/tablet/desktop' },
   { name: 'review', args: '[focus]', group: 'verify', description: 'screenshots + the engine critiques its own rendered work' },
   { name: 'polish', args: '[1-5]', group: 'verify', description: 'unattended rounds of review → fix (default 2)' },
