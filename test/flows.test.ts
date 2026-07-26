@@ -207,3 +207,17 @@ describe('budget verb', () => {
     expect(stepExpression({ kind: 'budget', metric: 'icp', ms: 400 })).toBeNull()
   })
 })
+
+describe('summarizeShifts', () => {
+  it('folds layout-shift entries into a per-element ledger over the 0.05 threshold', async () => {
+    const { summarizeShifts } = await import('../src/preview/cdp.js')
+    const lines = summarizeShifts([
+      { value: 0.06, label: 'img.hero' },
+      { value: 0.04, label: 'div.banner' },
+      { value: 0.02, label: 'img.hero' },
+    ])
+    expect(lines[0]).toBe('layout shift: CLS 0.120 over the journey')
+    expect(lines.some((l) => l.includes('img.hero shifted (0.080)'))).toBe(true)
+    expect(summarizeShifts([{ value: 0.01, label: 'p' }])).toEqual([])
+  })
+})
