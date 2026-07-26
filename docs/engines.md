@@ -26,6 +26,19 @@ codex login          # ChatGPT account, or: codex login --api-key <key>
   `yolo` → danger-full-access).
 - Model via `models.codex` (e.g. `gpt-5-codex`).
 
+## Codex app-server (`codex-app`)
+
+Same binary, different wire: drives `codex app-server` — the JSON-RPC protocol OpenAI
+ships as the single backend for CLI, desktop, and IDE — through an embedded node driver
+(initialize → `thread/start` or `thread/resume` → `turn/start`).
+
+- Real streamed deltas (`item/agentMessage/delta`), tool items carrying the command
+  being run, thread-id resume across turns.
+- Same sandbox mapping as `codex`. Approval policy is pinned to `never` — squint's own
+  loops are the review layer.
+- Opt in with `/engine codex-app`; the exec adapter stays the default while the
+  protocol is marked experimental upstream.
+
 ## Gemini CLI (`gemini`)
 
 ```sh
@@ -83,16 +96,29 @@ export ANTHROPIC_API_KEY=…   # or OPENAI_API_KEY, per aider's docs
 
 - Fire-and-diff: aider prints human text and edits files; squint disables its auto-commits
   so checkpoints and `/undo` stay in charge.
+- **Dormant upstream** (no release since Aug 2025): the adapter keeps working, but prefer
+  an actively maintained engine for new setups.
+
+## Verifying a setup
+
+```sh
+squint doctor            # which engines are on PATH, with install hints
+squint doctor --probe    # run each installed engine end to end — auth failures
+                         # surface with the CLI's own last stderr line
+```
+
+`--probe` is the honest check: a binary on PATH says nothing about whether you're
+logged in. Unauthenticated engines fail fast with the actual message (e.g. cursor's
+"run agent login").
 
 ## Choosing
 
 - **Best overall with squint**: Claude Code (streaming + resume + cost + modes).
 - **Already paying for ChatGPT**: Codex CLI.
 - **Provider flexibility / local models**: OpenCode.
+- **Watch list**: Gemini CLI is being retired for Antigravity CLI upstream — expect the
+  `gemini` adapter to need migration; `codex-app` tracks the protocol OpenAI says is
+  the durable surface.
 - Switch any time: `/engine <id>` in the TUI, `-e <id>` on `squint run`. Per-repo default:
   `squint config set --project engine codex`.
 
-
-### codex-app
-
-Codex over the published app-server JSON-RPC protocol (threads/turns/items): real streamed deltas, tool items with the command being run, thread-id resume. Opt in with `/engine codex-app`; requires `codex` on PATH. The `codex` exec adapter stays the default.
