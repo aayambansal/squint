@@ -33,14 +33,20 @@ export interface Daemon {
   close(): void
   clientCount(): number
   session: Session
+  /** The approval-relay address, when a webhook is configured. */
+  relayUrl?: string
 }
 
 export interface DaemonOptions extends SessionOptions {
   /** How often the daemon looks for due interval checks (test hook). */
   intervalSweepMs?: number
+  /** POSTed when an engine requests visual approval; one-shot approve/reject URLs ride along. */
+  approvalWebhook?: string
+  /** Port for the approval-relay listener (default: ephemeral). */
+  relayPort?: number
 }
 
-export function startDaemon(opts: DaemonOptions): Promise<Daemon> {
+export async function startDaemon(opts: DaemonOptions): Promise<Daemon> {
   const session = new Session(opts)
   const sock = socketPath(opts.cwd)
   fs.mkdirSync(path.dirname(sock), { recursive: true })
@@ -121,6 +127,59 @@ export function startDaemon(opts: DaemonOptions): Promise<Daemon> {
   }, opts.intervalSweepMs ?? 60000)
   sweep.unref?.()
 
+  // Approval relay: an engine's request_visual_approval becomes a POST
+  // to the configured webhook carrying signed one-shot approve/reject
+  // URLs (loopback listener; expose via your tunnel of choice). The
+  // last mile claude-code#26000 asks for — squint ships it first.
+  let relayServer: import('node:http').Server | null = null
+  let relayUrl: string | undefined
+  let relayUnsub: (() => void) | null = null
+  if (opts.approvalWebhook) {
+    const http = await import('node:http')
+    const crypto2 = await import('node:crypto')
+    const tokens = new Map<string, 'yes' | 'no'>()
+    relayServer = http.createServer((req, res) => {
+      const token = (req.url ?? '').replace(/^\//, '')
+      const verdict = tokens.get(token)
+      if (!verdict) {
+        res.writeHead(404).end('unknown or already-used token')
+        return
+      }
+      tokens.clear()
+      session.command(verdict === 'yes' ? '/yes approved via webhook' : '/no rejected via webhook')
+      res.writeHead(200, { 'content-type': 'text/plain' })
+      res.end(verdict === 'yes' ? 'approved — the engine proceeds' : 'rejected — the engine stands down')
+    })
+    await new Promise<void>((resolve) => relayServer?.listen(opts.relayPort ?? 0, '127.0.0.1', resolve))
+    const addr = relayServer.address() as { port: number }
+    relayUrl = `http://127.0.0.1:${addr.port}`
+    let lastSeen: string | null = null
+    relayUnsub = session.subscribe(() => {
+      const pending = session.getState().pendingApproval
+      if (!pending || pending === lastSeen) {
+        if (!pending) lastSeen = null
+        return
+      }
+      lastSeen = pending
+      const approve = crypto2.randomBytes(16).toString('hex')
+      const reject = crypto2.randomBytes(16).toString('hex')
+      tokens.clear()
+      tokens.set(approve, 'yes')
+      tokens.set(reject, 'no')
+      fetch(opts.approvalWebhook!, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          text: `squint approval requested: ${pending}`,
+          summary: pending,
+          approveUrl: `${relayUrl}/${approve}`,
+          rejectUrl: `${relayUrl}/${reject}`,
+        }),
+        signal: AbortSignal.timeout(5000),
+      }).catch(() => null)
+    })
+  }
+
   const unsubscribe = session.subscribe(() => {
     const payload = serialize()
     for (const client of clients) {
@@ -133,9 +192,12 @@ export function startDaemon(opts: DaemonOptions): Promise<Daemon> {
     server.listen(sock, () => {
       resolve({
         session,
+        relayUrl,
         clientCount: () => clients.length,
         close: () => {
           clearInterval(sweep)
+          relayUnsub?.()
+          relayServer?.close()
           unsubscribe()
           for (const client of clients) client.destroy()
           server.close()
