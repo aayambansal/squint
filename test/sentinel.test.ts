@@ -95,3 +95,20 @@ describe('lock glob matching', () => {
     expect(locked).toEqual(['src/legacy/deep/nested.ts'])
   })
 })
+
+describe('rules.md weakening', () => {
+  it('flags shrunken or deleted standing rules, ignores growth', () => {
+    fs.writeFileSync(path.join(dir, '.squint', 'rules.md'), 'Use tokens.\nKeyboard reachable.\nNo purple.\n')
+    git('add', '-A')
+    git('commit', '-qm', 'rules')
+
+    fs.writeFileSync(path.join(dir, '.squint', 'rules.md'), 'Use tokens.\n')
+    git('add', '-A')
+    const shrunk = scanEvasion(dir, 'HEAD')
+    expect(shrunk.some((f) => f.kind === 'check-weakened' && f.file === '.squint/rules.md' && f.detail.includes('standing rules deleted'))).toBe(true)
+
+    fs.writeFileSync(path.join(dir, '.squint', 'rules.md'), 'Use tokens.\nKeyboard reachable.\nNo purple.\nAlso: motion respects reduced-motion.\n')
+    git('add', '-A')
+    expect(scanEvasion(dir, 'HEAD').some((f) => f.file === '.squint/rules.md')).toBe(false)
+  })
+})
