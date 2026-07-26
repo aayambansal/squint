@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.4 — 2026-07-27
+
+- `squint receipts [compare]`: list sealed runs; diff the two newest — gate flips, hard-finding deltas, flow regressions — digests verified first, non-zero exit on regression
+- Fake-button check: div-onclick UI with no role and no tabindex flags as mouse-only
+- /score prices every signal family: hard findings half a point, advisories an eighth
+
 ## 0.9.3 — 2026-07-27
 
 - Fix: slash commands typed in an attached TUI were queued as engine asks instead of executed — RemoteSession now routes them as commands, matching the plain attach
