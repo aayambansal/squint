@@ -90,6 +90,8 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
       <nav style="height:80px">persistent navigation</nav>
       <label><input type="checkbox" checked /> Subscribe to marketing updates from our partners</label>
       <label><input type="checkbox" checked /> Remember my theme preference</label>
+      <div class="fake-btn" onclick="void 0">Delete account</div>
+      <div class="ok-btn" role="button" tabindex="0" onclick="void 0">Fine actually</div>
       <div class="cookie-banner">
         <button class="cta-accept" style="font-size:18px;padding:14px 40px">Accept all</button>
         <button class="cta-decline" style="font-size:11px;padding:2px 6px">Decline</button>
@@ -141,6 +143,8 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
     expect(findings).toContain('button without accessible name')
     expect(findings).toContain('form control without label')
     expect(findings).toContain('heading order jumps h1 → h4')
+    expect(findings).toMatch(/clickable <div\.fake-btn> is not focusable/)
+    expect(findings).not.toContain('ok-btn')
 
     const slop = result.slop.join('\n')
     expect(slop).toContain('generic font stack: arial')
