@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.0 — 2026-07-26
+
+- New engine: `codex-app` drives Codex over the published app-server JSON-RPC protocol (threads, turns, streamed items) instead of scraping exec output — real deltas, tool items with commands, thread-id resume; `codex` (exec) stays the default
+
 ## 0.5.2 — 2026-07-26
 
 - Verification receipts: every `squint ci` run seals its report (gates, audit, flows, versions, git head, screenshot SHA-256s) under a recomputable digest at `.squint/receipts/` — a green run becomes evidence

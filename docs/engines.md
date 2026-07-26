@@ -91,3 +91,8 @@ export ANTHROPIC_API_KEY=…   # or OPENAI_API_KEY, per aider's docs
 - **Provider flexibility / local models**: OpenCode.
 - Switch any time: `/engine <id>` in the TUI, `-e <id>` on `squint run`. Per-repo default:
   `squint config set --project engine codex`.
+
+
+### codex-app
+
+Codex over the published app-server JSON-RPC protocol (threads/turns/items): real streamed deltas, tool items with the command being run, thread-id resume. Opt in with `/engine codex-app`; requires `codex` on PATH. The `codex` exec adapter stays the default.
