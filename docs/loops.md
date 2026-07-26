@@ -44,6 +44,10 @@ restart; a second crash is a human's job.
 
 ## 3. Runtime probe — `autoProbe` (default on)
 
+> The full, current list of every deterministic check lives in the
+> [check catalog](./checks.md) — 35+ and growing. This section describes the loop; the
+> catalog enumerates what it catches.
+
 When the sweep is clean, squint loads the page headlessly (~2s, CDP) and catches what
 the server never prints: blank pages, uncaught exceptions, console errors, failed
 requests. Long-animation-frame jank gets attributed by name — `101ms frame —
