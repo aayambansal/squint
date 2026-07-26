@@ -147,6 +147,24 @@ const A11Y_AUDIT = `(() => {
     if (r.width > 0 && (r.width < 24 || r.height < 24)) tiny++;
   }
   if (tiny > 0) out.push(tiny + ' interactive element(s) smaller than 24x24px');
+  // Target spacing (WCAG 2.5.8): small adjacent targets need 24px of
+  // clearance between centers, or fingers hit the wrong one.
+  const targets = [...document.querySelectorAll('a[href], button, [role="button"], input:not([type=hidden])')]
+    .map((el) => el.getBoundingClientRect())
+    .filter((r) => r.width > 0 && r.height > 0 && (r.width < 24 || r.height < 24));
+  let cramped = 0;
+  for (let i = 0; i < targets.length && cramped < 1; i++) {
+    for (let j = i + 1; j < targets.length; j++) {
+      const a = targets[i], b = targets[j];
+      const dx = Math.abs((a.left + a.right) / 2 - (b.left + b.right) / 2);
+      const dy = Math.abs((a.top + a.bottom) / 2 - (b.top + b.bottom) / 2);
+      if (dx < 24 && dy < 24) {
+        out.push('target spacing: small tap targets sit closer than 24px apart (WCAG 2.5.8) — enlarge them or add spacing');
+        cramped++;
+        break;
+      }
+    }
+  }
   for (const el of document.querySelectorAll('[tabindex]')) {
     if (Number(el.getAttribute('tabindex')) > 0) out.push('positive tabindex ' + short(el));
   }
