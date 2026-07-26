@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.1 — 2026-07-26
+
+- Diff triptychs: big pulse changes render as a labeled before | after | heatmap composite inline in the terminal — the comparison is the message
+
 ## 0.6.0 — 2026-07-26
 
 - New engine: `codex-app` drives Codex over the published app-server JSON-RPC protocol (threads, turns, streamed items) instead of scraping exec output — real deltas, tool items with commands, thread-id resume; `codex` (exec) stays the default
