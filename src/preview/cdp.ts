@@ -897,6 +897,32 @@ const SLOP_AUDIT = `(() => {
   if (rootStyle.getPropertyValue('--radius').trim() === '0.5rem' && rootStyle.getPropertyValue('--primary').trim() === '222.2 47.4% 11.2%') {
     out.push('untouched shadcn default theme tokens');
   }
+  // Font loading: @font-face without font-display swaps invisibly (FOIT)
+  // or shifts layout when the webfont arrives (FOUT) unless a
+  // metric-adjusted fallback is declared. Read the CSSOM.
+  let fontFlags = 0;
+  const seenFace = new Set();
+  for (const sheet of document.styleSheets) {
+    if (fontFlags >= 3) break;
+    let rules; try { rules = sheet.cssRules; } catch { continue; }
+    for (const rule of rules) {
+      if (fontFlags >= 3) break;
+      if (rule.constructor && rule.constructor.name === 'CSSFontFaceRule') {
+        const family = (rule.style.getPropertyValue('font-family') || '').replace(/["']/g, '').trim();
+        if (!family || seenFace.has(family)) continue;
+        seenFace.add(family);
+        const display = rule.style.getPropertyValue('font-display').trim();
+        const hasMetrics = rule.style.getPropertyValue('size-adjust') || rule.style.getPropertyValue('ascent-override');
+        if (!display && !hasMetrics) {
+          out.push('font loading: @font-face "' + family + '" has no font-display and no size-adjust — text flashes invisible then reflows when the webfont loads (add font-display:swap + a metric-adjusted fallback)');
+          fontFlags++;
+        } else if (display === 'block') {
+          out.push('font loading: @font-face "' + family + '" uses font-display:block — up to 3s of invisible text; swap or optional avoids the FOIT');
+          fontFlags++;
+        }
+      }
+    }
+  }
   // The Purple Problem: the 2026 AI-landing fingerprint. Dominant brand
   // hue in the 250-280deg indigo/violet band, paired with a gradient.
   const toHue = (rgb) => {

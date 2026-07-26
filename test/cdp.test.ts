@@ -74,6 +74,7 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
         .c1{color:#111}.c2{color:#222}.c3{color:#333}.c4{color:#444}.c5{color:#555}
         .c6{color:#666}.c7{color:#777}.c8{color:#888}.c9{color:#999}.c10{color:#aaa}
         .real-thing{font-weight:bold}
+        @font-face { font-family: 'Slopsans'; src: url('slopsans.woff2'); }
         .card-a{view-transition-name:hero-card}
         .card-b{view-transition-name:hero-card}
         ::view-transition-old(hero-card){animation-duration:.3s}
@@ -176,6 +177,7 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
     expect(slop).toContain('generic font stack: arial')
     expect(slop).toContain('emoji-bulleted')
     expect(slop).toContain('the Purple Problem')
+    expect(slop).toContain('font loading: @font-face "Slopsans" has no font-display')
     expect(slop).toContain('template CTA copy: "Get started"')
 
     const phantoms = result.phantoms.join('\n')
