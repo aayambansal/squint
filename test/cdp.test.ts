@@ -106,6 +106,7 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
       <input id="offname" name="fullname" autocomplete="off" />
       <input id="badtok" autocomplete="firstname" />
       <input id="goodtok" autocomplete="shipping given-name" />
+      <div class="modal-overlay" style="position:fixed;inset:0;width:100vw;height:100vh;z-index:50;background:rgba(0,0,0,0.5)"><button>Confirm</button></div>
       <script>window.__cfg = { stripe: "${leakedKey}" };</script>
       <div class="admin-panel" style="display:none"><button>Delete all users</button><a href="/wipe">wipe database</a></div>
       <div class="ok-btn" role="button" tabindex="0" onclick="void 0">Fine actually</div>
@@ -165,6 +166,7 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
     expect(findings).toContain('popovertarget="no-such-popover"')
     expect(findings).toContain('form errors silent: <form#silent-form> has 1 required field(s)')
     expect(findings).toContain('autocomplete="off" on an identity field')
+    expect(findings).toContain('top-layer: <div.modal-overlay> is a hand-rolled full-screen modal')
     expect(findings).toContain('autocomplete="firstname" ends in "firstname", not a valid field token')
     expect(findings).not.toContain('autofill: input#goodtok')
     expect(findings).not.toContain('real-desc')
