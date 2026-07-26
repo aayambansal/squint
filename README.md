@@ -152,7 +152,9 @@ squint doctor --probe             # run every engine end to end, verify auth act
   `↑/↓` history. `ctrl+c` twice exits with a session summary.
 - **Flows**: declare user journeys as six readable lines in `.squint/flows/`; `/flows`
   replays them headlessly and failing steps join the fix loop; `/flows suggest` drafts
-  a smoke flow per route from the live page's own headings. `/score` snapshots quality
+  a smoke flow per route from the live page's own headings. Journeys report
+  per-transition soft-nav timings (Chrome 151+) and retained detached DOM — the leak
+  pulse. `/score` snapshots quality
   deterministically. `/goal <objective>` arms a standing goal — auto-fix presses to 6
   attempts until squint's checks come back clean.
 - **Problems**: findings from gates, the dev server, the runtime probe, a11y sweeps, and flows
@@ -171,10 +173,13 @@ squint doctor --probe             # run every engine end to end, verify auth act
   pixel-compared with the last (drift as a number), load performance is tracked with
   deltas (`perf: LCP 812ms (+420ms)`), hardcoded colors get pointed at the nearest
   design token, and the mechanical anti-slop sweep flags generic-AI tells as
-  distinctiveness debt in `/review`. The phantom-class check diffs every DOM class
-  against the compiled CSS — hallucinated utilities surface as named problems instead
-  of silently unstyled elements — and version-aware rule-packs catch Tailwind v3
-  muscle memory in v4 projects at gate time, rename in hand. view-transition breakage (duplicate names, missing reduced-motion handling) is
+  distinctiveness debt in `/review` — alongside dark-pattern tripwires (preselected
+  consent, buried decline buttons), print leakage, and forced-colors blindness. The
+  phantom-class check diffs every DOM class against the compiled CSS — hallucinated
+  utilities surface as named problems instead of silently unstyled elements — and
+  version-aware rule-packs catch Tailwind v3 muscle memory in v4 projects at gate
+  time, rename in hand. The locale pulse names the elements real translations will
+  truncate (+40% pseudo-localization) and catches text-align:left hardcodes under RTL. view-transition breakage (duplicate names, missing reduced-motion handling) is
   flagged from the live page, and on Next 16+ the framework's own `/_next/mcp`
   channel feeds structured errors straight into the fix loop. `/context` itemizes
   the injected-context bill per source, with staleness warnings.
@@ -195,7 +200,9 @@ squint doctor --probe             # run every engine end to end, verify auth act
   `.squint/checks/*.js` and replay against the live page every turn — one-off
   verifications compound into repo-versioned regression checks.
 - **Visual approval**: engines ask before contested changes — the request renders
-  with its screenshot, `/yes` / `/no` answer it, the ledger remembers.
+  with its screenshot, `/yes` / `/no` answer it, the ledger remembers. Under
+  `squint serve` with `approvalWebhook` set, approvals reach your phone as signed
+  one-shot URLs.
 - **The design ledger**: `/decide` (plus chosen variants, rollbacks, accepted
   sandboxes, approvals) appends to a committed `.squint/design-log.jsonl`; recent
   decisions ride into every ask so they stop getting silently undone between
