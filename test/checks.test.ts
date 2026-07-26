@@ -106,3 +106,21 @@ describe.skipIf(!chrome || !hasWebSocket())('runIntervalSweep (requires Chrome)'
     }
   })
 })
+
+describe.skipIf(!chrome || !hasWebSocket())('CSS disconnects stay silent on wired pages (requires Chrome)', () => {
+  it('a page with both contract halves produces no container/anchor findings', { timeout: 120000, retry: 2 }, async () => {
+    const page = path.join(dir, 'wired.html')
+    fs.writeFileSync(
+      page,
+      `<!doctype html><html lang="en"><head><title>w</title><style>
+        .wrap { container-type: inline-size; }
+        @container (min-width: 300px) { .card { padding: 2rem } }
+        .anchor { anchor-name: --menu; }
+        .pop { position: absolute; position-anchor: --menu; }
+      </style></head><body><div class="wrap"><div class="card">c</div></div>
+      <button class="anchor">menu</button><div class="pop">pop</div></body></html>`,
+    )
+    const result = await cdpCapture(chrome!, `file://${page}`, dir, [], 500, true)
+    expect(result.containers).toEqual([])
+  })
+})

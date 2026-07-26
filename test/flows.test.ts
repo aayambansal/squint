@@ -181,3 +181,16 @@ describe.skipIf(!findChrome() || !hasWebSocket())('leak pulse (requires Chrome)'
     }
   })
 })
+
+describe('summarizeSoftNav edge cases', () => {
+  it('multiple soft-navs sharing a navigationId keep the latest url and worst ICP', async () => {
+    const { summarizeSoftNav } = await import('../src/preview/cdp.js')
+    const lines = summarizeSoftNav([
+      { type: 'soft-navigation', navigationId: 'n1', start: 100, value: 0, url: 'http://x/a' },
+      { type: 'soft-navigation', navigationId: 'n1', start: 100, value: 0, url: 'http://x/a?tab=2' },
+      { type: 'icp', navigationId: 'n1', start: 150, value: 90, url: '' },
+    ])
+    expect(lines.length).toBe(1)
+    expect(lines[0]).toContain('ICP 90ms')
+  })
+})
