@@ -194,3 +194,16 @@ describe('summarizeSoftNav edge cases', () => {
     expect(lines[0]).toContain('ICP 90ms')
   })
 })
+
+describe('budget verb', () => {
+  it('parses budget icp <ms> and rejects malformed budgets', () => {
+    const flow = parseFlow('perf', 'goto /\nbudget icp 400\nexpect Ready')
+    expect(flow?.steps).toContainEqual({ kind: 'budget', metric: 'icp', ms: 400 })
+    expect(parseFlow('bad', 'budget icp fast')).toBeNull()
+    expect(parseFlow('bad2', 'budget lcp 400')).toBeNull()
+  })
+
+  it('budget steps produce no in-page expression', async () => {
+    expect(stepExpression({ kind: 'budget', metric: 'icp', ms: 400 })).toBeNull()
+  })
+})

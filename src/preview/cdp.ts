@@ -375,15 +375,32 @@ export async function runFlow(
       }
       await new Promise((resolve) => setTimeout(resolve, 300))
     }
+    let worstIcp = 0
     try {
       const { result } = await connection.send(
         'Runtime.evaluate',
         { expression: 'window.__squintSoftNav || []', returnByValue: true },
         sessionId,
       )
-      if (Array.isArray(result?.value)) transitions = summarizeSoftNav(result.value)
+      if (Array.isArray(result?.value)) {
+        transitions = summarizeSoftNav(result.value)
+        for (const entry of result.value as { type: string; value: number }[]) {
+          if (entry.type === 'icp' && entry.value > worstIcp) worstIcp = entry.value
+        }
+      }
     } catch {
       // pre-151 Chromes have nothing to report
+    }
+    const budget = flow.steps.find((s) => s.kind === 'budget')
+    if (budget && budget.kind === 'budget' && worstIcp > budget.ms) {
+      return {
+        ok: false,
+        detail: `soft-nav ICP budget blown: worst transition ${Math.round(worstIcp)}ms > ${budget.ms}ms budget`,
+        shots,
+        transitions,
+        leaks,
+        durationMs: Date.now() - startedAt,
+      }
     }
     // Leak pulse: DOM nodes detached from the tree but retained by JS
     // after the journey — the listener-holds-the-list leak class agents
