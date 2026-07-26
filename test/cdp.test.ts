@@ -107,6 +107,7 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
       <input type="search" aria-labelledby="renamed-label" aria-describedby="real-desc" />
       <button popovertarget="no-such-popover">open</button>
       <button></button><button></button><button></button><button></button>
+      <div style="position:absolute;top:400px;left:10px"><a href="#" style="display:inline-block;width:16px;height:16px">a</a><a href="#" style="display:inline-block;width:16px;height:16px">b</a></div>
       <div onclick="void 0">x</div><div onclick="void 0">y</div><img onerror="void 0" src="x" />
       <form id="silent-form"><input type="email" required /><button type="submit">Sign up</button></form>
       <input id="offname" name="fullname" autocomplete="off" />
@@ -174,6 +175,7 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
     expect(findings).toContain('autocomplete="off" on an identity field')
     expect(findings).toContain('top-layer: <div.modal-overlay> is a hand-rolled full-screen modal')
     expect(findings).toMatch(/semantic gap: \d+ of \d+ interactive elements have no accessible name/)
+    expect(findings).toContain('target spacing: small tap targets sit closer than 24px apart')
     expect(findings).toContain('autocomplete="firstname" ends in "firstname", not a valid field token')
     expect(findings).not.toContain('autofill: input#goodtok')
     expect(findings).not.toContain('real-desc')
