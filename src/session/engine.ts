@@ -286,7 +286,7 @@ export class Session {
         return
       }
       await this.runTurn(
-        buildReviewPrompt(result.shots, undefined, result.runtime, result.a11y, result.slop, result.narration, result.phantoms, result.viewTransitions, result.components, result.webmcp, result.jank, result.locale, result.speculation, result.containers),
+        buildReviewPrompt(result.shots, undefined, result.runtime, result.a11y, result.slop, result.narration, result.phantoms, result.viewTransitions, result.components, result.webmcp, result.jank, result.locale, result.speculation, result.containers, result.security),
         `👁 polish round ${round}/${rounds}`,
       )
     }
@@ -719,7 +719,7 @@ export class Session {
               const captureResult = await this.capture()
               if (captureResult) {
                 await this.runTurn(
-                  buildReviewPrompt(captureResult.shots, undefined, captureResult.runtime, captureResult.a11y, captureResult.slop, captureResult.narration, captureResult.phantoms, captureResult.viewTransitions, captureResult.components, captureResult.webmcp, captureResult.jank, captureResult.locale, captureResult.speculation, captureResult.containers),
+                  buildReviewPrompt(captureResult.shots, undefined, captureResult.runtime, captureResult.a11y, captureResult.slop, captureResult.narration, captureResult.phantoms, captureResult.viewTransitions, captureResult.components, captureResult.webmcp, captureResult.jank, captureResult.locale, captureResult.speculation, captureResult.containers, captureResult.security),
                   '👁 auto-review rendered UI',
                 )
               }
@@ -928,6 +928,17 @@ export class Session {
         this.push('status', 'runtime clean — no console errors, exceptions, or failed requests')
       }
     }
+    const secrets = (result.security ?? []).filter((f) => f.startsWith('secret:'))
+    if (secrets.length > 0) {
+      this.push('error', `🔓 security: ${secrets.length} finding(s)\n${secrets.join('\n')}`)
+      this.addProblem(
+        'runtime',
+        `${secrets.length} secret(s) in served bytes`,
+        `The served app leaks credentials — move them server-side behind endpoints, purge them from the bundle, and tell the user to ROTATE the exposed keys (rotation cannot be automated away):\n\n${secrets.join('\n')}`,
+      )
+    }
+    const gatesOnly = (result.security ?? []).filter((f) => f.startsWith('client-side gate:'))
+    if (gatesOnly.length > 0) this.push('error', gatesOnly.join('\n'))
     const vtHard = (result.viewTransitions ?? []).filter((f) => f.startsWith('duplicate'))
     if (vtHard.length > 0) {
       this.push('error', `view transitions: ${vtHard.length} broken\n${vtHard.join('\n')}`)
@@ -1462,7 +1473,7 @@ Do not restyle anything — this task only writes rules and checks.`
           const result = await this.capture()
           if (result) {
             await this.runTurn(
-              buildReviewPrompt(result.shots, arg || undefined, result.runtime, result.a11y, result.slop, result.narration, result.phantoms, result.viewTransitions, result.components, result.webmcp, result.jank, result.locale, result.speculation, result.containers),
+              buildReviewPrompt(result.shots, arg || undefined, result.runtime, result.a11y, result.slop, result.narration, result.phantoms, result.viewTransitions, result.components, result.webmcp, result.jank, result.locale, result.speculation, result.containers, result.security),
               `👁 review rendered UI${arg ? ` · ${arg}` : ''}`,
             )
           }

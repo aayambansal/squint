@@ -52,6 +52,7 @@ export interface CdpCaptureResult {
   locale: string[]
   speculation: string[]
   containers: string[]
+  security: string[]
   jank: string[]
 }
 
@@ -1176,6 +1177,71 @@ const CONTAINER_AUDIT = `(() => {
   return out;
 })()`
 
+/**
+ * Security sniff: the runtime vantage sees SERVED bytes — a secret
+ * that survived the build is in the bundle no matter what the repo
+ * says (400+ exposed keys across 5,600 scanned vibe-coded apps), and
+ * "authorization" that only hides DOM ships the goods to everyone.
+ * Findings redact to a prefix; squint never echoes a whole key.
+ */
+const SECURITY_AUDIT = `(async () => {
+  const out = [];
+  const PATTERNS = [
+    [/sk_live_[0-9a-zA-Z]{20,}/g, 'Stripe live secret key'],
+    [/sk-[A-Za-z0-9]{32,}/g, 'API secret key (sk-…)'],
+    [/AKIA[0-9A-Z]{16}/g, 'AWS access key id'],
+    [/AIza[0-9A-Za-z_-]{35}/g, 'Google API key'],
+    [/gh[pos]_[A-Za-z0-9]{30,}/g, 'GitHub token'],
+  ];
+  const scan = (text, where) => {
+    for (const [re, label] of PATTERNS) {
+      re.lastIndex = 0;
+      const m = re.exec(text);
+      if (m) out.push('secret: ' + label + ' in ' + where + ' ("' + m[0].slice(0, 10) + '…" redacted)');
+    }
+    const jwt = /eyJ[A-Za-z0-9_-]{16,}\.(eyJ[A-Za-z0-9_-]{16,})\./.exec(text);
+    if (jwt) {
+      try {
+        const payload = atob(jwt[1].replace(/-/g, '+').replace(/_/g, '/'));
+        if (payload.includes('service_role')) out.push('secret: service-role JWT in ' + where + ' — full database access for every visitor');
+      } catch {}
+    }
+  };
+  for (const script of document.querySelectorAll('script:not([src])')) {
+    scan(script.textContent || '', 'an inline script');
+    if (out.length >= 6) break;
+  }
+  const sameOrigin = [...document.querySelectorAll('script[src]')]
+    .map((s) => s.src)
+    .filter((src) => { try { return new URL(src).origin === location.origin; } catch { return false; } })
+    .slice(0, 8);
+  for (const src of sameOrigin) {
+    if (out.length >= 6) break;
+    try {
+      const text = await (await fetch(src)).text();
+      scan(text.slice(0, 400000), src.split('/').pop() || src);
+    } catch {}
+  }
+  try {
+    for (let i = 0; i < localStorage.length && out.length < 8; i++) {
+      const key = localStorage.key(i);
+      scan(localStorage.getItem(key) || '', 'localStorage["' + key + '"]');
+    }
+  } catch {}
+  // Client-side gates: privileged content shipped hidden to everyone.
+  for (const el of document.querySelectorAll('[id*="admin" i], [class*="admin" i], [id*="premium" i], [class*="premium" i]')) {
+    if (out.length >= 10) break;
+    const cs = getComputedStyle(el);
+    const hidden = cs.display === 'none' || cs.visibility === 'hidden';
+    if (hidden && ((el.textContent || '').trim().length > 120 || el.querySelector('button, a[href], input'))) {
+      let label = el.tagName.toLowerCase();
+      if (el.id) label += '#' + el.id; else if (el.classList[0]) label += '.' + el.classList[0];
+      out.push('client-side gate: <' + label + '> ships hidden privileged content to every visitor — hiding is not authorization');
+    }
+  }
+  return out;
+})()`
+
 export async function cdpCapture(
   chromePath: string,
   url: string,
@@ -1200,6 +1266,7 @@ export async function cdpCapture(
   let locale: string[] = []
   const speculation: string[] = []
   let containers: string[] = []
+  let security: string[] = []
   let jank: string[] = []
   const requests = new Map<string, string>()
   let connection: CdpConnection | null = null
@@ -1397,6 +1464,16 @@ export async function cdpCapture(
       try {
         const { result } = await connection.send(
           'Runtime.evaluate',
+          { expression: SECURITY_AUDIT, returnByValue: true, awaitPromise: true },
+          sessionId,
+        )
+        if (Array.isArray(result?.value)) security = result.value.map(String)
+      } catch {
+        // best-effort
+      }
+      try {
+        const { result } = await connection.send(
+          'Runtime.evaluate',
           { expression: CONTAINER_AUDIT, returnByValue: true },
           sessionId,
         )
@@ -1564,5 +1641,5 @@ export async function cdpCapture(
     setTimeout(() => fs.rmSync(profileDir, { recursive: true, force: true }), 500).unref?.()
   }
 
-  return { report, shots, a11y, slop, perf, narration, phantoms, viewTransitions, components, checkFailures, webmcp, jank, locale, speculation, containers }
+  return { report, shots, a11y, slop, perf, narration, phantoms, viewTransitions, components, checkFailures, webmcp, jank, locale, speculation, containers, security }
 }
