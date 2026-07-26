@@ -29,7 +29,8 @@ export function registerQuality(program: Command): void {
     .description('One-shot verification for pipelines: gates (+ audits and flows with --url), JSON report, non-zero exit on failure')
     .option('--url <url>', 'also audit a running app URL (runtime, a11y, phantoms, jank) and replay flows')
     .option('--json <path>', 'write the machine-readable report here')
-    .action(async (opts: { url?: string; json?: string }) => {
+    .option('--compare', 'after sealing, diff against the previous receipt; regressions fail the run')
+    .action(async (opts: { url?: string; json?: string; compare?: boolean }) => {
       const cwd = process.cwd()
       const startedAt = new Date().toISOString()
       const report: Record<string, unknown> = { startedAt, cwd }
@@ -102,6 +103,19 @@ export function registerQuality(program: Command): void {
       try {
         const { writeReceipt } = await import('../quality/receipts.js')
         console.log(pc.dim(`receipt → ${writeReceipt(cwd, report)}`))
+        if (opts.compare) {
+          const { latestPair, compareReceipts } = await import('../quality/compareReceipts.js')
+          const pair = latestPair(cwd)
+          if (!pair) {
+            console.log(pc.dim('compare: first sealed run — nothing to diff against yet'))
+          } else {
+            const delta = compareReceipts(pair[0], pair[1])
+            for (const line of delta.lines) {
+              console.log(line.includes('REGRESSED') || line.includes('⚠') ? pc.red(`compare: ${line}`) : pc.dim(`compare: ${line}`))
+            }
+            if (delta.lines.some((l) => l.includes('REGRESSED'))) failed = true
+          }
+        }
       } catch {
         // receipts never fail the run
       }
