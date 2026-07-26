@@ -69,3 +69,52 @@ describe('receipts through squint ci', () => {
     expect(path.basename(file)).not.toContain('-failed')
   }, 30000)
 })
+
+describe('receipt comparison', () => {
+  it('reports gate regressions, hard-finding deltas, and flow fixes', async () => {
+    const { buildReceipt } = await import('../src/quality/receipts.js')
+    const { compareReceipts } = await import('../src/quality/compareReceipts.js')
+    const before = buildReceipt(dir, {
+      ok: true,
+      gates: [{ id: 'typecheck', ok: true }, { id: 'lint', ok: true }],
+      audit: { hard: { phantoms: [] } },
+      flows: [{ name: 'checkout', ok: false }],
+    })
+    const after = buildReceipt(dir, {
+      ok: false,
+      gates: [{ id: 'typecheck', ok: false }, { id: 'lint', ok: true }, { id: 'test', ok: true }],
+      audit: { hard: { phantoms: ['ghost (on <h1>)'], runtime: '1 page error' } },
+      flows: [{ name: 'checkout', ok: true }],
+    })
+    const delta = compareReceipts(before, after)
+    expect(delta.okBefore).toBe(true)
+    expect(delta.okAfter).toBe(false)
+    expect(delta.lines).toContain('gate typecheck: REGRESSED (green → red)')
+    expect(delta.lines).toContain('gate test: new (green)')
+    expect(delta.lines).toContain('hard audit findings: 0 → 2 (REGRESSED)')
+    expect(delta.lines).toContain('flow checkout: fixed')
+  })
+
+  it('identical runs report no deltas; tampering taints the comparison', async () => {
+    const { buildReceipt } = await import('../src/quality/receipts.js')
+    const { compareReceipts } = await import('../src/quality/compareReceipts.js')
+    const a = buildReceipt(dir, { ok: true, gates: [{ id: 'lint', ok: true }] })
+    expect(compareReceipts(a, a).lines).toEqual(['no deltas — the two runs verify identically'])
+
+    const tampered = { ...a, report: { ...a.report, ok: false } }
+    expect(compareReceipts(a, tampered as typeof a).lines.some((l) => l.includes('digest verification'))).toBe(true)
+  })
+
+  it('latestPair returns the two newest receipts oldest-first', async () => {
+    const { latestPair } = await import('../src/quality/compareReceipts.js')
+    expect(latestPair(dir)).toBeNull()
+    writeReceipt(dir, { ok: true, stamp: 1 })
+    await new Promise((r) => setTimeout(r, 5))
+    writeReceipt(dir, { ok: false, stamp: 2 })
+    await new Promise((r) => setTimeout(r, 5))
+    writeReceipt(dir, { ok: true, stamp: 3 })
+    const pair = latestPair(dir)!
+    expect(pair[0].report.stamp).toBe(2)
+    expect(pair[1].report.stamp).toBe(3)
+  })
+})
