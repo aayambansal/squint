@@ -64,6 +64,19 @@ describe('squint mcp', () => {
     expect(text).toContain('stale lock: gone.ts')
   })
 
+  it('squint_check runs real gates and reports the failure output', async () => {
+    fs.writeFileSync(
+      path.join(dir, 'package.json'),
+      JSON.stringify({ name: 'fixture', scripts: { typecheck: 'node -e "console.error(\'TS9999: fake failure\'); process.exit(1)"' } }),
+    )
+    runMcpServer(dir, input, output)
+    rpc({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'squint_check', arguments: {} } })
+    const call = await nextResponse(30000)
+    const text = (call.result as { content: { text: string }[] }).content[0]!.text
+    expect(text).toContain('✗')
+    expect(text).toContain('TS9999: fake failure')
+  }, 40000)
+
   it('rejects unknown tools and methods with JSON-RPC errors', async () => {
     runMcpServer(dir, input, output)
     rpc({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'nope', arguments: {} } })

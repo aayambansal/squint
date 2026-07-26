@@ -65,6 +65,16 @@ describe('rule-packs', () => {
     expect(findings.some((f) => f.hint.includes('CSS-first'))).toBe(true)
   })
 
+  it('scans vue and svelte single-file components too', () => {
+    commitBase({ devDependencies: { tailwindcss: '^4.1.0' } })
+    fs.writeFileSync(path.join(dir, 'Card.vue'), '<template><div class="bg-gradient-to-r p-2" /></template>\n')
+    fs.writeFileSync(path.join(dir, 'Nav.svelte'), '<div class="flex-shrink-0" />\n')
+    git('add', '-A')
+    const matches = scanRulePacks(dir, 'HEAD').map((f) => `${f.file}:${f.match}`)
+    expect(matches).toContain('Card.vue:bg-gradient-to-r')
+    expect(matches).toContain('Nav.svelte:flex-shrink-0')
+  })
+
   it('stays silent for v3 projects and unrelated files', () => {
     commitBase({ devDependencies: { tailwindcss: '^3.4.0' } })
     fs.writeFileSync(path.join(dir, 'App.tsx'), '<div className="bg-gradient-to-r shadow-sm" />\n')
