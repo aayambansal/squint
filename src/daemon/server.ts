@@ -85,7 +85,17 @@ export async function startDaemon(opts: DaemonOptions): Promise<Daemon> {
           continue
         }
         if (socket !== driver()) {
-          socket.write(`${JSON.stringify({ type: 'denied', reason: 'observer — the driver steers this session' })}\n`)
+          // Shared verdicts: observers may answer approvals and record
+          // decisions — the team-review verbs — with seat attribution.
+          // Steering (asks, /dev, /engine, …) stays with the driver.
+          const verdict = msg.type === 'command' && typeof msg.text === 'string' && /^\/(yes|no|decide)\b/.test(msg.text)
+          if (verdict) {
+            const seat = clients.indexOf(socket) + 1
+            session.note(`seat ${seat} (observer): ${msg.text}`)
+            session.command(msg.text as string)
+            continue
+          }
+          socket.write(`${JSON.stringify({ type: 'denied', reason: 'observer — /yes, /no, and /decide are yours; the driver steers everything else' })}\n`)
           continue
         }
         if (msg.type === 'input' && typeof msg.text === 'string') session.input(msg.text)

@@ -88,6 +88,21 @@ describe('daemon', () => {
     observer.send({ type: 'input', text: 'let me drive' })
     expect(String((await denied).reason)).toContain('observer')
 
+    // Verdict verbs are shared: /decide lands with seat attribution.
+    const noted = new Promise<void>((resolve) => {
+      observer.onMessage((msg) => {
+        if (msg.type !== 'state') return
+        const items = (msg.state as { items: { text: string }[] }).items
+        if (items.some((i) => i.text.includes('seat 2 (observer): /decide no purple'))) resolve()
+      })
+    })
+    observer.send({ type: 'command', text: '/decide no purple' })
+    await noted
+
+    const deniedSteer = nextMessage(observer, 'denied')
+    observer.send({ type: 'command', text: '/dev' })
+    expect(String((await deniedSteer).reason)).toContain('driver steers')
+
     const promoted = nextMessage(observer, 'hello')
     driver.close()
     expect((await promoted).role).toBe('driver')
