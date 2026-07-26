@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { aider } from './aider.js'
 import { amp } from './amp.js'
+import { antigravity } from './antigravity.js'
 import { claude } from './claude.js'
 import { codex } from './codex.js'
 import { codexApp } from './codexApp.js'
@@ -11,7 +12,7 @@ import { gemini } from './gemini.js'
 import { opencode } from './opencode.js'
 import type { Engine } from './types.js'
 
-export const engines: Engine[] = [claude, codex, codexApp, gemini, opencode, amp, cursor, copilot, aider]
+export const engines: Engine[] = [claude, codex, codexApp, gemini, antigravity, opencode, amp, cursor, copilot, aider]
 
 export function getEngine(id: string): Engine {
   const engine = engines.find((e) => e.id === id)
