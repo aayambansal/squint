@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.0 — 2026-07-26
+
+- The approval relay: with `approvalWebhook` configured, engine approval requests under `squint serve` POST to your webhook with signed one-shot approve/reject URLs — answer /yes or /no from your phone; tokens burn on use; the ledger records webhook attribution
+- pendingApproval joins public session state (visible to every attached terminal)
+
 ## 0.8.2 — 2026-07-26
 
 - Deceptive-design check: preselected consent, urgency-countdown theater, visually buried decline buttons, and confirmshaming flag into the slop stream (the DOM-checkable subset of the 19-principle taxonomy)
