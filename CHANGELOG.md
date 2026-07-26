@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.9 — 2026-07-27
+
+- Autofill grammar validator + WCAG 1.3.5 (autocomplete=off on identity fields)
+- Top-layer semantics: hand-rolled div modals flagged toward <dialog>
+- CLS shift ledger: the space axis of the attribution triad, per-element, in flows
+- Font-loading lint: FOIT/FOUT without metric fallbacks
+
+With this, all eight ranked ideas from research wave 6 have shipped.
+
 ## 0.9.8 — 2026-07-27
 
 - WebMCP parity: deprecated navigator.modelContext usage, missing/invalid tool schemas, and forms without agent affordances flag
