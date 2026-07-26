@@ -120,7 +120,7 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
         const h1 = document.querySelector('h1');
         h1['__reactFiber$squint'] = { type: 'h1', return: fiberHero };
         document.modelContext.provideContext({
-          tools: [{ name: 'add-todo', description: 'Adds a todo item', execute: () => {} }],
+          tools: [{ name: 'add-todo', description: 'Adds a todo item', inputSchema: { type: 'object', properties: { text: { type: 'string' } } }, execute: () => {} }],
         });
         navigator.modelContext.registerTool({ name: 'clear-done' });
       </script>
@@ -170,6 +170,10 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
 
     expect(result.components).toEqual(['h1 — Hero < App'])
     expect(result.webmcp).toEqual(['add-todo — Adds a todo item', 'clear-done'])
+    const parity = result.slop.filter((f) => f.startsWith('webmcp:')).join('\n')
+    expect(parity).toContain('"clear-done" registered on the deprecated navigator.modelContext')
+    expect(parity).toContain('"clear-done" declares no input schema')
+    expect(parity).not.toContain('"add-todo" declares no input schema')
 
     const vt = result.viewTransitions.join('\n')
     expect(vt).toContain('duplicate view-transition-name "hero-card" on 2 elements')

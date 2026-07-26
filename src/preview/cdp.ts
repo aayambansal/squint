@@ -945,22 +945,51 @@ const FIBER_AUDIT = `(() => {
  */
 const WEBMCP_SHIM = `(() => {
   window.__squintWebMcp = [];
-  const record = (tools) => {
+  window.__squintWebMcpMeta = [];
+  const record = (tools, surface) => {
     for (const t of tools || []) {
-      if (t && t.name) window.__squintWebMcp.push(t.name + (t.description ? ' — ' + t.description : ''));
+      if (!t || !t.name) continue;
+      window.__squintWebMcp.push(t.name + (t.description ? ' — ' + t.description : ''));
+      const schema = t.inputSchema || t.input_schema || (t.parameters);
+      window.__squintWebMcpMeta.push({
+        name: t.name,
+        surface: surface,
+        hasSchema: !!schema,
+        schemaValid: schema ? (schema.type === 'object' && typeof schema.properties === 'object') : true,
+      });
     }
   };
-  const wrap = (target) => {
+  const wrap = (target, surface) => {
     const provide = target.provideContext && target.provideContext.bind(target);
-    target.provideContext = (params) => { record(params && params.tools); return provide ? provide(params) : undefined; };
+    target.provideContext = (params) => { record(params && params.tools, surface); return provide ? provide(params) : undefined; };
     const register = target.registerTool && target.registerTool.bind(target);
-    target.registerTool = (tool) => { record([tool]); return register ? register(tool) : undefined; };
+    target.registerTool = (tool) => { record([tool], surface); return register ? register(tool) : undefined; };
     return target;
   };
   // The spec moved the API to document.modelContext (Chrome 150 drops
   // the navigator location); shim both so either registration is seen.
-  wrap(document.modelContext || (document.modelContext = {}));
-  wrap(navigator.modelContext || (navigator.modelContext = {}));
+  wrap(document.modelContext || (document.modelContext = {}), 'document');
+  wrap(navigator.modelContext || (navigator.modelContext = {}), 'navigator');
+})()`
+
+const WEBMCP_PARITY = `(() => {
+  const out = [];
+  const meta = window.__squintWebMcpMeta || [];
+  for (const t of meta) {
+    if (t.surface === 'navigator') out.push('webmcp: tool "' + t.name + '" registered on the deprecated navigator.modelContext — Chrome 150 drops it; use document.modelContext');
+    if (!t.hasSchema) out.push('webmcp: tool "' + t.name + '" declares no input schema — agents cannot call it safely');
+    else if (!t.schemaValid) out.push('webmcp: tool "' + t.name + '" has an invalid input schema (expect type:object with properties)');
+    if (out.length >= 6) return out;
+  }
+  // Form coverage: interactive forms with no declared tool are invisible
+  // to agents that would otherwise fill them.
+  if (meta.length > 0) {
+    const forms = document.querySelectorAll('form');
+    if (forms.length > 0 && meta.length < forms.length) {
+      out.push('webmcp: ' + forms.length + ' form(s) but only ' + meta.length + ' declared tool(s) — some forms have no agent affordance');
+    }
+  }
+  return out.slice(0, 6);
 })()`
 
 /**
@@ -1448,6 +1477,16 @@ export async function cdpCapture(
           sessionId,
         )
         if (Array.isArray(result?.value)) slop = result.value.map(String)
+      } catch {
+        // best-effort
+      }
+      try {
+        const { result } = await connection.send(
+          'Runtime.evaluate',
+          { expression: WEBMCP_PARITY, returnByValue: true },
+          sessionId,
+        )
+        if (Array.isArray(result?.value)) slop.push(...result.value.map(String))
       } catch {
         // best-effort
       }
