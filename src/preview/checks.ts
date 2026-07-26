@@ -13,12 +13,14 @@ import path from 'node:path'
 export interface PageCheck {
   name: string
   source: string
+  /** When the check runs: every turn (default) or only full audits. */
+  trigger: 'turn' | 'audit'
 }
 
 const MAX_CHECKS = 20
 const MAX_BYTES = 10_000
 
-export function loadChecks(cwd: string): PageCheck[] {
+export function loadChecks(cwd: string, context: 'turn' | 'audit' = 'audit'): PageCheck[] {
   const dir = path.join(cwd, '.squint', 'checks')
   let entries: string[]
   try {
@@ -31,10 +33,13 @@ export function loadChecks(cwd: string): PageCheck[] {
     try {
       const source = fs.readFileSync(path.join(dir, entry), 'utf8')
       if (source.trim().length === 0 || Buffer.byteLength(source) > MAX_BYTES) continue
-      checks.push({ name: entry.replace(/\.js$/, ''), source })
+      // First-line pragma: // squint-trigger: audit  (default: turn)
+      const pragma = /^\s*\/\/\s*squint-trigger:\s*(turn|audit)/.exec(source)
+      checks.push({ name: entry.replace(/\.js$/, ''), source, trigger: pragma?.[1] === 'audit' ? 'audit' : 'turn' })
     } catch {
       // unreadable checks never break a probe
     }
   }
-  return checks
+  // Full audits run everything; per-turn probes skip audit-only checks.
+  return context === 'audit' ? checks : checks.filter((c) => c.trigger === 'turn')
 }

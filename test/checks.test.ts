@@ -30,6 +30,16 @@ describe('loadChecks', () => {
     expect(checks.map((c) => c.name)).toEqual(['a-hero', 'b-nav'])
   })
 
+  it('honors the squint-trigger pragma: audit-only checks skip per-turn probes', () => {
+    const checksDir = path.join(dir, '.squint', 'checks')
+    fs.mkdirSync(checksDir, { recursive: true })
+    fs.writeFileSync(path.join(checksDir, 'always.js'), '[]')
+    fs.writeFileSync(path.join(checksDir, 'deep.js'), '// squint-trigger: audit\n[]')
+
+    expect(loadChecks(dir, 'audit').map((c) => `${c.name}:${c.trigger}`)).toEqual(['always:turn', 'deep:audit'])
+    expect(loadChecks(dir, 'turn').map((c) => c.name)).toEqual(['always'])
+  })
+
   it('returns empty without a checks directory', () => {
     expect(loadChecks(dir)).toEqual([])
   })
