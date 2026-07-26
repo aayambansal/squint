@@ -215,6 +215,10 @@ squint doctor --probe             # run every engine end to end, verify auth act
   (`3 files +42 −7`); the footer tracks session turns and cost; a bell rings when a
   turn finishes.
 
+**The full check catalog** ([docs/checks.md](docs/checks.md)) enumerates every
+deterministic check — 35+ across correctness, accessibility, distinctiveness,
+modern-CSS disconnects, security, and performance.
+
 **Project knowledge** rides along automatically: `.squint/rules.md` on every ask, and
 `.squint/skills/*.md` (frontmatter `triggers: auth, login`) only when an ask mentions a
 trigger — deterministic context routing, no embeddings.
