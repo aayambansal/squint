@@ -63,6 +63,10 @@ describe.skipIf(!chrome || !hasWebSocket())('pixelDiffPct (requires Chrome)', ()
 describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSocket)', () => {
   it('captures screenshots and observes console/page/network errors', { timeout: 120000, retry: 2 }, async () => {
     const page = path.join(dir, 'page.html')
+    // Assembled from fragments so the committed source never contains a
+    // contiguous provider-shaped literal (GitHub push protection would
+    // block it); the temp page gets the full value for the audit to catch.
+    const leakedKey = ['sk', 'live', 'ABCDEFGHIJKLMNOPQRSTUVWX'].join('_')
     fs.writeFileSync(
       page,
       `<!doctype html><html><head><title>t</title>
@@ -96,6 +100,8 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
       <span id="real-desc">describes things</span>
       <input type="search" aria-labelledby="renamed-label" aria-describedby="real-desc" />
       <button popovertarget="no-such-popover">open</button>
+      <script>window.__cfg = { stripe: "${leakedKey}" };</script>
+      <div class="admin-panel" style="display:none"><button>Delete all users</button><a href="/wipe">wipe database</a></div>
       <div class="ok-btn" role="button" tabindex="0" onclick="void 0">Fine actually</div>
       <div class="cookie-banner">
         <button class="cta-accept" style="font-size:18px;padding:14px 40px">Accept all</button>
@@ -181,6 +187,12 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
     expect(result.speculation.some((f) => f.includes('speculation: rule set invalid'))).toBe(true)
     expect(result.containers.join('')).toContain('every rule is dead')
     expect(result.containers.join('\n')).toContain('targets --ghost-anchor but nothing declares that anchor-name')
+
+    const security = result.security.join('\n')
+    expect(security).toContain('Stripe live secret key in an inline script')
+    expect(security).toContain('sk_live_AB…')
+    expect(security).not.toContain('MNOPQRSTUVWX')
+    expect(security).toContain('client-side gate: <div.admin-panel> ships hidden privileged content')
 
     const locale = result.locale.join('\n')
     expect(locale).toContain('<button.tight> clips at +40% text expansion')
