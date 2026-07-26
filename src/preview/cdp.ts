@@ -334,6 +334,8 @@ export interface PulseDiff {
   pct: number
   /** Per-element sentences for the changed regions, worst-first. */
   sentences: string[]
+  /** before | after | heatmap composite, written when the page changed. */
+  triptychPath?: string
 }
 
 /**
@@ -348,6 +350,7 @@ export async function pixelDiffAttributed(
   pngA: Buffer,
   pngB: Buffer,
   url?: string,
+  outPath?: string,
 ): Promise<PulseDiff | null> {
   const { child, wsUrl, profileDir } = await launchChrome(chromePath)
   let connection: CdpConnection | null = null
@@ -422,16 +425,59 @@ export async function pixelDiffAttributed(
       }
       regions.sort((p, q) => q.cells - p.cells);
       const sizePenalty = (a.width !== b.width || a.height !== b.height) ? 1 : 0;
-      return { pct: Math.min(100, (differ / total) * 100 + sizePenalty), regions: regions.slice(0, 5), w, h };
+      const pct = Math.min(100, (differ / total) * 100 + sizePenalty);
+      let triptych = null;
+      if (pct >= 0.5) {
+        // before | after | heatmap, half scale, labeled.
+        const panelW = Math.round(w / 2), panelH = Math.round(h / 2), gap = 6;
+        const c = document.createElement('canvas');
+        c.width = panelW * 3 + gap * 2; c.height = panelH + 22;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#111'; ctx.fillRect(0, 0, c.width, c.height);
+        ctx.drawImage(a, 0, 22, panelW, panelH);
+        ctx.drawImage(b, panelW + gap, 22, panelW, panelH);
+        ctx.globalAlpha = 0.3;
+        ctx.drawImage(b, (panelW + gap) * 2, 22, panelW, panelH);
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = 'rgba(255,60,40,0.75)';
+        const sx = panelW / w, sy = panelH / h;
+        for (let cy = 0; cy < gh; cy++) {
+          for (let cx = 0; cx < gw; cx++) {
+            if (!marked[cy * gw + cx]) continue;
+            ctx.fillRect((panelW + gap) * 2 + cx * CELL * sx, 22 + cy * CELL * sy, CELL * sx, CELL * sy);
+          }
+        }
+        ctx.fillStyle = '#ddd'; ctx.font = '12px system-ui';
+        ctx.fillText('before', 2, 14);
+        ctx.fillText('after', panelW + gap + 2, 14);
+        ctx.fillText('changed ' + pct.toFixed(1) + '%', (panelW + gap) * 2 + 2, 14);
+        triptych = c.toDataURL('image/png');
+      }
+      return { pct, regions: regions.slice(0, 5), w, h, triptych };
     })()`
     const { result } = await connection.send(
       'Runtime.evaluate',
       { expression, awaitPromise: true, returnByValue: true },
       sessionId,
     )
-    const value = result?.value as { pct: number; regions: { x: number; y: number; w: number; h: number }[]; w: number; h: number } | null
+    const value = result?.value as {
+      pct: number
+      regions: { x: number; y: number; w: number; h: number }[]
+      w: number
+      h: number
+      triptych: string | null
+    } | null
     if (!value || typeof value.pct !== 'number') return null
-    if (!url || value.regions.length === 0 || value.pct < 0.5) return { pct: value.pct, sentences: [] }
+    let triptychPath: string | undefined
+    if (value.triptych && outPath) {
+      try {
+        fs.writeFileSync(outPath, Buffer.from(value.triptych.split(',')[1] ?? '', 'base64'))
+        triptychPath = outPath
+      } catch {
+        // the triptych is garnish
+      }
+    }
+    if (!url || value.regions.length === 0 || value.pct < 0.5) return { pct: value.pct, sentences: [], triptychPath }
 
     // Second tab: the live page at the pulse viewport, hit-test centers.
     let sentences: string[] = []
@@ -481,7 +527,7 @@ export async function pixelDiffAttributed(
     } catch {
       // attribution is a bonus on top of the percentage
     }
-    return { pct: value.pct, sentences }
+    return { pct: value.pct, sentences, triptychPath }
   } catch {
     return null
   } finally {

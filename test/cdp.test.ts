@@ -201,10 +201,13 @@ describe.skipIf(!chrome || !hasWebSocket())('attributed pulse diff (requires Chr
       bg = '#ff8800'
       const after = await cdpCapture(chrome!, url, dir, [{ name: 'pulse', width: 1280, height: 800 }], 500, false)
       const { pixelDiffAttributed } = await import('../src/preview/cdp.js')
-      const diff = await pixelDiffAttributed(chrome!, beforePng, fs.readFileSync(after.shots[0]!.path), url)
+      const triptych = path.join(dir, 'triptych.png')
+      const diff = await pixelDiffAttributed(chrome!, beforePng, fs.readFileSync(after.shots[0]!.path), url, triptych)
       expect(diff).not.toBeNull()
       expect(diff!.pct).toBeGreaterThan(1)
       expect(diff!.sentences.some((s) => s.includes('<nav.top-nav>') && s.includes('(Shell)') && s.includes('changed'))).toBe(true)
+      expect(diff!.triptychPath).toBe(triptych)
+      expect(fs.statSync(triptych).size).toBeGreaterThan(2000)
     } finally {
       server.close()
     }

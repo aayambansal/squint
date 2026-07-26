@@ -192,11 +192,12 @@ export async function comparePulseAttributed(
   previous: Buffer,
   current: Buffer,
   url?: string,
+  outPath?: string,
 ): Promise<import('./cdp.js').PulseDiff | null> {
   const chrome = findChrome()
   if (!chrome || !hasWebSocket()) return null
   const { pixelDiffAttributed } = await import('./cdp.js')
-  return pixelDiffAttributed(chrome, previous, current, url)
+  return pixelDiffAttributed(chrome, previous, current, url, outPath)
 }
 
 /** Fix prompt for runtime errors found without a visual pass. */
