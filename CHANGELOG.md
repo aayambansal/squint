@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.8 — 2026-07-27
+
+- WebMCP parity: deprecated navigator.modelContext usage, missing/invalid tool schemas, and forms without agent affordances flag
+- Form-error announcement readiness: required-field forms with no aria-live region and no error wiring announce validation failures to nobody
+- The Purple Problem: exact AI-slop detectors — indigo/violet brand hue, three equal cards, template CTA copy
+
 ## 0.9.7 — 2026-07-27
 
 - Security sniff: secrets in served bytes (inline scripts, same-origin bundles, localStorage — redacted to a prefix) file as runtime problems that say ROTATE; client-side-only gates (hidden privileged DOM) flagged
