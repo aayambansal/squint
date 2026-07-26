@@ -107,6 +107,7 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
       <input type="search" aria-labelledby="renamed-label" aria-describedby="real-desc" />
       <button popovertarget="no-such-popover">open</button>
       <button></button><button></button><button></button><button></button>
+      <div onclick="void 0">x</div><div onclick="void 0">y</div><img onerror="void 0" src="x" />
       <form id="silent-form"><input type="email" required /><button type="submit">Sign up</button></form>
       <input id="offname" name="fullname" autocomplete="off" />
       <input id="badtok" autocomplete="firstname" />
@@ -225,6 +226,7 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
     expect(security).toContain('sk_live_AB…')
     expect(security).not.toContain('MNOPQRSTUVWX')
     expect(security).toContain('client-side gate: <div.admin-panel> ships hidden privileged content')
+    expect(security).toContain('CSP: many inline event handlers and no Content-Security-Policy')
 
     const locale = result.locale.join('\n')
     expect(locale).toContain('<button.tight> clips at +40% text expansion')
