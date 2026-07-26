@@ -93,6 +93,9 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
       <label><input type="checkbox" checked /> Subscribe to marketing updates from our partners</label>
       <label><input type="checkbox" checked /> Remember my theme preference</label>
       <div class="fake-btn" onclick="void 0">Delete account</div>
+      <span id="real-desc">describes things</span>
+      <input type="search" aria-labelledby="renamed-label" aria-describedby="real-desc" />
+      <button popovertarget="no-such-popover">open</button>
       <div class="ok-btn" role="button" tabindex="0" onclick="void 0">Fine actually</div>
       <div class="cookie-banner">
         <button class="cta-accept" style="font-size:18px;padding:14px 40px">Accept all</button>
@@ -146,6 +149,9 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
     expect(findings).toContain('form control without label')
     expect(findings).toContain('heading order jumps h1 → h4')
     expect(findings).toMatch(/clickable <div\.fake-btn> is not focusable/)
+    expect(findings).toContain('aria-labelledby="renamed-label" — no element has that id')
+    expect(findings).toContain('popovertarget="no-such-popover"')
+    expect(findings).not.toContain('real-desc')
     expect(findings).not.toContain('ok-btn')
 
     const slop = result.slop.join('\n')
