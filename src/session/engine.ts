@@ -833,7 +833,13 @@ export class Session {
       this.push('image', pulsePath)
       return null
     }
-    const diff = await comparePulseAttributed(previous, current, this.state.devUrl ?? undefined)
+    const { previewDir } = await import('../preview/preview.js')
+    const diff = await comparePulseAttributed(
+      previous,
+      current,
+      this.state.devUrl ?? undefined,
+      (await import('node:path')).join(previewDir(this.opts.cwd), 'triptych.png'),
+    )
     if (diff === null) return null
     const pct = diff.pct
     this.push(
@@ -843,8 +849,8 @@ export class Session {
         : `visual pulse: ${pct.toFixed(1)}% of the page changed vs last turn${diff.sentences.length > 0 ? `\n${diff.sentences.map((s) => `  ${s}`).join('\n')}` : ''}`,
     )
     runHook(this.opts.cwd, 'on-pulse-diff', { pct: pct.toFixed(1) })
-    // Show the page when it actually changed; stable turns stay text-only.
-    if (pct >= 0.5) this.push('image', pulsePath)
+    // Show the change when it actually changed; stable turns stay text-only.
+    if (pct >= 0.5) this.push('image', diff.triptychPath ?? pulsePath)
     return pct
   }
 
