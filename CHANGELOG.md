@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.1 — 2026-07-26
+
+- Locale pulse: pseudo-localization (+40% expansion) names the elements real translations will truncate; dir=rtl catches text-align:left hardcodes and RTL overflow — zero translation infrastructure
+- Forced-colors sweep: interactive text that goes invisible under Windows High Contrast flags into the a11y stream
+- Print sweep: blank print output and nav/aside leaking into print flag as style pressure
+
 ## 0.8.0 — 2026-07-26
 
 - New engine: Antigravity CLI (`antigravity`) — Google's Gemini CLI successor, run under a pty because agy silently emits nothing to pipes; --conversation resume, sandbox/permission mode mapping

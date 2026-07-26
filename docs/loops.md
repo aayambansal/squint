@@ -51,7 +51,11 @@ onScroll @ Carousel.tsx` — provoked by a scripted scroll, so main-thread cost 
 the function that spends it. `/shot` and `/review` add the accessibility sweep (alt
 text, labels, accessible names, heading order, tap targets), walk the page with real
 Tab keystrokes — invisible focus indicators, traps, and untabbable pages all flag —
-and cover `.squint/routes`.
+probe emulated forced-colors (text that vanishes in high-contrast mode) and print
+media (blank output, leaking navigation), then finish with the **locale pulse**:
+every text node pseudo-localizes (+40% expansion) to name the elements real
+translations will truncate, and dir=rtl exposes hardcoded left-alignment. Routes come
+from `.squint/routes`.
 
 The probe also runs the **phantom-class check**: every class token in the DOM is diffed
 against the compiled stylesheet's selectors. Present in the markup but absent from the
