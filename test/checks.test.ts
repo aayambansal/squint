@@ -124,3 +124,28 @@ describe.skipIf(!chrome || !hasWebSocket())('CSS disconnects stay silent on wire
     expect(result.containers).toEqual([])
   })
 })
+
+describe.skipIf(!chrome || !hasWebSocket())('new audits stay silent on correct pages (requires Chrome)', () => {
+  it('a real dialog, wired fonts, valid autofill, and labeled forms produce no findings', { timeout: 120000, retry: 2 }, async () => {
+    const page = path.join(dir, 'clean.html')
+    fs.writeFileSync(
+      page,
+      `<!doctype html><html lang="en"><head><title>clean</title><style>
+        @font-face { font-family: 'Good'; src: url('g.woff2'); font-display: swap; size-adjust: 105%; }
+      </style></head><body>
+      <label for="em">Email</label><input id="em" type="email" autocomplete="email" aria-describedby="em-err" />
+      <span id="em-err" role="alert"></span>
+      <dialog id="d"><button>Close</button></dialog>
+      <button popovertarget="pop">open</button><div id="pop" popover>hi</div>
+      </body></html>`,
+    )
+    const result = await cdpCapture(chrome!, `file://${page}`, dir, [], 500, true)
+    const a11y = result.a11y.join('\n')
+    const slop = result.slop.join('\n')
+    expect(a11y).not.toContain('top-layer:')
+    expect(a11y).not.toContain('phantom idref:')
+    expect(a11y).not.toContain('form errors silent')
+    expect(a11y).not.toContain('autofill:')
+    expect(slop).not.toContain('font loading:')
+  })
+})
