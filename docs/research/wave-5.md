@@ -7,34 +7,34 @@ Seventh research pass; 16 searches. New ground only; sources at the end.
 1. **Soft-nav pulse** — Chrome 151 (stable July 28) ships `soft-navigation` +
    `interaction-contentful-paint` performance entries with a `navigationId` tying
    LCP/CLS/INP to each SPA route transition. Nobody measures transitions
-   deterministically; observe during /flows, budget per transition.
+   deterministically; observe during /flows, budget per transition. ✓ shipped
 2. **Antigravity adapter** — the binary is `agy`; headless via `agy -p` with
    `--conversation <id>` resume, `--add-dir`, `-m`. Landmine: stdout is gated on
    isatty() — piped output is EMPTY with exit 0 (issue #76). The pty workaround
-   (`script -q`) is itself a moat: naive wrappers silently get nothing.
+   (`script -q`) is itself a moat: naive wrappers silently get nothing. ✓ shipped
 3. **Approval webhook + delegation relay** — forward request_visual_approval to
    Slack/generic webhooks with the triptych attached and signed one-shot
    approve/reject URLs; route by action type. Demanded upstream (claude-code #26000),
-   validated by Amp's shared-control orbs.
+   validated by Amp's shared-control orbs. ✓ shipped
 4. **Locale pulse** — pseudo-localize all text nodes (+40% expansion) and flip
    dir=rtl via injected TreeWalker, then reuse the element-attributed overflow
-   detector. No harness checks i18n breakage; zero translation infra needed.
+   detector. No harness checks i18n breakage; zero translation infra needed. ✓ shipped
 5. **Leak pulse** — HeapProfiler snapshot diff across repeated flow cycles: growth
    curve, detached DOM, duplicate strings, retaining paths (all proven agent-tractable
-   by chrome-devtools-mcp 1.3–1.6).
+   by chrome-devtools-mcp 1.3–1.6). ✓ shipped (detached-DOM slice)
 6. **Deceptive-design check** — arXiv 2607.20690 unifies 19 UI principles (WCAG +
    dark-pattern taxonomies), releases the verification prompts; the deterministic
    subset (preselected consent, fake-urgency timers that reset on reload, buried
    decline buttons by size/contrast vs accept) is DOM-checkable.
 7. **Forced-colors + print sweep** — two emulation modes nobody regression-tests;
-   ~a day each on existing CDP infra; forced-colors pairs with the shipped APCA lane.
+   ~a day each on existing CDP infra; forced-colors pairs with the shipped APCA lane. ✓ shipped
 8. **Speculation-rules check** — verify prerender/prefetch rules actually fire (CDP
    Preload status + failure reasons, incl. 151's form_submission trigger) and that
-   prerenders are side-effect-free.
+   prerenders are side-effect-free. ✓ shipped
 
 ## Hygiene (do first)
 
-- **Amp renamed**: `@sourcegraph/amp` → `@ampcode/cli`; the compat alias is temporary.
+- **Amp renamed**: `@sourcegraph/amp` → `@ampcode/cli`; the compat alias is temporary. ✓ shipped
 - **Cursor headless**: `--force` now also implies workspace trust (fixes a real hang
   class); sessions save JSONL transcripts worth harvesting for receipts.
 - **Claude Code 2.1.219**: `DirectoryAdded` hook (new attach point);

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.1 — 2026-07-26
+
+- Speculation-rules check: invalid rule sets (silently disabled speculative loading), failed prefetches, and failed prerenders report via the CDP Preload domain
+
 ## 0.9.0 — 2026-07-26
 
 - The approval relay: with `approvalWebhook` configured, engine approval requests under `squint serve` POST to your webhook with signed one-shot approve/reject URLs — answer /yes or /no from your phone; tokens burn on use; the ledger records webhook attribution
