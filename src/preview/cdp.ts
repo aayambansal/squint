@@ -119,6 +119,24 @@ const A11Y_AUDIT = `(() => {
   for (const el of document.querySelectorAll('[tabindex]')) {
     if (Number(el.getAttribute('tabindex')) > 0) out.push('positive tabindex ' + short(el));
   }
+  // Top-layer semantics: a fixed full-screen overlay that traps content
+  // but isn't <dialog>/[popover] is a hand-rolled modal — no focus
+  // trap, no Esc, no AT modality. The platform has <dialog> for this.
+  let modalFlags = 0;
+  for (const el of document.querySelectorAll('div, section')) {
+    if (modalFlags >= 2) break;
+    if (el.closest('dialog') || el.hasAttribute('popover')) continue;
+    const cs = getComputedStyle(el);
+    if (cs.position !== 'fixed' || cs.display === 'none') continue;
+    const r = el.getBoundingClientRect();
+    const coversH = r.width >= innerWidth * 0.85, coversV = r.height >= innerHeight * 0.85;
+    const isOverlay = Number(cs.zIndex) >= 10 && (parseFloat(cs.backgroundColor.split(',')[3]) < 1 || /overlay|modal|backdrop|scrim/i.test(el.className));
+    if (coversH && coversV && isOverlay && el.querySelector('button, a[href], input, [role="dialog"]')) {
+      let label = el.tagName.toLowerCase() + (el.id ? '#' + el.id : (el.classList[0] ? '.' + el.classList[0] : ''));
+      out.push('top-layer: <' + label + '> is a hand-rolled full-screen modal — use <dialog> (or the popover API) for focus trapping, Esc, and screen-reader modality');
+      modalFlags++;
+    }
+  }
   // Autofill grammar: autocomplete tokens have a real grammar (WHATWG),
   // and identity fields with autocomplete="off" are a WCAG 1.3.5
   // failure — browsers ignore off on them anyway, so it only hurts AT.
