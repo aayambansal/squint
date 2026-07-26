@@ -1415,8 +1415,16 @@ Do not restyle anything — this task only writes rules and checks.`
         if (this.state.problems.length === 0) {
           this.push('status', 'no open problems')
         } else {
-          const lines = this.state.problems.map((p, i) => `${i + 1}. [${p.source}] ${p.summary}`)
-          this.push('status', `${lines.join('\n')}\n/fix sends all · /fix <n> targets one`)
+          const glyphs: Record<string, string> = {
+            gates: '⛩', dev: '🖥', runtime: '⚡', a11y: '♿', flow: '🧭', check: '☑',
+          }
+          const bySource = new Map<string, number>()
+          for (const p of this.state.problems) bySource.set(p.source, (bySource.get(p.source) ?? 0) + 1)
+          const lines = this.state.problems.map(
+            (p, i) => `${i + 1}. ${glyphs[p.source] ?? '·'} [${p.source}] ${p.summary.split('\n')[0]}`,
+          )
+          const tally = [...bySource.entries()].map(([src, n]) => `${src} ${n}`).join(' · ')
+          this.push('status', `${lines.join('\n')}\n${tally}\n/fix sends all · /fix <n> one · /fix <source> a stream`)
         }
         break
       case 'check':
