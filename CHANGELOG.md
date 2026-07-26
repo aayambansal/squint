@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.7 — 2026-07-27
+
+- Security sniff: secrets in served bytes (inline scripts, same-origin bundles, localStorage — redacted to a prefix) file as runtime problems that say ROTATE; client-side-only gates (hidden privileged DOM) flagged
+- Phantom IDREF audit: dangling aria-labelledby/describedby/controls, label[for], popovertarget, commandfor — shadow-root aware
+- Flow budgets: `budget icp <ms>` gates soft-nav transitions; flows report duration
+- /problems glyphs + per-source tally; /fix <source> targeting; container-query and anchor-positioning disconnect checks; the landing checks grid
+
 ## 0.9.6 — 2026-07-27
 
 - Container-query and anchor-positioning disconnect checks: dead @container rules, containers without rules, and position-anchor targets nothing declares — the write-the-CSS-forget-the-wiring class, named with the fix
