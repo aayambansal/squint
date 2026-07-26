@@ -105,7 +105,7 @@ From source: `git clone https://github.com/aayambansal/squint.git && cd squint &
 | Codex (app-server) | `codex-app` | same binary — drives the published JSON-RPC protocol |
 | Gemini CLI | `gemini` | `npm i -g @google/gemini-cli` |
 | OpenCode | `opencode` | `npm i -g opencode-ai` |
-| Amp | `amp` | `npm i -g @sourcegraph/amp` |
+| Amp | `amp` | `npm i -g @ampcode/cli` |
 | Cursor CLI | `cursor` | `curl https://cursor.com/install -fsS \| bash` |
 | Copilot CLI | `copilot` | `npm i -g @github/copilot` |
 | Aider | `aider` | `pip install aider-install && aider-install` |

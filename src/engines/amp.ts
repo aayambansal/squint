@@ -10,7 +10,7 @@ export const amp: Engine = {
   id: 'amp',
   name: 'Amp',
   binary: 'amp',
-  install: 'npm install -g @sourcegraph/amp',
+  install: 'npm install -g @ampcode/cli',
   supportsResume: true,
 
   buildArgs(opts: RunOptions): string[] {
