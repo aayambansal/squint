@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.1 — 2026-07-26
+
+- Keyboard journey in the a11y sweep: twelve real Tab keystrokes assert a visible focus indicator at every stop; invisible focus, traps, and untabbable pages all flag
+- /goal: arm a standing machine-checked objective — it rides every ask and auto-fix presses to 6 attempts until squint's checks come back clean
+- /distill: compress the design ledger into rules.md lines and proposed persistent checks — accumulated taste becomes standing enforcement
+
 ## 0.5.0 — 2026-07-26
 
 - `squint mcp`: the gates as MCP tools over stdio (squint_check, squint_shot, squint_flows, squint_context) — any MCP-speaking agent invokes squint's verification natively, no adapter needed

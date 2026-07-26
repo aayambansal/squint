@@ -49,7 +49,9 @@ the server never prints: blank pages, uncaught exceptions, console errors, faile
 requests. Long-animation-frame jank gets attributed by name — `101ms frame —
 onScroll @ Carousel.tsx` — provoked by a scripted scroll, so main-thread cost lands on
 the function that spends it. `/shot` and `/review` add the accessibility sweep (alt
-text, labels, accessible names, heading order, tap targets) and cover `.squint/routes`.
+text, labels, accessible names, heading order, tap targets), walk the page with real
+Tab keystrokes — invisible focus indicators, traps, and untabbable pages all flag —
+and cover `.squint/routes`.
 
 The probe also runs the **phantom-class check**: every class token in the DOM is diffed
 against the compiled stylesheet's selectors. Present in the markup but absent from the
@@ -121,6 +123,13 @@ test deletions, added `.skip`s, `@ts-ignore`/`eslint-disable`, shrunken
 `/undo` pointer and an `on-sentinel` hook. Sentinel findings never enter auto-fix:
 sending "you weakened a gate" back to the thing that weakened it audits nothing.
 
+## Goals
+
+`/goal <objective>` arms a standing objective that rides every ask as a
+machine-checked section, and raises the auto-fix budget from 2 to 6 attempts: the
+engine cannot declare done while squint's gates, probe, or audits fail, because squint
+keeps sending the failures back. `/goal off` stands down.
+
 ## The design ledger
 
 Decisions evaporate between sessions; `.squint/design-log.jsonl` (committed, not
@@ -130,6 +139,11 @@ the direction you chose, `/restore` records what you rejected, applying a sandbo
 records what you accepted — with the current pulse screenshot as evidence when there is
 one. The most recent entries ride into every ask as standing decisions the engine must
 not silently undo. Memory with receipts.
+
+`/distill` closes the loop from taste to enforcement: the engine compresses the
+recent ledger into at most 3 short always-on rules and up to 2 proposed persistent
+checks where a decision is mechanically checkable — "4 gradient buttons rejected"
+becomes a rule every ask carries and a check the probe replays.
 
 ## Flows and the score
 
