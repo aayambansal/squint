@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.2 — 2026-07-26
+
+- Deceptive-design check: preselected consent, urgency-countdown theater, visually buried decline buttons, and confirmshaming flag into the slop stream (the DOM-checkable subset of the 19-principle taxonomy)
+- Leak pulse: detached DOM retained by JS reports after every flow journey with top tag counts — the memory category no harness covers
+
 ## 0.8.1 — 2026-07-26
 
 - Locale pulse: pseudo-localization (+40% expansion) names the elements real translations will truncate; dir=rtl catches text-align:left hardcodes and RTL overflow — zero translation infrastructure
