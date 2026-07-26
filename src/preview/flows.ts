@@ -173,3 +173,52 @@ export function stepExpression(step: FlowStep): string | null {
       return null // handled by the runner, not in-page
   }
 }
+
+/**
+ * Flow suggestion (the Playwright-planner move, deterministic): visit
+ * each declared route, read its real heading, and draft a smoke flow —
+ * goto, expect the heading, screenshot. The engine refines from there;
+ * squint never guesses at selectors it hasn't seen.
+ */
+export async function suggestFlows(
+  cwd: string,
+  baseUrl: string,
+  chromePath: string,
+): Promise<{ created: string[]; skipped: string[] }> {
+  const fs = await import('node:fs')
+  const path = await import('node:path')
+  const { cdpCapture } = await import('./cdp.js')
+  const { loadRoutes } = await import('./preview.js')
+
+  const dir = path.join(cwd, '.squint', 'flows')
+  fs.mkdirSync(dir, { recursive: true })
+  const created: string[] = []
+  const skipped: string[] = []
+
+  for (const route of loadRoutes(cwd)) {
+    const slug = route === '/' ? 'home' : route.replace(/^\//, '').replace(/[^a-z0-9]+/gi, '-').toLowerCase()
+    const file = path.join(dir, `${slug}.flow`)
+    if (fs.existsSync(file)) {
+      skipped.push(slug)
+      continue
+    }
+    const url = new URL(route, baseUrl).toString()
+    const shotDir = fs.mkdtempSync(path.join((await import('node:os')).tmpdir(), 'squint-suggest-'))
+    let heading: string | null = null
+    try {
+      const capture = await cdpCapture(chromePath, url, shotDir, [], 1200, true)
+      const match = capture.narration.map((n) => /^heading \d: "(.+)"$/.exec(n)).find(Boolean)
+      heading = match?.[1] ?? null
+    } catch {
+      // unreachable routes still get a bare flow
+    } finally {
+      fs.rmSync(shotDir, { recursive: true, force: true })
+    }
+    const lines = [`goto ${route}`]
+    if (heading) lines.push(`expect ${heading}`)
+    lines.push(`shot ${slug}`)
+    fs.writeFileSync(file, `${lines.join('\n')}\n`)
+    created.push(slug)
+  }
+  return { created, skipped }
+}

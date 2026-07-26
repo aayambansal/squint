@@ -83,3 +83,35 @@ describe.skipIf(!chrome || !hasWebSocket())('runFlow (requires Chrome)', () => {
     expect(failed.detail).toContain('does not show')
   })
 })
+
+describe.skipIf(!findChrome())('suggestFlows (requires Chrome)', () => {
+  it('drafts a goto/expect/shot flow per route from live headings', { timeout: 120000, retry: 2 }, async () => {
+    const http = await import('node:http')
+    const pages: Record<string, string> = {
+      '/': '<h1>Welcome home</h1>',
+      '/pricing': '<h1>Simple pricing</h1>',
+    }
+    const server = http.createServer((req, res) => {
+      res.writeHead(200, { 'content-type': 'text/html' })
+      res.end(`<!doctype html><html lang="en"><head><title>t</title></head><body>${pages[req.url ?? '/'] ?? '<p>404</p>'}</body></html>`)
+    })
+    const port: number = await new Promise((resolve) => {
+      server.listen(0, '127.0.0.1', () => resolve((server.address() as { port: number }).port))
+    })
+    try {
+      fs.mkdirSync(path.join(dir, '.squint'), { recursive: true })
+      fs.writeFileSync(path.join(dir, '.squint', 'routes'), '/pricing\n')
+      fs.mkdirSync(path.join(dir, '.squint', 'flows'), { recursive: true })
+      fs.writeFileSync(path.join(dir, '.squint', 'flows', 'home.flow'), 'goto /\nshot custom\n')
+
+      const { suggestFlows } = await import('../src/preview/flows.js')
+      const { created, skipped } = await suggestFlows(dir, `http://127.0.0.1:${port}`, findChrome()!)
+      expect(skipped).toEqual(['home'])
+      expect(created).toEqual(['pricing'])
+      const flow = fs.readFileSync(path.join(dir, '.squint', 'flows', 'pricing.flow'), 'utf8')
+      expect(flow).toBe('goto /pricing\nexpect Simple pricing\nshot pricing\n')
+    } finally {
+      server.close()
+    }
+  })
+})
