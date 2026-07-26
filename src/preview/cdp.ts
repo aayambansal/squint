@@ -119,6 +119,38 @@ const A11Y_AUDIT = `(() => {
   for (const el of document.querySelectorAll('[tabindex]')) {
     if (Number(el.getAttribute('tabindex')) > 0) out.push('positive tabindex ' + short(el));
   }
+  // Autofill grammar: autocomplete tokens have a real grammar (WHATWG),
+  // and identity fields with autocomplete="off" are a WCAG 1.3.5
+  // failure — browsers ignore off on them anyway, so it only hurts AT.
+  const FIELD_TOKENS = new Set(['name','honorific-prefix','given-name','additional-name','family-name','honorific-suffix','nickname','username','new-password','current-password','one-time-code','organization-title','organization','street-address','address-line1','address-line2','address-line3','address-level4','address-level3','address-level2','address-level1','country','country-name','postal-code','cc-name','cc-given-name','cc-additional-name','cc-family-name','cc-number','cc-exp','cc-exp-month','cc-exp-year','cc-csc','cc-type','transaction-currency','transaction-amount','language','bday','bday-day','bday-month','bday-year','sex','url','photo','tel','tel-country-code','tel-national','tel-area-code','tel-local','tel-extension','email','impp']);
+  let autofillFlags = 0;
+  for (const el of document.querySelectorAll('input[autocomplete], select[autocomplete], textarea[autocomplete]')) {
+    if (autofillFlags >= 4) break;
+    const raw = (el.getAttribute('autocomplete') || '').trim().toLowerCase();
+    if (!raw || raw === 'on') continue;
+    let label = el.tagName.toLowerCase() + (el.id ? '#' + el.id : (el.name ? '[name=' + el.name + ']' : ''));
+    if (raw === 'off') {
+      const name = (el.getAttribute('name') || '') + ' ' + (el.id || '');
+      if (/name|email|tel|phone|address|zip|postal|cc-|card|country|bday|birth/i.test(name)) {
+        out.push('autofill: ' + label + ' has autocomplete="off" on an identity field — WCAG 1.3.5 failure; browsers ignore it and it only blocks assistive autofill');
+        autofillFlags++;
+      }
+      continue;
+    }
+    const parts = raw.split(/\\s+/);
+    const field = parts[parts.length - 1];
+    if (!FIELD_TOKENS.has(field)) {
+      out.push('autofill: ' + label + ' autocomplete="' + raw + '" ends in "' + field + '", not a valid field token');
+      autofillFlags++;
+    } else if (parts.length > 1) {
+      const rest = parts.slice(0, -1);
+      const valid = rest.every((t, i) => t.startsWith('section-') || (i === rest.length - 1 && (t === 'shipping' || t === 'billing' || t === 'home' || t === 'work' || t === 'mobile' || t === 'fax' || t === 'pager')));
+      if (!valid) {
+        out.push('autofill: ' + label + ' autocomplete="' + raw + '" has tokens out of grammar order (section-* → shipping/billing → home/work → field)');
+        autofillFlags++;
+      }
+    }
+  }
   // Form error announcement readiness: a form with required fields that
   // has no live region anywhere AND whose fields reference no error
   // container can never announce a validation failure to a screen
@@ -167,7 +199,7 @@ const A11Y_AUDIT = `(() => {
     out.push('clickable ' + short(el) + ' is not focusable and has no role — unreachable without a mouse');
     if (++fakes >= 4) break;
   }
-  return out.slice(0, 20);
+  return out.slice(0, 30);
 })()`
 
 export function hasWebSocket(): boolean {
