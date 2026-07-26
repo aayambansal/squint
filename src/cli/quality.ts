@@ -128,6 +128,11 @@ export function registerQuality(program: Command): void {
       }
       setProgress(failed ? 'error' : 'normal', 100)
       setTimeout(() => setProgress('clear'), 1500).unref?.()
+      const { verdictBanner } = await import('../tui/banner.js')
+      const label = failed ? 'VERIFICATION FAILED' : 'ALL CHECKS PASSED'
+      for (const line of verdictBanner(failed ? 'fail' : 'pass', label)) {
+        console.log(failed ? pc.red(line) : pc.green(line))
+      }
       if (failed) process.exitCode = 1
     })
 
