@@ -1031,6 +1031,24 @@ const SLOP_AUDIT = `(() => {
     const cardish = kids.every((k) => k.querySelector('svg, img') && k.querySelector('h2,h3,h4') && k.querySelector('p'));
     if (sameSize && cardish) { out.push('identical icon-card grid (' + kids.length + ' cards)'); break; }
   }
+  // Reduced-motion respect: infinite CSS animations with no
+  // prefers-reduced-motion guard anywhere spin forever for users who
+  // asked motion to stop (vestibular triggers).
+  let infiniteAnims = 0;
+  for (const el of document.querySelectorAll('*')) {
+    if (infiniteAnims > 0) break;
+    const cs = getComputedStyle(el);
+    if (cs.animationIterationCount === 'infinite' && cs.animationName !== 'none' && parseFloat(cs.animationDuration) > 0) infiniteAnims++;
+  }
+  if (infiniteAnims > 0) {
+    let guarded = false;
+    for (const sheet of document.styleSheets) {
+      let rules; try { rules = sheet.cssRules; } catch { continue; }
+      for (const r of rules) { if (r.media && /prefers-reduced-motion/.test(r.media.mediaText || '')) { guarded = true; break; } }
+      if (guarded) break;
+    }
+    if (!guarded) out.push('reduced motion: infinite animation(s) run with no prefers-reduced-motion guard anywhere — they never stop for users who disabled motion');
+  }
   let emojiBullets = 0;
   for (const li of document.querySelectorAll('li')) {
     if (/^[\\u{1F300}-\\u{1FAFF}\\u{2600}-\\u{27BF}]/u.test((li.textContent || '').trim())) emojiBullets++;
