@@ -101,8 +101,9 @@ When the engine verifies something about the page that should stay true, every a
 teaches it to persist the assertion as `.squint/checks/<name>.js` — plain JS that
 evaluates in the probed page to an array of failure strings (empty = pass). squint
 replays every check after every turn (`// squint-trigger: audit` on the first line
-defers one to full audits only); failures join the problems list with orders to fix
-the page, not weaken the assertion. One-off verifications compound into
+defers one to full audits; `interval[:seconds]` hands it to the daemon's clock, which
+sweeps between turns while `squint serve` runs); failures join the problems list with
+orders to fix the page, not weaken the assertion. One-off verifications compound into
 repo-versioned regression checks. Write your own too — they run the same way.
 
 ## Visual approval
