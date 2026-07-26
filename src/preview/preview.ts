@@ -171,7 +171,7 @@ export async function probeRuntime(url: string, cwd?: string): Promise<ProbeResu
       cwd ? [{ name: 'pulse', width: 1280, height: 800 }] : [],
       1500,
       false,
-      cwd ? loadChecks(cwd) : [],
+      cwd ? loadChecks(cwd, 'turn') : [],
     )
     return { report, pulsePath: shots[0]?.path, perf, checkFailures }
   } catch {
