@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.1 — 2026-07-26
+
+- Interval checks: `// squint-trigger: interval[:seconds]` runs a page assertion on wall-clock time between turns while `squint serve` is up — failures surface as a note to every attached terminal
+- Fixture suites for the four previously untested adapters (opencode, amp, cursor, copilot); engines/configuration/CONTRIBUTING docs synced
+
 ## 0.7.0 — 2026-07-26
 
 - The review lane: `/lane on` gives every ask a second read-only reviewer in fresh context — it sees the turn's diff, not the conversation, so it can't inherit the implementer's blind spots; at most 3 findings with file and line, on the cheap fix model when configured
