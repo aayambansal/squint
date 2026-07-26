@@ -99,6 +99,12 @@ export function registerQuality(program: Command): void {
 
       report.ok = !failed
       report.finishedAt = new Date().toISOString()
+      try {
+        const { writeReceipt } = await import('../quality/receipts.js')
+        console.log(pc.dim(`receipt → ${writeReceipt(cwd, report)}`))
+      } catch {
+        // receipts never fail the run
+      }
       if (opts.json) {
         const fs = await import('node:fs')
         fs.writeFileSync(opts.json, JSON.stringify(report, null, 2))
