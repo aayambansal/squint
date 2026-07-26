@@ -43,14 +43,20 @@ backend) for the two shapes. The contract (`src/engines/types.ts`):
    output lines from the tool as fixtures — see `test/codex.test.ts`).
 
 If the tool speaks the Claude stream-json dialect (Amp does, Cursor approximately), reuse
-`createClaudeStreamParser` and you're nearly done.
+`createClaudeStreamParser` and you're nearly done. If it publishes a request/response
+protocol instead of a text stream, see `src/engines/codexApp.ts` — an embedded node
+driver owns the protocol child and re-emits normalized JSONL (the runner only pipes
+stdout, so the driver is the escape hatch).
 
 ## Other prize contributions
 
-- **A flow verb** (src/preview/flows.ts): the declared-flow language is six verbs today; hover, scroll, and waitFor are natural next ones — parser case + in-page executor + fixture test.
+- **A flow verb** (src/preview/flows.ts): nine verbs today (goto/click/fill/press/expect/shot/hover/scroll/wait) — parser case + in-page executor + fixture test.
+- **An audit** (src/preview/cdp.ts): the pattern is proven eight times over — A11Y, SLOP, PHANTOM, VT, FIBER, WEBMCP, LoAF, keyboard journey. Deterministic, in-page, capped output, live-Chrome fixture. Bring the ninth.
+- **A rule-pack** (src/quality/rulepacks.ts): version-aware lint of the turn's diff against a toolchain major — hard renames become fix prompts, shifted meanings become advisories.
+- **A sentinel pattern** (src/quality/sentinel.ts): a gate-evasion behavior we don't catch yet, with a fixture proving honest work stays silent.
 - **An aesthetic family** (src/prompt/families.ts): a committed direction with a real avoid-list, not a vibe.
-- **A slop tell** (SLOP_AUDIT in src/preview/cdp.ts): deterministic, checkable, with a fixture.
-- **A hook event** (src/session/hooks.ts): find the quality moment nothing else emits.
+- **A hook event** (src/session/hooks.ts): five today (turn-end, pulse-diff, problem, budget, sentinel) — find the quality moment nothing else emits.
+- **An MCP tool** (src/mcp/server.ts): four gates are served today; anything deterministic squint measures is a candidate.
 
 ## Testing philosophy
 
