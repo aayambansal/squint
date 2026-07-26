@@ -1259,6 +1259,72 @@ export async function cdpCapture(
     }
 
     if (audit) {
+      // Forced-colors: Windows High Contrast substitutes system colors;
+      // text that computes to its own background goes invisible, and
+      // nobody regression-tests the mode. Non-destructive emulation.
+      try {
+        await connection.send(
+          'Emulation.setEmulatedMedia',
+          { features: [{ name: 'forced-colors', value: 'active' }] },
+          sessionId,
+        )
+        await new Promise((resolve) => setTimeout(resolve, 200))
+        const { result } = await connection.send(
+          'Runtime.evaluate',
+          {
+            expression: `(() => {
+              const out = [];
+              for (const el of document.querySelectorAll('button, a, [role="button"], input[type="submit"]')) {
+                if (out.length >= 5) break;
+                const cs = getComputedStyle(el);
+                if (cs.display === 'none' || !el.textContent || !el.textContent.trim()) continue;
+                if (cs.color === cs.backgroundColor) {
+                  let label = el.tagName.toLowerCase();
+                  if (el.id) label += '#' + el.id; else if (el.classList[0]) label += '.' + el.classList[0];
+                  out.push('forced-colors: <' + label + '> text matches its background — invisible in high-contrast mode');
+                }
+              }
+              return out;
+            })()`,
+            returnByValue: true,
+          },
+          sessionId,
+        )
+        if (Array.isArray(result?.value)) a11y.push(...result.value.map(String))
+        await connection.send('Emulation.setEmulatedMedia', { features: [] }, sessionId)
+      } catch {
+        // best-effort
+      }
+      // Print: emulate the media type and catch blank or nav-polluted output.
+      try {
+        await connection.send('Emulation.setEmulatedMedia', { media: 'print' }, sessionId)
+        await new Promise((resolve) => setTimeout(resolve, 200))
+        const { result } = await connection.send(
+          'Runtime.evaluate',
+          {
+            expression: `(() => {
+              const out = [];
+              const bodyH = document.body.getBoundingClientRect().height;
+              if (getComputedStyle(document.body).display === 'none' || bodyH < 40) {
+                out.push('print: the page prints blank');
+              }
+              for (const el of document.querySelectorAll('nav, aside')) {
+                if (getComputedStyle(el).display !== 'none' && el.getBoundingClientRect().height > 40) {
+                  out.push('print: <' + el.tagName.toLowerCase() + '> still renders in print output');
+                  break;
+                }
+              }
+              return out;
+            })()`,
+            returnByValue: true,
+          },
+          sessionId,
+        )
+        if (Array.isArray(result?.value)) slop.push(...result.value.map(String))
+        await connection.send('Emulation.setEmulatedMedia', { media: '' }, sessionId)
+      } catch {
+        // best-effort
+      }
       // The locale pulse runs dead last: it rewrites the page's text.
       try {
         const { result } = await connection.send(
