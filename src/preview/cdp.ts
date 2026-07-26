@@ -258,15 +258,59 @@ const describe = (value: any): string => {
  * Replay one declared flow headlessly. Returns the failing step (1-based)
  * with detail, or the shots captured along the way.
  */
+/**
+ * Soft-navigation pulse (Chrome 151+): SPA route transitions get their
+ * own performance entries with a navigationId tying ICP/LCP to each
+ * transition — the first deterministic per-transition CWV primitive.
+ * Silently empty on older Chromes (the observe() call throws).
+ */
+const SOFTNAV_SHIM = `(() => {
+  window.__squintSoftNav = [];
+  const push = (type, e) => window.__squintSoftNav.push({
+    type,
+    navigationId: e.navigationId || '',
+    start: Math.round(e.startTime),
+    value: Math.round(e.renderTime || e.duration || 0),
+    url: e.name || '',
+  });
+  try {
+    new PerformanceObserver((l) => l.getEntries().forEach((e) => push('soft-navigation', e)))
+      .observe({ type: 'soft-navigation', buffered: true });
+    new PerformanceObserver((l) => l.getEntries().forEach((e) => push('icp', e)))
+      .observe({ type: 'interaction-contentful-paint', buffered: true });
+  } catch {}
+})()`
+
+/** Fold raw soft-nav entries into one line per transition. */
+export function summarizeSoftNav(entries: { type: string; navigationId: string; start: number; value: number; url: string }[]): string[] {
+  const byNav = new Map<string, { url: string; start: number; icp?: number }>()
+  for (const entry of entries) {
+    if (entry.type === 'soft-navigation') {
+      byNav.set(entry.navigationId, { url: entry.url, start: entry.start, ...byNav.get(entry.navigationId) })
+    } else if (entry.type === 'icp' && entry.navigationId) {
+      const nav = byNav.get(entry.navigationId) ?? { url: '', start: 0 }
+      nav.icp = Math.max(nav.icp ?? 0, entry.value)
+      byNav.set(entry.navigationId, nav)
+    }
+  }
+  return [...byNav.values()]
+    .sort((a, b) => a.start - b.start)
+    .map((nav) => {
+      const route = nav.url ? new URL(nav.url, 'http://x').pathname : '?'
+      return `soft-nav → ${route}${nav.icp !== undefined ? ` · ICP ${nav.icp}ms` : ''}`
+    })
+}
+
 export async function runFlow(
   chromePath: string,
   baseUrl: string,
   flow: import('./flows.js').Flow,
   outDir: string,
-): Promise<{ ok: boolean; failedStep?: number; detail?: string; shots: string[] }> {
+): Promise<{ ok: boolean; failedStep?: number; detail?: string; shots: string[]; transitions: string[] }> {
   const { stepExpression } = await import('./flows.js')
   const { child, wsUrl, profileDir } = await launchChrome(chromePath)
   const shots: string[] = []
+  let transitions: string[] = []
   let connection: CdpConnection | null = null
   try {
     connection = await CdpConnection.connect(wsUrl, 10000)
@@ -275,6 +319,7 @@ export async function runFlow(
     await connection.send('Page.enable', {}, sessionId)
     await connection.send('Page.addScriptToEvaluateOnNewDocument', { source: WEBMCP_SHIM }, sessionId).catch(() => null)
     await connection.send('Page.addScriptToEvaluateOnNewDocument', { source: LOAF_SHIM }, sessionId).catch(() => null)
+    await connection.send('Page.addScriptToEvaluateOnNewDocument', { source: SOFTNAV_SHIM }, sessionId).catch(() => null)
     await connection.send(
       'Emulation.setDeviceMetricsOverride',
       { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false },
@@ -311,13 +356,23 @@ export async function runFlow(
       )
       const value = result?.value as { ok: boolean; detail?: string } | undefined
       if (!value?.ok) {
-        return { ok: false, failedStep: stepNumber, detail: value?.detail ?? 'step failed', shots }
+        return { ok: false, failedStep: stepNumber, detail: value?.detail ?? 'step failed', shots, transitions }
       }
       await new Promise((resolve) => setTimeout(resolve, 300))
     }
-    return { ok: true, shots }
+    try {
+      const { result } = await connection.send(
+        'Runtime.evaluate',
+        { expression: 'window.__squintSoftNav || []', returnByValue: true },
+        sessionId,
+      )
+      if (Array.isArray(result?.value)) transitions = summarizeSoftNav(result.value)
+    } catch {
+      // pre-151 Chromes have nothing to report
+    }
+    return { ok: true, shots, transitions }
   } catch (err) {
-    return { ok: false, detail: err instanceof Error ? err.message : String(err), shots }
+    return { ok: false, detail: err instanceof Error ? err.message : String(err), shots, transitions }
   } finally {
     connection?.close()
     child.kill('SIGKILL')

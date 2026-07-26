@@ -115,3 +115,26 @@ describe.skipIf(!findChrome())('suggestFlows (requires Chrome)', () => {
     }
   })
 })
+
+describe('summarizeSoftNav', () => {
+  it('folds entries into one line per transition, ordered, with worst ICP', async () => {
+    const { summarizeSoftNav } = await import('../src/preview/cdp.js')
+    const lines = summarizeSoftNav([
+      { type: 'soft-navigation', navigationId: 'n2', start: 900, value: 0, url: 'http://x/checkout' },
+      { type: 'soft-navigation', navigationId: 'n1', start: 100, value: 0, url: 'http://x/products' },
+      { type: 'icp', navigationId: 'n1', start: 120, value: 240, url: '' },
+      { type: 'icp', navigationId: 'n1', start: 130, value: 410, url: '' },
+      { type: 'icp', navigationId: 'n2', start: 910, value: 180, url: '' },
+      { type: 'icp', navigationId: '', start: 50, value: 999, url: '' },
+    ])
+    expect(lines).toEqual(['soft-nav → /products · ICP 410ms', 'soft-nav → /checkout · ICP 180ms'])
+  })
+
+  it('reports transitions without ICP plainly and handles empty input', async () => {
+    const { summarizeSoftNav } = await import('../src/preview/cdp.js')
+    expect(summarizeSoftNav([])).toEqual([])
+    expect(
+      summarizeSoftNav([{ type: 'soft-navigation', navigationId: 'n1', start: 5, value: 0, url: 'http://x/about' }]),
+    ).toEqual(['soft-nav → /about'])
+  })
+})
