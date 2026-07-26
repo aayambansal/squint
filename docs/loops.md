@@ -167,6 +167,15 @@ component inventory, locks, each skill) with estimated tokens and exactly when i
 fires, an always-on total, and warnings for stale locks, skill triggers generic enough
 to match any ask, and always-on context past the attention budget.
 
+## The loop without the TUI
+
+`squint ci [--url <app>] [--json <report>]` runs everything above as one headless
+command with an exit code — gates, the page audit (hard findings fail the run;
+a11y/slop/jank ride as advisories), and flow replay. `squint mcp` serves the same
+verification as MCP tools over stdio (`squint_check`, `squint_shot`, `squint_flows`,
+`squint_context`), so agents that speak MCP call squint instead of squint wrapping
+them.
+
 ## Turning things off
 
 ```sh

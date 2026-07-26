@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.0 — 2026-07-26
+
+- `squint mcp`: the gates as MCP tools over stdio (squint_check, squint_shot, squint_flows, squint_context) — any MCP-speaking agent invokes squint's verification natively, no adapter needed
+- `squint ci`: one-shot verification for pipelines — gates + full page audit + flow replay, JSON report, non-zero exit on hard findings (runtime errors, phantoms, duplicate view-transition names, check failures)
+- Claude adapter forwards subagent text (2.1.211+) so the loops see spawned work; APCA contrast joins the slop sweep (body text under Lc 60 = fog); review screenshots at deviceScaleFactor 2
+
 ## 0.4.8 — 2026-07-26
 
 - Reward-hacking sentinel: deterministic gate-evasion detection per turn (deleted tests, added skips, @ts-ignore/eslint-disable, shrunken repo checks, locked-path touches) — reported to the human with an /undo pointer and an on-sentinel hook, never auto-fixed
