@@ -117,6 +117,16 @@ const A11Y_AUDIT = `(() => {
   for (const el of document.querySelectorAll('[tabindex]')) {
     if (Number(el.getAttribute('tabindex')) > 0) out.push('positive tabindex ' + short(el));
   }
+  // Fake buttons: click handlers on non-interactive elements with no
+  // role and no tabindex — mouse-only UI, invisible to keyboards and
+  // screen readers alike. The div-onclick classic.
+  let fakes = 0;
+  for (const el of document.querySelectorAll('div[onclick], span[onclick], li[onclick], img[onclick]')) {
+    if (el.closest('a[href], button, [role="button"], [role="link"]')) continue;
+    if (el.hasAttribute('role') || el.hasAttribute('tabindex')) continue;
+    out.push('clickable ' + short(el) + ' is not focusable and has no role — unreachable without a mouse');
+    if (++fakes >= 4) break;
+  }
   return out.slice(0, 20);
 })()`
 
