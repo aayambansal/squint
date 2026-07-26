@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { afterEach, beforeEach, describe, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Session } from '../src/session/engine.js'
 import * as registry from '../src/engines/registry.js'
 import type { Engine } from '../src/engines/types.js'
