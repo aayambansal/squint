@@ -103,6 +103,7 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
       <span id="real-desc">describes things</span>
       <input type="search" aria-labelledby="renamed-label" aria-describedby="real-desc" />
       <button popovertarget="no-such-popover">open</button>
+      <button></button><button></button><button></button><button></button>
       <form id="silent-form"><input type="email" required /><button type="submit">Sign up</button></form>
       <input id="offname" name="fullname" autocomplete="off" />
       <input id="badtok" autocomplete="firstname" />
@@ -168,6 +169,7 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
     expect(findings).toContain('form errors silent: <form#silent-form> has 1 required field(s)')
     expect(findings).toContain('autocomplete="off" on an identity field')
     expect(findings).toContain('top-layer: <div.modal-overlay> is a hand-rolled full-screen modal')
+    expect(findings).toMatch(/semantic gap: \d+ of \d+ interactive elements have no accessible name/)
     expect(findings).toContain('autocomplete="firstname" ends in "firstname", not a valid field token')
     expect(findings).not.toContain('autofill: input#goodtok')
     expect(findings).not.toContain('real-desc')
