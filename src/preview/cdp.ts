@@ -953,6 +953,49 @@ export async function cdpCapture(
 
 
     if (audit) {
+      // Keyboard journey: real Tab keystrokes (trusted events, so
+      // :focus-visible behaves), asserting a visible focus indicator at
+      // every stop. Static sweeps can't see this — behavior can.
+      const kbdFindings: string[] = []
+      try {
+        const seen: string[] = []
+        let trapped: string | null = null
+        for (let i = 0; i < 12; i++) {
+          await connection.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 }, sessionId)
+          await connection.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 }, sessionId)
+          const { result } = await connection.send(
+            'Runtime.evaluate',
+            {
+              expression: `(() => {
+                const el = document.activeElement;
+                if (!el || el === document.body || el === document.documentElement) return null;
+                let label = el.tagName.toLowerCase();
+                if (el.id) label += '#' + el.id;
+                else if (el.classList[0]) label += '.' + el.classList[0];
+                const cs = getComputedStyle(el);
+                const visible = (cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) > 0) || cs.boxShadow !== 'none';
+                return { label, visible };
+              })()`,
+              returnByValue: true,
+            },
+            sessionId,
+          )
+          const stop = result?.value as { label: string; visible: boolean } | null
+          if (!stop) continue
+          if (seen.length > 0 && seen[seen.length - 1] === stop.label && seen.filter((s) => s === stop.label).length >= 2) {
+            trapped = stop.label
+            break
+          }
+          seen.push(stop.label)
+          if (!stop.visible) kbdFindings.push(`keyboard: focus invisible on <${stop.label}> (tab stop ${seen.length}) — outline and box-shadow both none`)
+        }
+        if (trapped) kbdFindings.push(`keyboard: focus trapped at <${trapped}> — Tab cannot leave it`)
+        if (seen.length === 0) kbdFindings.push('keyboard: no tabbable elements — the page is unreachable without a mouse')
+        // Return focus to the top so later audits see the resting state.
+        await connection.send('Runtime.evaluate', { expression: 'document.activeElement && document.activeElement.blur()' }, sessionId).catch(() => null)
+      } catch {
+        // keyboard journey is best-effort
+      }
       try {
         const { result } = await connection.send(
           'Runtime.evaluate',
@@ -960,6 +1003,7 @@ export async function cdpCapture(
           sessionId,
         )
         if (Array.isArray(result?.value)) a11y = result.value.map(String)
+        a11y.push(...kbdFindings)
       } catch {
         // The sweep is best-effort; a failed audit never blocks capture.
       }

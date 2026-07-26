@@ -79,6 +79,7 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
       <img src="definitely-missing.png" />
       <button></button>
       <input type="text" />
+      <button class="bad-focus" style="outline:none">go</button>
       <ul><li>🚀 fast</li><li>✨ shiny</li><li>🔥 hot</li></ul>
       <div class="card-a">a</div><div class="card-b">b</div>
       <script>
@@ -120,6 +121,8 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
     expect(result.report.failedRequests.join(' ')).toContain('definitely-missing.png')
 
     const findings = result.a11y.join('\n')
+    expect(findings).toContain('keyboard: focus invisible on <button.bad-focus>')
+    expect(findings).not.toContain('focus invisible on <input')
     expect(findings).toContain('missing lang')
     expect(findings).toContain('img missing alt')
     expect(findings).toContain('button without accessible name')
