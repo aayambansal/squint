@@ -88,6 +88,12 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
       <style>@media (forced-colors: active) { .fc-trap { color: CanvasText; background: CanvasText; } }</style>
       <button class="fc-trap">Trapped text</button>
       <nav style="height:80px">persistent navigation</nav>
+      <label><input type="checkbox" checked /> Subscribe to marketing updates from our partners</label>
+      <label><input type="checkbox" checked /> Remember my theme preference</label>
+      <div class="cookie-banner">
+        <button class="cta-accept" style="font-size:18px;padding:14px 40px">Accept all</button>
+        <button class="cta-decline" style="font-size:11px;padding:2px 6px">Decline</button>
+      </div>
       <script>
         console.error('console-boom');
         setTimeout(() => { throw new Error('uncaught-boom') }, 100);
@@ -152,6 +158,12 @@ describe.skipIf(!chrome || !hasWebSocket())('cdpCapture (requires Chrome + WebSo
 
     expect(result.a11y.join('\n')).toContain('forced-colors: <button.fc-trap> text matches its background')
     expect(result.slop.join('\n')).toContain('print: <nav> still renders in print output')
+
+    const deception = result.slop.filter((f) => f.startsWith('deceptive:')).join('\n')
+    expect(deception).toContain('preselected consent checkbox')
+    expect(deception).toContain('Subscribe to marketing')
+    expect(deception).not.toContain('Remember my theme')
+    expect(deception).toContain('<button.cta-decline> is visually buried next to <button.cta-accept>')
 
     const locale = result.locale.join('\n')
     expect(locale).toContain('<button.tight> clips at +40% text expansion')

@@ -994,6 +994,60 @@ const LOCALE_AUDIT = `(async () => {
   return findings;
 })()`
 
+/**
+ * Deceptive-design check: the deterministic subset of the dark-pattern
+ * taxonomy (arXiv 2607.20690 unifies 19 principles; these four are
+ * DOM-checkable without judgment). Agents reproduce these patterns
+ * from training data without malice — which is exactly why a
+ * deterministic tripwire beats a style guide.
+ */
+const DECEPTION_AUDIT = `(() => {
+  const out = [];
+  const label = (el) => {
+    let s = el.tagName.toLowerCase();
+    if (el.id) s += '#' + el.id; else if (el.classList[0]) s += '.' + el.classList[0];
+    return s;
+  };
+  // 1. Preselected consent
+  for (const box of document.querySelectorAll('input[type="checkbox"]:checked')) {
+    const scope = (box.closest('label') || box.parentElement || box);
+    const text = (scope.textContent || '').slice(0, 160);
+    if (/subscribe|newsletter|marketing|offers|promotions|updates|share my|third.part/i.test(text)) {
+      out.push('deceptive: preselected consent checkbox — "' + text.trim().slice(0, 60) + '" starts opted in');
+    }
+    if (out.length >= 6) return out;
+  }
+  // 2. Urgency countdowns
+  for (const el of document.querySelectorAll('body *')) {
+    if (el.children.length > 0) continue;
+    const text = (el.textContent || '').trim();
+    if (text.length > 0 && text.length < 80 && /\b\d{1,2}:\d{2}(:\d{2})?\b/.test(text) && /only|hurry|left|expires|ends|limited|last chance/i.test(text)) {
+      out.push('deceptive: urgency countdown on <' + label(el) + '> ("' + text.slice(0, 50) + '") — verify it is real, not theater');
+      break;
+    }
+  }
+  // 3 + 4. Buried decline / confirmshaming inside consent surfaces
+  for (const surface of document.querySelectorAll('[role="dialog"], [class*="modal"], [class*="cookie"], [class*="consent"], [class*="banner"]')) {
+    const buttons = [...surface.querySelectorAll('button, a, [role="button"]')];
+    const accept = buttons.find((b) => /accept|agree|allow|got it|yes/i.test(b.textContent || ''));
+    const decline = buttons.find((b) => /decline|reject|refuse|no thanks|later|manage/i.test(b.textContent || ''));
+    if (accept && decline) {
+      const ar = accept.getBoundingClientRect(), dr = decline.getBoundingClientRect();
+      const aSize = parseFloat(getComputedStyle(accept).fontSize), dSize = parseFloat(getComputedStyle(decline).fontSize);
+      if ((dr.width * dr.height) < (ar.width * ar.height) * 0.55 || dSize < aSize - 2) {
+        out.push('deceptive: <' + label(decline) + '> is visually buried next to <' + label(accept) + '> — equal choices deserve equal weight');
+      }
+    }
+    for (const b of buttons) {
+      if (/no thanks,? i (don.?t|hate|prefer)|i don.?t want to (save|improve|protect)/i.test(b.textContent || '')) {
+        out.push('deceptive: confirmshaming copy on <' + label(b) + '> ("' + (b.textContent || '').trim().slice(0, 50) + '")');
+      }
+    }
+    if (out.length >= 6) break;
+  }
+  return out.slice(0, 6);
+})()`
+
 export async function cdpCapture(
   chromePath: string,
   url: string,
@@ -1190,6 +1244,16 @@ export async function cdpCapture(
           sessionId,
         )
         if (Array.isArray(result?.value)) phantoms = result.value.map(String)
+      } catch {
+        // best-effort
+      }
+      try {
+        const { result } = await connection.send(
+          'Runtime.evaluate',
+          { expression: DECEPTION_AUDIT, returnByValue: true },
+          sessionId,
+        )
+        if (Array.isArray(result?.value)) slop.push(...result.value.map(String))
       } catch {
         // best-effort
       }
