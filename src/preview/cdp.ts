@@ -1547,7 +1547,8 @@ const CONTAINER_AUDIT = `(() => {
     const name = cs.anchorName;
     if (name && name !== 'none') for (const n of name.split(',')) anchorNames.add(n.trim());
     const ref = cs.positionAnchor;
-    if (ref && ref !== 'auto' && ref !== 'none') anchorRefs.set(ref.trim(), all[i].tagName.toLowerCase());
+    // 'auto' was the initial value; newer Chrome reports 'normal'. Both mean "no anchor".
+    if (ref && ref !== 'auto' && ref !== 'normal' && ref !== 'none') anchorRefs.set(ref.trim(), all[i].tagName.toLowerCase());
   }
   for (const [ref, tag] of anchorRefs) {
     if (!anchorNames.has(ref)) {
