@@ -26,13 +26,14 @@ const tokens = (text: string) => Math.ceil(text.length / 4)
 
 describe('the bundled library', () => {
   it('ships the platform skills and the taste layer, each self-contained and affordable', () => {
-    expect(BUNDLED_SKILLS.map((s) => s.name)).toEqual(['apple-hig', 'material-android', 'desktop-app', 'design-taste'])
+    expect(BUNDLED_SKILLS.map((s) => s.name)).toEqual(['apple-hig', 'material-android', 'desktop-app', 'design-taste', 'playwright-e2e'])
     for (const skill of BUNDLED_SKILLS) {
       expect(skill.body.startsWith('# ')).toBe(true)
       expect(skill.triggers.length).toBeGreaterThan(3)
       // Shorter than the brief's skim threshold: these ride inside asks.
       expect(tokens(skill.body)).toBeLessThan(1700)
-      expect(skill.reviewChecklist).toBeTruthy()
+      // Design skills grade /review; the e2e skill has no visual checklist.
+      if (skill.name !== 'playwright-e2e') expect(skill.reviewChecklist).toBeTruthy()
       // No trigger short enough to fire on noise.
       for (const t of skill.triggers) expect(t.length).toBeGreaterThanOrEqual(2)
     }
@@ -61,6 +62,11 @@ describe('the bundled library', () => {
     expect(taste).toContain('One primary action per view')
     expect(taste).toContain('APCA')
     expect(taste).toContain('prefers-reduced-motion')
+
+    const e2e = getBundledSkill('playwright-e2e')!.body
+    expect(e2e).toContain('getByRole')
+    expect(e2e).toContain('Never `waitForTimeout`')
+    expect(e2e).toContain('squint flows export')
   })
 })
 
