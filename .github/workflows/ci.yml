@@ -4,6 +4,12 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Weekly drift check against the latest stable Chrome: the headless
+  # audits read computed styles, and Chrome changes them (position-anchor
+  # went from `auto` to `normal` and turned every element into a phantom
+  # anchor). PR and push runs pin a milestone so they stay deterministic.
+  schedule:
+    - cron: '0 6 * * 1'
 
 jobs:
   check:
@@ -14,7 +20,13 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - uses: browser-actions/setup-chrome@v2
+        id: chrome
+        with:
+          chrome-version: ${{ github.event_name == 'schedule' && 'stable' || '152' }}
       - run: npm ci
       - run: npm run typecheck
       - run: npx vitest run
+        env:
+          SQUINT_CHROME: ${{ steps.chrome.outputs.chrome-path }}
       - run: npm run build

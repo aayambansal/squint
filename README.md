@@ -21,7 +21,7 @@ turn and "looks done." The whole loop, owned by you.
 [![npm](https://img.shields.io/npm/v/%40aayambansal%2Fsquint?color=2f5fe0)](https://www.npmjs.com/package/@aayambansal/squint)
 [![ci](https://github.com/aayambansal/squint/actions/workflows/ci.yml/badge.svg)](https://github.com/aayambansal/squint/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-1a1a1a)](./LICENSE)
-[![Engines](https://img.shields.io/badge/engines-8-2ea44f)](#engines)
+[![Engines](https://img.shields.io/badge/engines-10-2ea44f)](#engines)
 [![PRs](https://img.shields.io/badge/PRs-welcome-2f5fe0)](./CONTRIBUTING.md)
 
 </div>
@@ -78,7 +78,8 @@ From source: `git clone https://github.com/aayambansal/squint.git && cd squint &
 1. **You describe.** Every ask is wrapped in squint's design brief — built from studying
    Lovable's leaked prompts, v0's design rules, and the documented catalog of AI-slop tells:
    direction before code, tokens are the system, banned generic patterns. Override per
-   project with `.squint/brief.md`.
+   project with `.squint/brief.md`. On Claude Code it rides as a system prompt on every
+   turn, so it survives context compaction; cold engines get it inline on every turn.
 2. **Your agent builds.** squint drives whichever engine you choose, headlessly, streaming
    token by token.
 3. **The dev server judges.** Build errors after every turn route straight back to the
@@ -288,7 +289,7 @@ and an avoid-list tuned to that family's failure modes. Plain markdown, made to 
                    |            |
         +----------+---+    +---+---------------------+
         | engine layer |    | eyes                    |
-        | 8 adapters,  |    | dev-server watcher      |
+        | 10 adapters, |    | dev-server watcher      |
         | one event    |    | CDP runtime + a11y      |
         | stream       |    | headless screenshots    |
         +------+-------+    +-------------------------+
@@ -305,7 +306,7 @@ All product behavior lives in the harness, so a new engine is ~80 lines.
 
 | path | what it is |
 | --- | --- |
-| `src/engines` | 8 adapters + the shared Claude wire-protocol parser |
+| `src/engines` | 10 adapters + the shared Claude wire-protocol parser |
 | `src/runner` | subprocess spawn → normalized event stream, abort support |
 | `src/prompt` | the design brief, 7 aesthetic families, the bundled design library, skill routing |
 | `src/devserver` | dev-server manager + build-error detection |
@@ -321,7 +322,7 @@ All product behavior lives in the harness, so a new engine is ~80 lines.
 
 ## Docs
 
-- [Engine setup guide](./docs/engines.md) — install + auth for all eight, and how to choose
+- [Engine setup guide](./docs/engines.md) — install + auth for all ten, and how to choose
 - [Configuration](./docs/configuration.md) — every key, every `.squint/` file
 - [The loops](./docs/loops.md) — everything that runs automatically around each turn
 - [Architecture](./docs/design/2026-07-25-architecture.md)

@@ -57,7 +57,7 @@ gemini               # first run opens Google sign-in (or set GEMINI_API_KEY)
 ```
 
 - Approval-mode mapping (`plan` / `auto_edit` / `yolo`). No headless session resume, so
-  every squint ask carries the design brief.
+  every squint turn — asks, fixes, reviews — carries the design brief inline.
 
 ## OpenCode (`opencode`)
 

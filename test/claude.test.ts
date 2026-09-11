@@ -28,6 +28,16 @@ describe('claude.buildArgs', () => {
     expect(args).toContain('--resume')
     expect(args).toContain('abc-123')
   })
+
+  it('carries the brief as an appended system prompt, alongside a resume', () => {
+    expect(claude.supportsSystemPrompt).toBe(true)
+    const args = claude.buildArgs({ prompt: 'fix the footer', cwd: '/tmp', sessionId: 'abc-123', systemPrompt: 'THE BRIEF' })
+    const at = args.indexOf('--append-system-prompt')
+    expect(at).toBeGreaterThan(-1)
+    expect(args[at + 1]).toBe('THE BRIEF')
+    expect(args).toContain('--resume')
+    expect(claude.buildArgs({ prompt: 'p', cwd: '/tmp' })).not.toContain('--append-system-prompt')
+  })
 })
 
 describe('claude parser', () => {

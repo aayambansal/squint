@@ -4,7 +4,8 @@ import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Session } from '../src/session/engine.js'
 import * as registry from '../src/engines/registry.js'
-import type { Engine } from '../src/engines/types.js'
+import type { Engine, RunOptions } from '../src/engines/types.js'
+import { DEFAULT_BRIEF, FIRST_TURN_ADDENDUM } from '../src/prompt/brief.js'
 
 let dir: string
 
@@ -504,5 +505,58 @@ describe('/save evidence pointers', () => {
     expect(text).toContain('## Design decisions on record')
     expect(text).toContain('- mono theme stays _(decide)_')
     expect(text).toContain('verification receipts: 1 in .squint/receipts/')
+  })
+})
+
+describe('brief delivery', () => {
+  /** Records every RunOptions the session hands the engine. */
+  function recordingEngine(overrides: Partial<Engine>, runs: RunOptions[]): Engine {
+    return {
+      ...fakeEngine("console.log('ok')"),
+      ...overrides,
+      buildArgs: (opts) => {
+        runs.push(opts)
+        return ['-e', "console.log('ok')"]
+      },
+    }
+  }
+
+  it('cold engines get the brief on every turn and the addendum only on the opening ask', async () => {
+    const runs: RunOptions[] = []
+    vi.spyOn(registry, 'getEngine').mockReturnValue(recordingEngine({ supportsResume: false }, runs))
+    const session = new Session({ cwd: dir, engineId: 'fake', bundledSkills: false })
+
+    session.input('build the pricing page')
+    await waitFor(session, () => !session.getState().running && session.getState().totals.turns === 1)
+    session.input('now fix the footer')
+    await waitFor(session, () => !session.getState().running && session.getState().totals.turns === 2)
+
+    expect(runs).toHaveLength(2)
+    expect(runs[0]!.prompt).toContain(DEFAULT_BRIEF)
+    expect(runs[0]!.prompt).toContain(FIRST_TURN_ADDENDUM)
+    expect(runs[0]!.systemPrompt).toBeUndefined()
+    // The second ask still carries the standards — every process is cold — but not "this is the opening move".
+    expect(runs[1]!.prompt).toContain(DEFAULT_BRIEF)
+    expect(runs[1]!.prompt).not.toContain(FIRST_TURN_ADDENDUM)
+    expect(runs[1]!.prompt).toContain('now fix the footer')
+    session.dispose()
+  })
+
+  it('engines with a system-prompt channel get the brief there, every turn, never inline', async () => {
+    const runs: RunOptions[] = []
+    vi.spyOn(registry, 'getEngine').mockReturnValue(recordingEngine({ supportsResume: true, supportsSystemPrompt: true }, runs))
+    const session = new Session({ cwd: dir, engineId: 'fake', bundledSkills: false })
+
+    session.input('build the pricing page')
+    await waitFor(session, () => !session.getState().running && session.getState().totals.turns === 1)
+    session.input('now fix the footer')
+    await waitFor(session, () => !session.getState().running && session.getState().totals.turns === 2)
+
+    expect(runs.map((r) => r.systemPrompt)).toEqual([DEFAULT_BRIEF, DEFAULT_BRIEF])
+    expect(runs[0]!.prompt).not.toContain(DEFAULT_BRIEF)
+    expect(runs[0]!.prompt).toContain(FIRST_TURN_ADDENDUM)
+    expect(runs[1]!.prompt).toBe('now fix the footer' + runs[1]!.prompt.slice('now fix the footer'.length))
+    expect(runs[1]!.prompt).not.toContain(FIRST_TURN_ADDENDUM)
+    session.dispose()
   })
 })

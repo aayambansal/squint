@@ -13,6 +13,17 @@ const MAC_CHROMES = [
 const PATH_CHROMES = ['google-chrome', 'google-chrome-stable', 'chromium', 'chromium-browser']
 
 export function findChrome(): string | null {
+  // An explicit binary wins: CI pins a version, users point at a canary.
+  for (const name of ['SQUINT_CHROME', 'CHROME_PATH']) {
+    const candidate = process.env[name]
+    if (!candidate) continue
+    try {
+      fs.accessSync(candidate, fs.constants.X_OK)
+      return candidate
+    } catch {
+      // set but not executable: fall through to discovery
+    }
+  }
   if (process.platform === 'darwin') {
     for (const candidate of MAC_CHROMES) {
       try {
