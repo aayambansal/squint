@@ -129,6 +129,7 @@ squint brief cinematic-dark       # commit one for this repo
 squint tag                        # Alt+S element picker: pin elements + notes, alt+enter copies all
 squint variants gen 3 "<ask>"     # 3 parallel design explorations
 squint variants apply terminal    # keep the winner
+squint skills list                # bundled design library + project + external SKILL.md
 squint skills init                # scaffold .squint/rules.md + a trigger-matched skill
 squint config set engine claude
 squint config set models.claude claude-sonnet-5
@@ -224,6 +225,36 @@ modern-CSS disconnects, security, and performance.
 `.squint/skills/*.md` (frontmatter `triggers: auth, login`) only when an ask mentions a
 trigger — deterministic context routing, no embeddings.
 
+## The design library
+
+squint ships the taste, not just the checks. Four bundled skills ride along on
+design-shaped asks — inlined into the prompt, never always-on, itemized by `/context`:
+
+| skill | when it attaches | what it carries |
+| --- | --- | --- |
+| `design-taste` | any ask that touches UI (layout, type, color, states, motion, copy…) | the craft rules: hierarchy, modular type scales, OKLCH roles, spacing rhythm, every component state, motion budgets, UX copy, forms, the review rubric |
+| `apple-hig` | iOS/iPadOS/macOS targets (React Native, Expo, Flutter, Capacitor, Xcode) or any mention of ios/apple/swiftui/… | Human Interface Guidelines: safe areas, 44pt targets, tab bar and navigation stack rules, sheets and detents, Dynamic Type styles, semantic system colors, materials and Liquid Glass, haptics, macOS menus and windows |
+| `material-android` | Android targets (RN, Expo, Flutter, Gradle) or any mention of android/material/compose/… | Material 3: window size classes → navigation component, FAB discipline, color roles and tonal elevation, type and shape scales, motion tokens, state layers, edge-to-edge insets, TalkBack |
+| `desktop-app` | Electron/Tauri/native shells or any mention of menu bar, shortcuts, tray… | per-OS chrome (menu bar vs command bar, title bars, traffic lights), keyboard-first, window persistence, desktop density, web-tech hygiene |
+
+Platform detection reads the repo (`react-native`, `expo`, `pubspec.yaml`, `src-tauri/`,
+`electron`, `*.xcodeproj`, `android/app/build.gradle`…). `/review` closes every critique
+with the taste rubric (Blocker / High / Medium / Nit, the two-altitude slop test) plus the
+checklist of each platform you target.
+
+```sh
+squint skills list                 # bundled · project · external, with detected platforms
+squint skills show apple-hig       # read one
+squint skills eject apple-hig      # fork it into .squint/skills/ — your copy shadows the original
+squint config set bundledSkills false
+```
+
+**External skills** in the standard `SKILL.md` format are discovered too — `.claude/skills`,
+`.cursor/skills`, `.agents/skills`, `.codex/skills`, in the repo and your home directory.
+Mention one by name ("use impeccable to critique the dashboard") and squint injects a
+pointer the engine reads from disk, so a skill's own reference files keep working — and
+Codex or Gemini get the skills only Claude Code would otherwise load.
+
 ## Design directions
 
 `squint brief` writes a committed direction to `.squint/brief.md` so every session holds the
@@ -271,7 +302,7 @@ All product behavior lives in the harness, so a new engine is ~80 lines.
 | --- | --- |
 | `src/engines` | 8 adapters + the shared Claude wire-protocol parser |
 | `src/runner` | subprocess spawn → normalized event stream, abort support |
-| `src/prompt` | the design brief + 7 aesthetic families |
+| `src/prompt` | the design brief, 7 aesthetic families, the bundled design library, skill routing |
 | `src/devserver` | dev-server manager + build-error detection |
 | `src/preview` | Chrome discovery, CDP client, screenshots, a11y sweep |
 | `src/gates` | quality gates (typecheck / lint / test / build) |

@@ -31,6 +31,7 @@ export function registerDaemon(program: Command): void {
         autoCheck: config.autoCheck,
         autoReview: config.autoReview,
         fixModel: config.fixModel,
+        bundledSkills: config.bundledSkills,
         budgetUsd: config.budgetUsd,
         approvalWebhook: config.approvalWebhook,
         onQuit: () => {

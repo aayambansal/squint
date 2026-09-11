@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- The design library: four bundled skills — `design-taste` (craft rules and the review rubric), `apple-hig` (Human Interface Guidelines for iOS/iPadOS/macOS), `material-android` (Material 3), `desktop-app` (Electron/Tauri/native shells) — inlined on design-shaped asks, auto-attached by detected platform, itemized by `/context`
+- `/review`, `/polish` and auto-review close with the review standards: severity rubric, the two-altitude slop test, and each targeted platform's checklist
+- Standard `SKILL.md` discovery (`.claude/skills`, `.cursor/skills`, `.agents/skills`, `.codex/skills`; repo and home) — mention a skill by name and the engine gets a pointer to it
+- `squint skills list` shows bundled · project · external with detected platforms; `squint skills show` / `eject` read or fork a bundled skill; `bundledSkills` config key
+- Skill triggers match at word starts (short triggers need a whole word) — "ui" no longer fires inside "build"
+- `squint run` now carries rules, the ledger, locks and matched skills like the TUI does
+
 ## 1.0.2 — 2026-07-27
 
 - Mixed-content + CSP heuristics in the security sniff
