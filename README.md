@@ -88,8 +88,9 @@ From source: `git clone https://github.com/aayambansal/squint.git && cd squint &
 5. **The agent looks at its work.** `/review` screenshots mobile/tablet/desktop and
    re-prompts the engine to critique what it can see — then fix it.
 6. **Gates keep it honest.** Typecheck + lint run automatically after *every* turn and
-   auto-fix (capped); `/check` adds tests and the build — failures come back with orders
-   not to weaken the checks.
+   auto-fix (capped); `/check` adds tests, the build, and — when `@playwright/test` is in
+   the repo — the end-to-end suite. Failures come back with orders not to weaken the
+   checks; an e2e failure comes back with "fix the app before the test".
 7. **Everything is reversible.** Every ask records a checkpoint; `/undo` pops the last,
    `/restore <n>` rewinds files to any earlier point — your own uncommitted work survives.
 8. **Point at things.** Alt+S in the browser, click any element, and a self-locating
@@ -122,13 +123,14 @@ squint                            # the TUI, in the current repo
 squint run "add a dark mode toggle"
 squint run -e codex -m gpt-5 "tighten the hero spacing"
 squint run --json "..."           # normalized ndjson events for scripting
-squint check                      # gates: typecheck -> lint -> test -> build
+squint check                      # gates: typecheck -> lint -> test -> build -> e2e (Playwright, when present)
 squint shot http://localhost:5173 # screenshots at 390/768/1440
 squint brief                      # list design directions
 squint brief cinematic-dark       # commit one for this repo
 squint tag                        # Alt+S element picker: pin elements + notes, alt+enter copies all
 squint variants gen 3 "<ask>"     # 3 parallel design explorations
 squint variants apply terminal    # keep the winner
+squint flows export               # .squint/flows/*.flow -> tests/e2e/*.spec.ts (Playwright)
 squint skills list                # bundled design library + project + external SKILL.md
 squint skills init                # scaffold .squint/rules.md + a trigger-matched skill
 squint config set engine claude
@@ -154,7 +156,9 @@ squint doctor --probe             # run every engine end to end, verify auth act
   `↑/↓` history. `ctrl+c` twice exits with a session summary.
 - **Flows**: declare user journeys as six readable lines in `.squint/flows/`; `/flows`
   replays them headlessly and failing steps join the fix loop; `/flows suggest` drafts
-  a smoke flow per route from the live page's own headings. Journeys report
+  a smoke flow per route from the live page's own headings. `squint flows export`
+  writes the same journeys as Playwright specs, so they run under the `e2e` gate, in
+  CI, and on teammates' machines. Journeys report
   per-transition soft-nav timings (Chrome 151+) and retained detached DOM — the leak
   pulse. `/score` snapshots quality
   deterministically. `/goal <objective>` arms a standing goal — auto-fix presses to 6
@@ -227,8 +231,8 @@ trigger — deterministic context routing, no embeddings.
 
 ## The design library
 
-squint ships the taste, not just the checks. Four bundled skills ride along on
-design-shaped asks — inlined into the prompt, never always-on, itemized by `/context`:
+squint ships the taste, not just the checks. Five bundled skills ride along on
+matching asks — inlined into the prompt, never always-on, itemized by `/context`:
 
 | skill | when it attaches | what it carries |
 | --- | --- | --- |
@@ -236,6 +240,7 @@ design-shaped asks — inlined into the prompt, never always-on, itemized by `/c
 | `apple-hig` | iOS/iPadOS/macOS targets (React Native, Expo, Flutter, Capacitor, Xcode) or any mention of ios/apple/swiftui/… | Human Interface Guidelines: safe areas, 44pt targets, tab bar and navigation stack rules, sheets and detents, Dynamic Type styles, semantic system colors, materials and Liquid Glass, haptics, macOS menus and windows |
 | `material-android` | Android targets (RN, Expo, Flutter, Gradle) or any mention of android/material/compose/… | Material 3: window size classes → navigation component, FAB discipline, color roles and tonal elevation, type and shape scales, motion tokens, state layers, edge-to-edge insets, TalkBack |
 | `desktop-app` | Electron/Tauri/native shells or any mention of menu bar, shortcuts, tray… | per-OS chrome (menu bar vs command bar, title bars, traffic lights), keyboard-first, window persistence, desktop density, web-tech hygiene |
+| `playwright-e2e` | any mention of playwright, e2e, user journey, visual regression… | which journeys to test, role locators as an a11y check, web-first assertions, config (`webServer`, traces, mobile project), visual-regression hygiene, what to do when a test fails |
 
 Platform detection reads the repo (`react-native`, `expo`, `pubspec.yaml`, `src-tauri/`,
 `electron`, `*.xcodeproj`, `android/app/build.gradle`…). `/review` closes every critique

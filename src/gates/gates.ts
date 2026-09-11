@@ -12,6 +12,20 @@ export interface Gate {
   command: string
   args: string[]
   display: string
+  /** Per-gate ceiling; browser suites need more than compilers. */
+  timeoutMs?: number
+}
+
+const PLAYWRIGHT_CONFIGS = ['playwright.config.ts', 'playwright.config.js', 'playwright.config.mjs', 'playwright.config.cjs']
+
+/** Gate ids listed in SQUINT_SKIP_GATES (comma-separated) are never detected. */
+function skippedGateIds(): Set<string> {
+  return new Set(
+    (process.env.SQUINT_SKIP_GATES ?? '')
+      .split(',')
+      .map((s) => s.trim().toLowerCase())
+      .filter((s) => s.length > 0),
+  )
 }
 
 export interface GateResult {
@@ -87,7 +101,24 @@ export function detectGates(cwd: string): Gate[] {
     gates.push({ id: 'build', ...npmRun('build') })
   }
 
-  return gates
+  // Playwright end-to-end: the slowest gate, last. A project script that
+  // mentions playwright wins; otherwise the presence of @playwright/test or
+  // a playwright.config is enough. Needs the app reachable — webServer in
+  // the config, or a dev server already running.
+  const e2eScriptName = ['e2e', 'test:e2e', 'e2e:test', 'test:playwright'].find(
+    (name) => scripts[name] && /playwright/.test(scripts[name]!),
+  )
+  const hasPlaywright =
+    Boolean(pkg.devDependencies?.['@playwright/test'] ?? pkg.dependencies?.['@playwright/test']) ||
+    PLAYWRIGHT_CONFIGS.some((file) => fs.existsSync(path.join(cwd, file)))
+  if (e2eScriptName) {
+    gates.push({ id: 'e2e', ...npmRun(e2eScriptName), timeoutMs: E2E_TIMEOUT_MS })
+  } else if (hasPlaywright) {
+    gates.push({ id: 'e2e', command: 'npx', args: ['playwright', 'test'], display: 'playwright test', timeoutMs: E2E_TIMEOUT_MS })
+  }
+
+  const skipped = skippedGateIds()
+  return skipped.size > 0 ? gates.filter((gate) => !skipped.has(gate.id)) : gates
 }
 
 /**
@@ -101,6 +132,7 @@ export function detectFastGates(cwd: string): Gate[] {
 
 const TAIL_LINES = 40
 const GATE_TIMEOUT_MS = 5 * 60 * 1000
+const E2E_TIMEOUT_MS = 15 * 60 * 1000
 
 export function runGate(cwd: string, gate: Gate): Promise<GateResult> {
   return new Promise((resolve) => {
@@ -134,7 +166,7 @@ export function runGate(cwd: string, gate: Gate): Promise<GateResult> {
     const timer = setTimeout(() => {
       child.kill('SIGKILL')
       output += '\n[gate timed out]'
-    }, GATE_TIMEOUT_MS)
+    }, gate.timeoutMs ?? GATE_TIMEOUT_MS)
 
     child.on('error', (err) => {
       output += `\n${err.message}`
@@ -158,13 +190,28 @@ export async function runGates(
   return results
 }
 
+/** Environment failures the engine can resolve mechanically, named. */
+function e2eHints(outputTail: string): string {
+  const hints: string[] = []
+  if (/Executable doesn't exist|browserType\.launch/i.test(outputTail)) {
+    hints.push('Browsers are missing: run `npx playwright install --with-deps chromium`.')
+  }
+  if (/ECONNREFUSED|net::ERR_CONNECTION_REFUSED|Timed out waiting .* from config\.webServer/i.test(outputTail)) {
+    hints.push('The app was not reachable: configure `webServer` (command, url, reuseExistingServer) in playwright.config, or start the dev server.')
+  }
+  return hints.length > 0 ? `\n\n${hints.join('\n')}` : ''
+}
+
 export function buildGatePrompt(failures: GateResult[]): string {
   const sections = failures
-    .map((f) => `### ${f.gate.id} (\`${f.gate.display}\`)\n\n${f.outputTail}`)
+    .map((f) => `### ${f.gate.id} (\`${f.gate.display}\`)\n\n${f.outputTail}${f.gate.id === 'e2e' ? e2eHints(f.outputTail) : ''}`)
     .join('\n\n')
+  const e2e = failures.some((f) => f.gate.id === 'e2e')
+    ? `\n\nA failing end-to-end test means a user journey broke: fix the app first. Change a test only if the requirement it encodes changed, and say so. Never widen a timeout, add a sleep, or mark a test skipped to get green.`
+    : ''
   return `Quality gates failed. Fix the underlying problems — do not weaken the checks, skip tests, or loosen compiler/lint settings to get green.
 
-${sections}
+${sections}${e2e}
 
 After fixing, the failing commands above must pass.`
 }

@@ -123,6 +123,44 @@ export function registerProject(program: Command): void {
       console.log(pc.dim('rules are always-on; skills inject when an ask mentions a trigger · squint skills list shows the bundled design library'))
     })
 
+  const flowsCommand = program.command('flows').description('Declared user journeys in .squint/flows/ (the TUI replays them with /flows)')
+
+  flowsCommand
+    .command('list')
+    .description('Show the declared flows and their step counts')
+    .action(async () => {
+      const { loadFlows } = await import('../preview/flows.js')
+      const flows = loadFlows(process.cwd())
+      if (flows.length === 0) {
+        console.log(pc.dim('○ no flows — write .squint/flows/<name>.flow (goto / click / fill / press / expect / shot), or ask the engine to'))
+        return
+      }
+      for (const flow of flows) {
+        console.log(`${pc.green('✓')} ${flow.name.padEnd(20)} ${pc.dim(`${flow.steps.length} steps`)}`)
+      }
+    })
+
+  flowsCommand
+    .command('export')
+    .description('Write each flow as a Playwright spec (tests/e2e/<name>.spec.ts) so journeys run under the e2e gate and in CI')
+    .option('--dir <dir>', 'output directory', 'tests/e2e')
+    .option('--force', 'overwrite specs that already exist')
+    .action(async (options: { dir: string; force?: boolean }) => {
+      const { exportFlows } = await import('../preview/playwright.js')
+      const result = exportFlows(process.cwd(), { dir: options.dir, force: options.force })
+      if (result.written.length === 0 && result.skipped.length === 0) {
+        console.log(pc.dim('○ no flows to export — .squint/flows/ is empty'))
+        return
+      }
+      for (const file of result.written) console.log(`${pc.green('✓')} ${file}`)
+      for (const file of result.skipped) console.log(`${pc.yellow('○')} ${file} ${pc.dim('exists — --force overwrites')}`)
+      console.log(
+        pc.dim(
+          '\nrun them: npx playwright test · first time: npm i -D @playwright/test && npx playwright install --with-deps chromium\nsquint check / squint ci pick the suite up as the e2e gate once @playwright/test is installed',
+        ),
+      )
+    })
+
   program
     .command('brief')
     .description('Set a committed design direction for this project (.squint/brief.md)')

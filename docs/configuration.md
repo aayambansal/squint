@@ -44,7 +44,7 @@ Hand-authored (commit these):
 | `locks` | one path per line the engine must never modify |
 | `hooks/` | executables fired on quality events (see [loops](./loops.md#hooks)) |
 | `routes` | one path per line; `/shot` and `/review` cover them beyond the root |
-| `flows/` | declared user journeys replayed by `/flows` (see [loops](./loops.md#flows-and-the-score)) |
+| `flows/` | declared user journeys replayed by `/flows` (see [loops](./loops.md#flows-and-the-score)); `squint flows export` writes them as Playwright specs |
 | `checks/` | page assertions replayed every turn — agent-authored or yours; `// squint-trigger: audit` on line one defers a check to full audits (see [loops](./loops.md#persistent-checks)) |
 | `config.json` | the project config layer |
 | `design-log.jsonl` | the design-decision ledger, appended by `/decide`, variants, restores, sandboxes (see [loops](./loops.md#the-design-ledger)) |
@@ -68,5 +68,6 @@ plus path — that the engine reads from disk. `squint skills list` shows what w
 ## Environment
 
 - `NO_COLOR` — forces the mono theme.
+- `SQUINT_SKIP_GATES` — comma-separated gate ids never to detect (`e2e,build`); for pipelines without browsers or where the suite runs elsewhere.
 - API keys are never read or stored by squint; each engine CLI handles its own auth
   (see [docs/engines.md](./engines.md)).

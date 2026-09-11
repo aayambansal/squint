@@ -2,6 +2,7 @@ import { detectPlatforms, type Platform } from '../platform.js'
 import { appleHig } from './appleHig.js'
 import { desktopApp } from './desktop.js'
 import { materialAndroid } from './material.js'
+import { playwrightE2e } from './playwright.js'
 import { designTaste } from './taste.js'
 import type { BundledSkill } from './types.js'
 
@@ -11,7 +12,7 @@ export type { BundledSkill } from './types.js'
  * The design library squint ships with. Platform skills come first so the
  * engine reads the concrete conventions before the general craft rules.
  */
-export const BUNDLED_SKILLS: BundledSkill[] = [appleHig, materialAndroid, desktopApp, designTaste]
+export const BUNDLED_SKILLS: BundledSkill[] = [appleHig, materialAndroid, desktopApp, designTaste, playwrightE2e]
 
 export function getBundledSkill(name: string): BundledSkill | undefined {
   return BUNDLED_SKILLS.find((s) => s.name === name)

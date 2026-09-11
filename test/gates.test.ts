@@ -54,6 +54,57 @@ describe('detectGates', () => {
   it('returns empty without package.json', () => {
     expect(detectGates(dir)).toEqual([])
   })
+
+  it('detects a Playwright e2e gate last, preferring a project script, with a longer ceiling', () => {
+    writePkg({ scripts: { build: 'vite build' }, devDependencies: { '@playwright/test': '^1.58' } })
+    let gates = detectGates(dir)
+    expect(gates.map((g) => g.id)).toEqual(['build', 'e2e'])
+    expect(gates[1]!.display).toBe('playwright test')
+    expect(gates[1]!.timeoutMs).toBeGreaterThan(5 * 60 * 1000)
+
+    writePkg({ scripts: { 'test:e2e': 'playwright test --project=chromium' } })
+    gates = detectGates(dir)
+    expect(gates.map((g) => g.display)).toEqual(['npm run test:e2e'])
+
+    // A config file alone is a signal; a non-playwright "e2e" script is not.
+    writePkg({ scripts: { e2e: 'cypress run' } })
+    expect(detectGates(dir)).toEqual([])
+    fs.writeFileSync(path.join(dir, 'playwright.config.ts'), '')
+    expect(detectGates(dir).map((g) => g.id)).toEqual(['e2e'])
+  })
+
+  it('honors SQUINT_SKIP_GATES', () => {
+    writePkg({ scripts: { typecheck: 'tsc --noEmit', build: 'vite build' }, devDependencies: { '@playwright/test': '^1' } })
+    const previous = process.env.SQUINT_SKIP_GATES
+    process.env.SQUINT_SKIP_GATES = 'e2e, Build'
+    try {
+      expect(detectGates(dir).map((g) => g.id)).toEqual(['typecheck'])
+    } finally {
+      if (previous === undefined) delete process.env.SQUINT_SKIP_GATES
+      else process.env.SQUINT_SKIP_GATES = previous
+    }
+  })
+})
+
+describe('buildGatePrompt', () => {
+  const gate = { id: 'e2e', command: 'npx', args: ['playwright', 'test'], display: 'playwright test' }
+
+  it('adds e2e discipline and names mechanical environment fixes', () => {
+    const prompt = buildGatePrompt([
+      { gate, ok: false, durationMs: 1, outputTail: "browserType.launch: Executable doesn't exist at /ms-playwright/chromium" },
+    ])
+    expect(prompt).toContain('fix the app first')
+    expect(prompt).toContain('npx playwright install --with-deps chromium')
+    expect(prompt).not.toContain('webServer')
+
+    const refused = buildGatePrompt([{ gate, ok: false, durationMs: 1, outputTail: 'Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/' }])
+    expect(refused).toContain('configure `webServer`')
+
+    const typecheck = buildGatePrompt([
+      { gate: { id: 'typecheck', command: 'npx', args: ['tsc'], display: 'tsc --noEmit' }, ok: false, durationMs: 1, outputTail: 'error TS2322' },
+    ])
+    expect(typecheck).not.toContain('end-to-end')
+  })
 })
 
 describe('runGates', () => {

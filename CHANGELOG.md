@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Playwright: an `e2e` gate in `/check` and `squint ci` when `@playwright/test` or a `playwright.config` is present (project `e2e`/`test:e2e` scripts win; 15-minute ceiling; `SQUINT_SKIP_GATES` opts out). Failures come back with e2e discipline and named environment fixes (missing browsers, unreachable app)
+- `squint flows export` turns `.squint/flows/*.flow` into `tests/e2e/*.spec.ts` with the runner's exact click/expect semantics; `squint flows list`
+- `playwright-e2e` bundled skill: journeys worth testing, role locators, web-first assertions, config, visual regression, what to do when a test fails
 - The design library: four bundled skills — `design-taste` (craft rules and the review rubric), `apple-hig` (Human Interface Guidelines for iOS/iPadOS/macOS), `material-android` (Material 3), `desktop-app` (Electron/Tauri/native shells) — inlined on design-shaped asks, auto-attached by detected platform, itemized by `/context`
 - `/review`, `/polish` and auto-review close with the review standards: severity rubric, the two-altitude slop test, and each targeted platform's checklist
 - Standard `SKILL.md` discovery (`.claude/skills`, `.cursor/skills`, `.agents/skills`, `.codex/skills`; repo and home) — mention a skill by name and the engine gets a pointer to it

@@ -9,6 +9,7 @@ Taste stays with `/review`; everything here is measured.
 | check | catches |
 | --- | --- |
 | typecheck + lint | type errors, lint violations (project scripts or tsc/eslint fallbacks) |
+| e2e (`/check`, `squint ci`) | Playwright end-to-end failures — detected from `@playwright/test` or `playwright.config.*`, runs last with a 15-minute ceiling; `SQUINT_SKIP_GATES=e2e` opts out |
 | version rule-packs | Tailwind v3 classes in v4 projects, retired Vite idioms — with the rename |
 | token drift | hardcoded colors with a near-miss design token |
 | the sentinel | gate evasion: deleted tests, added skips, suppressions, weakened checks/rules, locked-path touches |
