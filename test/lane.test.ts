@@ -5,7 +5,7 @@ import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Session } from '../src/session/engine.js'
 import * as registry from '../src/engines/registry.js'
-import type { Engine } from '../src/engines/types.js'
+import type { Engine, RunOptions } from '../src/engines/types.js'
 
 let dir: string
 
@@ -70,6 +70,44 @@ describe('the review lane', () => {
     expect(prompts[1]).toContain('second reviewer in fresh context')
     expect(prompts[1]).toContain('-export const x = 1')
     expect(prompts[1]).toContain('+export const x = 2')
+  })
+
+  it('runs outside the session: no resume, and the main session id survives', async () => {
+    const runs: RunOptions[] = []
+    const engine: Engine = {
+      id: 'fake',
+      name: 'Fake',
+      binary: 'node',
+      install: 'n/a',
+      supportsResume: true,
+      buildArgs: (opts) => {
+        runs.push(opts)
+        const id = runs.length === 1 ? 'main-1' : 'lane-9'
+        const edit = runs.length === 1 ? "require('fs').writeFileSync('app.ts', 'export const x = 5\\n');" : ''
+        return ['-e', `${edit} console.log(JSON.stringify({ type: 'result', ok: true, sessionId: '${id}' }))`]
+      },
+      createParser: () => (line) => {
+        try {
+          const data = JSON.parse(line)
+          return data.type === 'result' ? [{ type: 'result', ok: true, sessionId: data.sessionId }] : [{ type: 'text', text: line }]
+        } catch {
+          return [{ type: 'text', text: line }]
+        }
+      },
+    }
+    vi.spyOn(registry, 'getEngine').mockReturnValue(engine)
+    const session = new Session({ cwd: dir, engineId: 'fake' })
+
+    session.command('/lane on')
+    session.input('bump x')
+    await waitFor(session, () => runs.length === 2 && !session.getState().running)
+    await new Promise((r) => setTimeout(r, 200))
+
+    expect(runs[1]!.sessionId).toBeUndefined() // the reviewer does not inherit the thread
+    session.input('follow-up')
+    await waitFor(session, () => runs.length >= 3)
+    expect(runs[2]!.sessionId).toBe('main-1') // and the thread did not inherit the reviewer
+    session.dispose()
   })
 
   it('/lane off keeps single turns single', async () => {

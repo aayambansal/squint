@@ -70,3 +70,47 @@ export function composePrompt(ask: string, opts: BriefOptions): string {
   const addendum = firstTurn ? `\n\n${FIRST_TURN_ADDENDUM}` : ''
   return `${brief}${addendum}\n\n## Task\n\n${ask}`
 }
+
+export interface PlacementOptions {
+  cwd: string
+  /** The engine already holds a session squint will resume. */
+  sessionStarted: boolean
+  /** The opening ask of this session: foundation-first addendum applies. */
+  firstAsk: boolean
+  /** Skip the brief entirely. */
+  noBrief?: boolean
+}
+
+export interface BriefPlacement {
+  prompt: string
+  systemPrompt?: string
+}
+
+/**
+ * Where the brief goes depends on what the engine can hold:
+ *
+ * - engines with a system-prompt channel get it there on EVERY turn —
+ *   outside the compactable transcript, prompt-cached, never repeated in
+ *   the conversation;
+ * - resumable engines without one get it in the first user turn of the
+ *   session and rely on the session to keep it;
+ * - non-resumable engines start every process cold, so every turn — fix
+ *   and review turns included — carries it.
+ *
+ * The foundation-first addendum rides only on the opening ask.
+ */
+export function placeBrief(
+  engine: { supportsResume: boolean; supportsSystemPrompt?: boolean },
+  body: string,
+  opts: PlacementOptions,
+): BriefPlacement {
+  if (opts.noBrief) return { prompt: body }
+  const brief = loadBrief(opts.cwd)
+  const addendum = opts.firstAsk ? `${FIRST_TURN_ADDENDUM}\n\n` : ''
+  if (engine.supportsSystemPrompt) {
+    return { prompt: addendum ? `${addendum}## Task\n\n${body}` : body, systemPrompt: brief }
+  }
+  const inline = !engine.supportsResume || !opts.sessionStarted
+  if (inline) return { prompt: `${brief}\n\n${addendum}## Task\n\n${body}` }
+  return { prompt: addendum ? `${addendum}## Task\n\n${body}` : body }
+}

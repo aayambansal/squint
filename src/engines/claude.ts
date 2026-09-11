@@ -11,6 +11,7 @@ export const claude: Engine = {
   binary: 'claude',
   install: 'npm install -g @anthropic-ai/claude-code',
   supportsResume: true,
+  supportsSystemPrompt: true,
 
   // 2.1.211+: subagent output joins stream-json. The env-var form is a
   // no-op on older CLIs, unlike the flag, so the loops see spawned work
@@ -32,6 +33,9 @@ export const claude: Engine = {
     ]
     if (opts.model) args.push('--model', opts.model)
     if (opts.sessionId) args.push('--resume', opts.sessionId)
+    // Appended to Claude Code's own system prompt for this invocation —
+    // present on resumed turns too, and outside the compactable transcript.
+    if (opts.systemPrompt) args.push('--append-system-prompt', opts.systemPrompt)
     return args
   },
 

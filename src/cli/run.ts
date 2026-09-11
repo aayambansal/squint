@@ -3,7 +3,7 @@ import pc from 'picocolors'
 import { defaultPaths, loadConfig, resolveEngineId, resolveModel } from '../config/config.js'
 import { getEngine } from '../engines/registry.js'
 import type { AgentEvent, RunMode } from '../engines/types.js'
-import { composePrompt } from '../prompt/brief.js'
+import { placeBrief } from '../prompt/brief.js'
 import { enrich } from '../prompt/skills.js'
 import { runAgent } from '../runner/run.js'
 
@@ -76,7 +76,13 @@ export function registerRun(program: Command): void {
         const ask = promptWords.join(' ')
         // Rules, the ledger, locks and matched skills ride along headlessly too.
         const enrichment = enrich(cwd, ask, { bundled: config.bundledSkills })
-        const prompt = composePrompt(ask, { cwd, noBrief: !options.brief }) + enrichment.sections
+        // One-shot: the opening ask of a fresh session, brief placed per engine capability.
+        const placement = placeBrief(engine, ask + enrichment.sections, {
+          cwd,
+          sessionStarted: false,
+          firstAsk: true,
+          noBrief: !options.brief,
+        })
         if (!options.json && enrichment.matchedSkills.length > 0) console.log(pc.dim(`· skills: ${enrichment.matchedSkills.join(', ')}`))
 
         const onEvent = options.json
@@ -88,7 +94,7 @@ export function registerRun(program: Command): void {
           console.log(
             pc.dim(`squint · ${engine.id}${model ? ` · ${model}` : ''}${mode && mode !== 'safe' ? ` · ${mode}` : ''}`),
           )
-        const result = await runAgent(engine, { prompt, cwd, model, mode }, onEvent)
+        const result = await runAgent(engine, { prompt: placement.prompt, systemPrompt: placement.systemPrompt, cwd, model, mode }, onEvent)
         if (options.json) {
           console.log(JSON.stringify({ type: 'summary', ...result }))
         } else if (result.ok) {

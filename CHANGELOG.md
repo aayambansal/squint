@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Brief delivery per engine capability: Claude Code gets it as `--append-system-prompt` on every turn (survives compaction, never bloats the transcript); engines without headless resume (Gemini, Copilot, Aider) get it inline on every turn — fix and review turns included, which previously ran with no standards at all; the foundation-first addendum rides only on the session's opening ask instead of every ask
+- The review lane is now genuinely fresh context: no session resume, and the reviewer's session id can no longer replace the main thread's
+- `findChrome()` honors `SQUINT_CHROME` / `CHROME_PATH`; CI pins Chrome 152 for PR and push runs and re-runs weekly against latest stable to catch computed-style drift early
+- README engine count (ten adapters), `progress` test isolated from a `NO_COLOR` shell
 - Playwright: an `e2e` gate in `/check` and `squint ci` when `@playwright/test` or a `playwright.config` is present (project `e2e`/`test:e2e` scripts win; 15-minute ceiling; `SQUINT_SKIP_GATES` opts out). Failures come back with e2e discipline and named environment fixes (missing browsers, unreachable app)
 - `squint flows export` turns `.squint/flows/*.flow` into `tests/e2e/*.spec.ts` with the runner's exact click/expect semantics; `squint flows list`
 - `playwright-e2e` bundled skill: journeys worth testing, role locators, web-first assertions, config, visual regression, what to do when a test fails

@@ -6,7 +6,7 @@ keeps checking.
 
 ```
   your ask
-     │  + design brief (first turn) + rules.md + locks + trigger-matched skills
+     │  + design brief (placed per engine, see below) + rules.md + locks + matched skills
      ▼
   engine turn ──────────────── esc interrupts · typing queues the next ask
      │
@@ -25,6 +25,21 @@ keeps checking.
      ▼
   done · 41s · $0.18 · 3 files +42 −7
 ```
+
+## 0. Where the brief goes
+
+The design brief is squint's standing opinion; where it rides depends on what the engine
+can hold, so fix and review turns are graded against the same standards as asks:
+
+| engine | delivery |
+| --- | --- |
+| Claude Code | `--append-system-prompt` on **every** turn — outside the compactable transcript, prompt-cached, never repeated in the conversation |
+| Codex, Codex app-server, OpenCode, Amp, Cursor, Antigravity | inline in the first user turn of the session; the resumed session keeps it |
+| Gemini, Copilot, Aider (no headless resume) | inline on **every** turn, fix and review turns included — each process starts cold |
+
+The foundation-first addendum ("this is the opening move: establish the design foundation
+before building") rides only on the session's opening ask, never on follow-ups, fixes, or
+reviews. `/clear` and `/engine` start a new session; `/resume` picks up mid-session.
 
 ## 1. Fast gates — `autoCheck` (default on)
 

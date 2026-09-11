@@ -1,5 +1,17 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { setProgress, withProgress } from '../src/tui/progress.js'
+
+// The sequences are suppressed under NO_COLOR; a developer shell that sets
+// it must not decide what these tests see.
+let savedNoColor: string | undefined
+beforeEach(() => {
+  savedNoColor = process.env.NO_COLOR
+  delete process.env.NO_COLOR
+})
+afterEach(() => {
+  if (savedNoColor === undefined) delete process.env.NO_COLOR
+  else process.env.NO_COLOR = savedNoColor
+})
 
 function fakeTty(): { stream: NodeJS.WriteStream; written: string[] } {
   const written: string[] = []

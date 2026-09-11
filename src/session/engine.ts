@@ -14,7 +14,7 @@ import {
   probeRuntime,
   runtimeSummary,
 } from '../preview/preview.js'
-import { composePrompt } from '../prompt/brief.js'
+import { placeBrief } from '../prompt/brief.js'
 import { reviewGuidance } from '../prompt/library/index.js'
 import { appendDecision } from './designLog.js'
 import { runHook } from './hooks.js'
@@ -131,6 +131,8 @@ export class Session {
   private lastPulse: Buffer | null = null
   private lastPerf: { lcpMs?: number; cls?: number; transferBytes?: number } | null = null
   private autoReviewedThisAsk = false
+  /** Asks submitted this session; the first one carries the foundation-first addendum. */
+  private asksSent = 0
   private readonly startedAt = Date.now()
 
   constructor(private readonly opts: SessionOptions) {
@@ -519,27 +521,49 @@ export class Session {
     }
   }
 
-  /** Run one engine turn. `display` is what the transcript shows as the ask. */
-  private async runTurn(prompt: string, display: string, modelOverride?: string): Promise<void> {
+  /**
+   * Run one engine turn. `display` is what the transcript shows as the
+   * ask. The design brief is placed per engine capability (system prompt
+   * → every turn; resumable → first turn; cold engines → every turn), so
+   * fix and review turns are graded against the same standards as asks.
+   * `fresh` runs outside the session — no resume, and the returned
+   * session id is discarded — for reviewers that must not inherit context.
+   */
+  private async runTurn(
+    body: string,
+    display: string,
+    modelOverride?: string,
+    opts: { firstAsk?: boolean; fresh?: boolean } = {},
+  ): Promise<void> {
     this.push('user', display)
     this.turnEdits = 0
     this.turnTools = 0
     this.notify({ running: true, runStartedAt: Date.now() })
     const runStart = Date.now()
     const engine = getEngine(this.state.engineId)
+    const resumeId = engine.supportsResume && !opts.fresh ? this.sessionId : undefined
+    const placement = placeBrief(engine, body, {
+      cwd: this.opts.cwd,
+      sessionStarted: resumeId !== undefined,
+      firstAsk: opts.firstAsk ?? false,
+    })
     this.abort = new AbortController()
+    const mainSessionId = this.sessionId
     const result = await runAgent(
       engine,
       {
-        prompt,
+        prompt: placement.prompt,
+        systemPrompt: placement.systemPrompt,
         cwd: this.execCwd(),
         model: modelOverride ?? this.state.model,
         mode: this.state.mode,
-        sessionId: engine.supportsResume ? this.sessionId : undefined,
+        sessionId: resumeId,
       },
       this.handleEvent,
       this.abort.signal,
     )
+    // A fresh run may have opened a session of its own; the main thread keeps its id.
+    if (opts.fresh) this.sessionId = mainSessionId
     this.abort = null
     this.commitLive()
     this.flushToolCollapse()
@@ -791,6 +815,7 @@ export class Session {
         `You are a second reviewer in fresh context. The diff below just landed for the ask "${display}". Review ONLY the diff — do not edit anything, do not run commands that modify state. Report at most 3 concrete findings ranked by severity (bugs, regressions, accessibility, design-system violations), each with file and line. If it is clean, say so in one line.\n\n\`\`\`diff\n${capped}\n\`\`\``,
         '🔎 lane review',
         this.opts.fixModel,
+        { fresh: true },
       )
     } finally {
       this.inLane = false
@@ -811,10 +836,11 @@ export class Session {
       })
       if (this.checkpoints.length > 20) this.checkpoints.shift()
     }
-    // Resumable engines keep the brief in session context, so follow-up
-    // turns send the raw ask; non-resumable engines get it every turn.
-    const isFirstTurn = this.sessionId === undefined
-    let prompt = isFirstTurn ? composePrompt(ask, { cwd: this.opts.cwd, firstTurn: true }) : ask
+    // The brief itself is placed by runTurn per engine capability; the
+    // foundation-first addendum rides only on the session's opening ask.
+    const firstAsk = this.asksSent === 0
+    this.asksSent += 1
+    let prompt = ask
     // Repo rules + keyword-triggered skills ride along on every ask.
     const enrichment = enrich(this.opts.cwd, ask, { bundled: this.opts.bundledSkills })
     if (enrichment.matchedSkills.length > 0) {
@@ -824,7 +850,7 @@ export class Session {
     if (this.goal) {
       prompt += `\n\n## Standing goal (machine-checked)\n\n${this.goal}\n\nsquint verifies every turn — gates, runtime probe, page audits. Do not declare this done while any of its checks fail; squint will keep sending failures back until they are clean.`
     }
-    await this.runTurn(prompt, ask)
+    await this.runTurn(prompt, ask, undefined, { firstAsk })
   }
 
   /** Restore files to the state before checkpoint `index`; drop it and everything after. */
@@ -1025,6 +1051,7 @@ export class Session {
           try {
             getEngine(arg)
             this.sessionId = undefined
+            this.asksSent = 0
             this.notify({ engineId: arg })
             this.push('status', `engine → ${arg} (new session)`)
           } catch (err) {
@@ -1543,6 +1570,8 @@ Do not restyle anything — this task only writes rules and checks.`
           break
         }
         this.sessionId = saved.sessionId
+        // The resumed session already had its opening ask; no foundation-first addendum.
+        this.asksSent = saved.totals?.turns ?? 1
         this.notify({
           engineId: saved.engine,
           model: saved.model ?? this.state.model,
@@ -1669,6 +1698,7 @@ Do not restyle anything — this task only writes rules and checks.`
       }
       case 'clear':
         this.sessionId = undefined
+        this.asksSent = 0
         clearState(this.opts.cwd)
         this.notify({ items: [], totals: { costUsd: 0, turns: 0 } })
         break

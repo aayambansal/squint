@@ -35,6 +35,12 @@ export interface RunOptions {
   mode?: RunMode
   /** Session to resume, for engines that support it. */
   sessionId?: string
+  /**
+   * Standing instructions for engines that can take them out of band
+   * (`supportsSystemPrompt`): the design brief rides here on every turn,
+   * so it survives context compaction and never bloats the transcript.
+   */
+  systemPrompt?: string
 }
 
 /** Stateful per-run line parser: one instance per spawned process. */
@@ -50,6 +56,8 @@ export interface Engine {
   /** How to install it, shown by `squint doctor`. */
   install: string
   supportsResume: boolean
+  /** Accepts `RunOptions.systemPrompt` (e.g. Claude's --append-system-prompt). */
+  supportsSystemPrompt?: boolean
   /** Extra environment for every run of this engine. */
   env?: Record<string, string>
   /**

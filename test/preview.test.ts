@@ -79,3 +79,18 @@ describe.skipIf(!chrome)('screenshot (requires Chrome)', () => {
     expect(fs.statSync(out).size).toBeGreaterThan(1000)
   })
 })
+
+describe('findChrome env override', () => {
+  it('prefers SQUINT_CHROME when it points at an executable, ignores it otherwise', () => {
+    const saved = process.env.SQUINT_CHROME
+    try {
+      process.env.SQUINT_CHROME = process.execPath // any executable proves the override path
+      expect(findChrome()).toBe(process.execPath)
+      process.env.SQUINT_CHROME = '/definitely/not/here/chrome'
+      expect(findChrome()).not.toBe('/definitely/not/here/chrome')
+    } finally {
+      if (saved === undefined) delete process.env.SQUINT_CHROME
+      else process.env.SQUINT_CHROME = saved
+    }
+  })
+})
