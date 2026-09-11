@@ -28,6 +28,7 @@ export function registerTui(program: Command): void {
         autoCheck={config.autoCheck}
         autoReview={config.autoReview}
         fixModel={config.fixModel}
+        bundledSkills={config.bundledSkills}
         bell={config.bell}
         budgetUsd={config.budgetUsd}
         initialTheme={theme}

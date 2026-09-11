@@ -4,6 +4,7 @@ import { defaultPaths, loadConfig, resolveEngineId, resolveModel } from '../conf
 import { getEngine } from '../engines/registry.js'
 import type { AgentEvent, RunMode } from '../engines/types.js'
 import { composePrompt } from '../prompt/brief.js'
+import { enrich } from '../prompt/skills.js'
 import { runAgent } from '../runner/run.js'
 
 /** Stateful printer: streams deltas live, skips the duplicate final block. */
@@ -73,7 +74,10 @@ export function registerRun(program: Command): void {
         const engine = getEngine(engineId)
         const model = resolveModel(config, engineId, options.model)
         const ask = promptWords.join(' ')
-        const prompt = composePrompt(ask, { cwd, noBrief: !options.brief })
+        // Rules, the ledger, locks and matched skills ride along headlessly too.
+        const enrichment = enrich(cwd, ask, { bundled: config.bundledSkills })
+        const prompt = composePrompt(ask, { cwd, noBrief: !options.brief }) + enrichment.sections
+        if (!options.json && enrichment.matchedSkills.length > 0) console.log(pc.dim(`· skills: ${enrichment.matchedSkills.join(', ')}`))
 
         const onEvent = options.json
           ? (event: AgentEvent) => {

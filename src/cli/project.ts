@@ -10,9 +10,12 @@ export function registerProject(program: Command): void {
 
   skillsCommand
     .command('list')
-    .description('Show always-on rules and trigger-matched skills')
+    .description('Show always-on rules, bundled design skills, project skills, and external SKILL.md folders')
     .action(async () => {
-      const { loadRules, loadSkills } = await import('../prompt/skills.js')
+      const { loadExternalSkills, loadRules, loadSkills } = await import('../prompt/skills.js')
+      const { BUNDLED_SKILLS, describeActivation } = await import('../prompt/library/index.js')
+      const { detectPlatforms } = await import('../prompt/platform.js')
+      const { defaultPaths, loadConfig } = await import('../config/config.js')
       const cwd = process.cwd()
       const rules = loadRules(cwd)
       console.log(
@@ -20,14 +23,76 @@ export function registerProject(program: Command): void {
           ? `${pc.green('✓')} rules.md ${pc.dim(`(${rules.split('\n').length} lines, always on)`)}`
           : pc.dim('○ no .squint/rules.md'),
       )
-      const skills = loadSkills(cwd)
-      if (skills.length === 0) {
-        console.log(pc.dim('○ no skills — squint skills init writes an example'))
+
+      const platforms = detectPlatforms(cwd)
+      const projectSkills = loadSkills(cwd)
+      const shadowed = new Set(projectSkills.map((s) => s.name))
+      const bundledOn = loadConfig(defaultPaths(cwd)).bundledSkills !== false
+      console.log(pc.bold(`\nbundled${bundledOn ? '' : pc.red(' (off — squint config set bundledSkills true)')}`) + pc.dim(`  · platforms detected: ${platforms.join(', ')}`))
+      for (const skill of BUNDLED_SKILLS) {
+        const targeted = !skill.platforms || skill.platforms.some((p) => platforms.includes(p))
+        const mark = shadowed.has(skill.name) ? pc.yellow('↷') : targeted ? pc.green('✓') : pc.dim('○')
+        const when = shadowed.has(skill.name) ? `shadowed by .squint/skills/${skill.name}.md` : describeActivation(skill)
+        console.log(`${mark} ${skill.name.padEnd(18)} ${skill.summary}\n  ${pc.dim(when)}`)
+      }
+
+      console.log(pc.bold('\nproject (.squint/skills/)'))
+      if (projectSkills.length === 0) {
+        console.log(pc.dim('○ none — squint skills init writes an example; squint skills eject <name> forks a bundled one'))
+      }
+      for (const skill of projectSkills) {
+        console.log(`${pc.green('✓')} ${skill.name.padEnd(18)} ${pc.dim(`triggers: ${skill.triggers.join(', ')}`)}`)
+      }
+
+      const external = loadExternalSkills(cwd)
+      if (external.length > 0) {
+        console.log(pc.bold('\nexternal SKILL.md') + pc.dim('  · injected as a pointer when an ask mentions the name'))
+        for (const skill of external) {
+          console.log(`${pc.green('✓')} ${skill.name.padEnd(18)} ${pc.dim(skill.file ?? '')}`)
+        }
+      }
+    })
+
+  skillsCommand
+    .command('show')
+    .description('Print a bundled skill')
+    .argument('<name>', 'bundled skill name (squint skills list)')
+    .action(async (name: string) => {
+      const { getBundledSkill } = await import('../prompt/library/index.js')
+      const skill = getBundledSkill(name)
+      if (!skill) {
+        console.error(pc.red(`✗ no bundled skill "${name}" — squint skills list`))
+        process.exitCode = 1
         return
       }
-      for (const skill of skills) {
-        console.log(`${pc.green('✓')} ${skill.name.padEnd(20)} ${pc.dim(`triggers: ${skill.triggers.join(', ')}`)}`)
+      console.log(skill.body)
+    })
+
+  skillsCommand
+    .command('eject')
+    .description('Copy a bundled skill into .squint/skills/<name>.md so this repo can edit it (the copy shadows the original)')
+    .argument('<name>', 'bundled skill name (squint skills list)')
+    .option('--force', 'overwrite an existing project skill of the same name')
+    .action(async (name: string, options: { force?: boolean }) => {
+      const fs = await import('node:fs')
+      const nodePath = await import('node:path')
+      const { getBundledSkill } = await import('../prompt/library/index.js')
+      const skill = getBundledSkill(name)
+      if (!skill) {
+        console.error(pc.red(`✗ no bundled skill "${name}" — squint skills list`))
+        process.exitCode = 1
+        return
       }
+      const target = nodePath.join(process.cwd(), '.squint', 'skills', `${skill.name}.md`)
+      if (fs.existsSync(target) && !options.force) {
+        console.error(pc.red(`✗ ${target} exists — use --force to overwrite`))
+        process.exitCode = 1
+        return
+      }
+      fs.mkdirSync(nodePath.dirname(target), { recursive: true })
+      fs.writeFileSync(target, `---\nname: ${skill.name}\ntriggers: ${skill.triggers.join(', ')}\n---\n\n${skill.body}\n`)
+      console.log(pc.green(`✓ ${target}`))
+      console.log(pc.dim('edit freely — this copy now shadows the bundled skill for this repo'))
     })
 
   skillsCommand
@@ -55,7 +120,7 @@ export function registerProject(program: Command): void {
         )
         console.log(pc.green('✓ .squint/skills/example.md'))
       }
-      console.log(pc.dim('rules are always-on; skills inject when an ask mentions a trigger'))
+      console.log(pc.dim('rules are always-on; skills inject when an ask mentions a trigger · squint skills list shows the bundled design library'))
     })
 
   program

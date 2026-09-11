@@ -1,8 +1,10 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { loadBrief } from '../prompt/brief.js'
+import { BUNDLED_SKILLS, describeActivation } from '../prompt/library/index.js'
+import { detectPlatforms } from '../prompt/platform.js'
 import { inventorySection, loadComponentInventory } from '../prompt/registry.js'
-import { loadLocks, loadRules, loadSkills } from '../prompt/skills.js'
+import { externalSkillSection, loadExternalSkills, loadLocks, loadRules, loadSkills } from '../prompt/skills.js'
 import { decisionsSection, loadDecisions } from '../session/designLog.js'
 
 /**
@@ -27,7 +29,14 @@ export interface ContextReport {
 
 const tokens = (text: string): number => Math.ceil(text.length / 4)
 
-export function contextReport(cwd: string): ContextReport {
+export interface ContextReportOptions {
+  /** Whether the bundled design library is enabled (default true). */
+  bundled?: boolean
+  /** Home directory scanned for external SKILL.md folders (test hook). */
+  home?: string
+}
+
+export function contextReport(cwd: string, opts: ContextReportOptions = {}): ContextReport {
   const lines: ContextLine[] = []
   const warnings: string[] = []
 
@@ -60,7 +69,8 @@ export function contextReport(cwd: string): ContextReport {
     }
   }
 
-  for (const skill of loadSkills(cwd)) {
+  const projectSkills = loadSkills(cwd)
+  for (const skill of projectSkills) {
     lines.push({
       source: `skill: ${skill.name}`,
       tokens: tokens(skill.body),
@@ -70,6 +80,32 @@ export function contextReport(cwd: string): ContextReport {
     if (generic.length > 0) {
       warnings.push(`skill "${skill.name}" has trigger(s) ${generic.map((t) => `"${t}"`).join(', ')} short enough to match almost any ask — make them more specific`)
     }
+  }
+
+  if (opts.bundled !== false) {
+    const platforms = detectPlatforms(cwd)
+    const shadowed = new Set(projectSkills.map((s) => s.name))
+    for (const skill of BUNDLED_SKILLS) {
+      if (shadowed.has(skill.name)) {
+        lines.push({ source: `skill (bundled): ${skill.name}`, tokens: 0, when: `shadowed by .squint/skills/${skill.name}.md` })
+        continue
+      }
+      const targeted = skill.platforms?.some((p) => platforms.includes(p))
+      lines.push({
+        source: `skill (bundled): ${skill.name}`,
+        tokens: tokens(skill.body),
+        when: describeActivation(skill),
+        note: skill.platforms && !targeted ? `${skill.platforms.join('/')} not detected here` : undefined,
+      })
+    }
+  }
+
+  for (const skill of loadExternalSkills(cwd, opts.home)) {
+    lines.push({
+      source: `skill (external): ${skill.name}`,
+      tokens: tokens(externalSkillSection(skill)),
+      when: `pointer when the ask mentions ${skill.triggers.map((t) => `"${t}"`).join(', ')}`,
+    })
   }
 
   lines.push({ source: 'approval protocol (built-in)', tokens: 70, when: 'every ask' })
@@ -82,7 +118,9 @@ export function contextReport(cwd: string): ContextReport {
 
 export function formatContextReport(report: ContextReport): string {
   const width = Math.max(...report.lines.map((l) => l.source.length), 10)
-  const rows = report.lines.map((l) => `  ${l.source.padEnd(width)}  ~${String(l.tokens).padStart(5)} tok  ${l.when}`)
+  const rows = report.lines.map(
+    (l) => `  ${l.source.padEnd(width)}  ~${String(l.tokens).padStart(5)} tok  ${l.when}${l.note ? ` (${l.note})` : ''}`,
+  )
   const out = [`what squint injects (estimates):`, ...rows, `  ${'always-on total'.padEnd(width)}  ~${String(report.totalAlways).padStart(5)} tok  every ask`]
   if (report.warnings.length > 0) {
     out.push('', 'warnings:', ...report.warnings.map((w) => `  ⚠ ${w}`))

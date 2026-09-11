@@ -15,6 +15,7 @@ import {
   runtimeSummary,
 } from '../preview/preview.js'
 import { composePrompt } from '../prompt/brief.js'
+import { reviewGuidance } from '../prompt/library/index.js'
 import { appendDecision } from './designLog.js'
 import { runHook } from './hooks.js'
 import { enrich } from '../prompt/skills.js'
@@ -92,6 +93,8 @@ export interface SessionOptions {
   autoReview?: boolean
   /** Cheaper model for fix turns (the mechanical tier). */
   fixModel?: string
+  /** Inject the bundled design library on matching asks (default true). */
+  bundledSkills?: boolean
   /** Called when a /quit-style command asks the frontend to close. */
   onQuit?: () => void
 }
@@ -285,12 +288,35 @@ export class Session {
         this.push('status', `polish stopped at round ${round}: nothing to capture`)
         return
       }
-      await this.runTurn(
-        buildReviewPrompt(result.shots, undefined, result.runtime, result.a11y, result.slop, result.narration, result.phantoms, result.viewTransitions, result.components, result.webmcp, result.jank, result.locale, result.speculation, result.containers, result.security),
-        `👁 polish round ${round}/${rounds}`,
-      )
+      await this.runTurn(this.reviewPrompt(result), `👁 polish round ${round}/${rounds}`)
     }
     this.push('status', `polish complete — ${rounds} round${rounds === 1 ? '' : 's'} of review and fixes`)
+  }
+
+  /**
+   * The self-critique prompt: screenshots + every deterministic finding,
+   * closed by the review standards (the taste rubric and the checklist of
+   * each platform this repo targets) so critique is graded, not vibes.
+   */
+  private reviewPrompt(result: CaptureResult, focus?: string): string {
+    const base = buildReviewPrompt(
+      result.shots,
+      focus,
+      result.runtime,
+      result.a11y,
+      result.slop,
+      result.narration,
+      result.phantoms,
+      result.viewTransitions,
+      result.components,
+      result.webmcp,
+      result.jank,
+      result.locale,
+      result.speculation,
+      result.containers,
+      result.security,
+    )
+    return this.opts.bundledSkills === false ? base : base + reviewGuidance(this.execCwd())
   }
 
   setMode(mode: RunMode): void {
@@ -718,10 +744,7 @@ export class Session {
               this.notify({ running: false })
               const captureResult = await this.capture()
               if (captureResult) {
-                await this.runTurn(
-                  buildReviewPrompt(captureResult.shots, undefined, captureResult.runtime, captureResult.a11y, captureResult.slop, captureResult.narration, captureResult.phantoms, captureResult.viewTransitions, captureResult.components, captureResult.webmcp, captureResult.jank, captureResult.locale, captureResult.speculation, captureResult.containers, captureResult.security),
-                  '👁 auto-review rendered UI',
-                )
+                await this.runTurn(this.reviewPrompt(captureResult), '👁 auto-review rendered UI')
               }
               return
             }
@@ -793,7 +816,7 @@ export class Session {
     const isFirstTurn = this.sessionId === undefined
     let prompt = isFirstTurn ? composePrompt(ask, { cwd: this.opts.cwd, firstTurn: true }) : ask
     // Repo rules + keyword-triggered skills ride along on every ask.
-    const enrichment = enrich(this.opts.cwd, ask)
+    const enrichment = enrich(this.opts.cwd, ask, { bundled: this.opts.bundledSkills })
     if (enrichment.matchedSkills.length > 0) {
       this.push('status', `skills: ${enrichment.matchedSkills.join(', ')}`)
     }
@@ -1134,7 +1157,7 @@ Do not restyle anything — this task only writes rules and checks.`
       case 'context': {
         import('../quality/contextDoctor.js')
           .then(({ contextReport, formatContextReport }) => {
-            this.push('status', formatContextReport(contextReport(this.execCwd())))
+            this.push('status', formatContextReport(contextReport(this.execCwd(), { bundled: this.opts.bundledSkills })))
           })
           .catch((error: unknown) => {
             this.push('status', `context report failed: ${error instanceof Error ? error.message : String(error)}`)
@@ -1473,10 +1496,7 @@ Do not restyle anything — this task only writes rules and checks.`
         void (async () => {
           const result = await this.capture()
           if (result) {
-            await this.runTurn(
-              buildReviewPrompt(result.shots, arg || undefined, result.runtime, result.a11y, result.slop, result.narration, result.phantoms, result.viewTransitions, result.components, result.webmcp, result.jank, result.locale, result.speculation, result.containers, result.security),
-              `👁 review rendered UI${arg ? ` · ${arg}` : ''}`,
-            )
+            await this.runTurn(this.reviewPrompt(result, arg || undefined), `👁 review rendered UI${arg ? ` · ${arg}` : ''}`)
           }
         })()
         break

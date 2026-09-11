@@ -22,6 +22,7 @@ Two layers, project wins over global, `models` maps merge key-by-key:
 | `bell` | bool | `true` | terminal bell when a turn finishes |
 | `budgetUsd` | number | off | one-time warning when session spend crosses this |
 | `fixModel` | string | session model | cheaper model used for auto-fix and `/fix` turns |
+| `bundledSkills` | bool | `true` | inject the bundled design library (`design-taste`, `apple-hig`, `material-android`, `desktop-app`) on matching asks and close `/review` with its rubric |
 
 Booleans are set as literal `true` / `false`:
 
@@ -39,7 +40,7 @@ Hand-authored (commit these):
 | --- | --- |
 | `brief.md` | replaces the design brief for this repo (`squint brief <family>` writes one) |
 | `rules.md` | short always-on rules, injected into every ask |
-| `skills/*.md` | knowledge injected only when an ask mentions a `triggers:` keyword |
+| `skills/*.md` | knowledge injected only when an ask mentions a `triggers:` keyword (word-start match; ≤4-character triggers need a whole word). A file named after a bundled skill shadows it — `squint skills eject <name>` writes one |
 | `locks` | one path per line the engine must never modify |
 | `hooks/` | executables fired on quality events (see [loops](./loops.md#hooks)) |
 | `routes` | one path per line; `/shot` and `/review` cover them beyond the root |
@@ -55,6 +56,14 @@ evidence from every `squint ci` run; commit them or gitignore them, your call).
 Working files (auto-gitignored by squint): `preview/` (screenshots, pulse, triptych),
 `state.json` (session resume), `variants/` (exploration worktrees), `sandbox/` (the
 /sandbox worktree), `transcripts/` (`/save` exports), `daemon.sock`.
+
+## Skills from outside `.squint/`
+
+Standard `SKILL.md` folders (`name:` / `description:` frontmatter) are discovered in
+`.claude/skills`, `.cursor/skills`, `.agents/skills` and `.codex/skills`, under the repo and
+under your home directory (repo wins on a name clash). They match when an ask mentions the
+skill's name (or its own `triggers:` if it declares any) and inject a pointer — description
+plus path — that the engine reads from disk. `squint skills list` shows what was found.
 
 ## Environment
 
