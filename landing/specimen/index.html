@@ -1,0 +1,86 @@
+<!doctype html>
+<!--
+  The specimen. This page is wrong on purpose so that squint has something to
+  find; every mistake is marked with a comment. It is the page the findings
+  quoted on the squint site were produced from. None of this is an example of
+  how to build a page.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Field Notes, a newsletter (the squint specimen page)</title>
+<meta name="description" content="A deliberately flawed page that squint is run against.">
+<link rel="icon" href="data:,">
+<style>
+  /* Mistake 1: this font file does not exist, so the request fails and the heading falls back. */
+  @font-face { font-family: "Notes Display"; src: url("fonts/notes-display.woff2") format("woff2"); }
+
+  body { margin: 0; font-family: Georgia, serif; color: #1c1c1c; background: #fff; }
+  .page { max-width: 40rem; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+  .nav { display: flex; gap: 1.25rem; align-items: center; }
+  .brand { font-weight: 700; margin-right: auto; }
+  .nav-link { color: #1c1c1c; padding: 0.5rem 0; }
+  /* Mistake 2: the focus outline is switched off and nothing replaces it. */
+  .nav-link:focus { outline: none; }
+  .title { font-family: "Notes Display", Georgia, serif; font-size: 2.4rem; line-height: 1.1; margin: 2.5rem 0 1rem; }
+  /* Mistake 3: body text in a gray too pale to read comfortably. */
+  .lede { color: #b4b4b4; font-size: 1rem; line-height: 1.6; }
+  .chips { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+  .chip { color: #1c1c1c; border: 1px solid #767676; padding: 0.5rem 0.8rem; }
+  .btn { font: inherit; border: 0; padding: 0.8rem 1.2rem; cursor: pointer; }
+  .btn-primary { background: #1c1c1c; color: #fff; }
+  .btn-quiet { background: #ededed; color: #1c1c1c; }
+  .portrait { display: block; max-width: 100%; margin-top: 2rem; }
+  .signup { display: flex; gap: 0.5rem; margin-top: 2rem; }
+  .field { font: inherit; padding: 0.8rem 0.7rem; border: 1px solid #767676; flex: 1; min-width: 0; }
+  .more { margin-top: 1.5rem; cursor: pointer; text-decoration: underline; }
+  .foot { margin-top: 3rem; display: flex; gap: 4px; }
+  /* Mistake 4: four small links, sixteen pixels square, packed four pixels apart. */
+  .icon { display: block; width: 16px; height: 16px; background: #1c1c1c; }
+</style>
+</head>
+<body>
+<div class="page">
+  <nav class="nav" aria-label="Main">
+    <span class="brand">Field Notes</span>
+    <a class="nav-link" id="nav-issues" href="#issues">Issues</a>
+    <a class="nav-link" id="nav-archive" href="#archive">Archive</a>
+    <a class="nav-link" id="nav-about" href="#about">About</a>
+  </nav>
+
+  <main>
+    <h1 class="title">One letter a month about building for the web.</h1>
+    <p class="lede">Written by two people who would rather show you a working example than tell you
+      about a framework. No tracking, no sponsors, unsubscribe whenever you like.</p>
+
+    <p class="chips">
+      <a class="chip" id="latest" href="#latest">The latest issue</a>
+      <a class="chip" id="authors" href="#authors">Who writes it</a>
+    </p>
+
+    <!-- Mistake 5: "btn-primery" is a typo for "btn-primary", so the button gets no colors. -->
+    <p><button class="btn btn-primery" type="button">Read the latest issue</button></p>
+
+    <!-- Mistake 6: no alt text. Mistake 7: no width or height to hold its place while it loads. -->
+    <img class="portrait" src="team.svg">
+
+    <!-- Mistake 8: a text field with no label. -->
+    <form class="signup" action="#" method="post">
+      <input class="field" type="email" name="email" placeholder="you@example.com">
+      <button class="btn btn-quiet" type="submit">Subscribe</button>
+    </form>
+
+    <!-- Mistake 9: a div doing a button's job, with no role and no way to reach it by keyboard. -->
+    <div class="more" onclick="document.title = 'Past issues'">Show past issues</div>
+  </main>
+
+  <footer class="foot">
+    <a class="icon" id="rss" href="#rss" aria-label="RSS"></a>
+    <a class="icon" id="mastodon" href="#mastodon" aria-label="Mastodon"></a>
+    <a class="icon" id="bluesky" href="#bluesky" aria-label="Bluesky"></a>
+    <a class="icon" id="mail" href="#mail" aria-label="Email"></a>
+  </footer>
+</div>
+</body>
+</html>
