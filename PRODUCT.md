@@ -29,6 +29,7 @@ Plainspoken, craft-obsessed, a little warm. The product's whole thesis is "non-g
 - One accent, working hard: the TUI's amber (#e8a33d) is the only color voice.
 - Every section earns scroll: if a fold doesn't advance "what is it, show me, install it", cut it.
 - The terminal is the only dark thing on the page, because that's what a terminal looks like.
+- One sanctioned exception to the palette: the hero's before picture. It shows the generic page squint replaces (centered badge, three equal cards, violet buttons) for about two seconds, and nowhere else.
 
 ## Accessibility & Inclusion
 

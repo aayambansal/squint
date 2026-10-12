@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Landing page redesign: the hero replay now drives a live preview of the page being rebuilt (generic before, error overlay, fix, probe sweep), with SVG figures for the loop, the three review widths, the pixel-diff triptych, an annotated check specimen, the platform skills, daemon seats and the ten engine wires. Brought current with the design library, the Playwright gate and flow export, and the newer checks; unreleased features are marked as such. Adds a social card (`og.png`), canonical and theme-color meta, print styles, and a skip link. The page now passes `squint ci --url` with no hard findings — the previous one failed its own phantom-class check
 - Brief delivery per engine capability: Claude Code gets it as `--append-system-prompt` on every turn (survives compaction, never bloats the transcript); engines without headless resume (Gemini, Copilot, Aider) get it inline on every turn — fix and review turns included, which previously ran with no standards at all; the foundation-first addendum rides only on the session's opening ask instead of every ask
 - The review lane is now genuinely fresh context: no session resume, and the reviewer's session id can no longer replace the main thread's
 - `findChrome()` honors `SQUINT_CHROME` / `CHROME_PATH`; CI pins Chrome 152 for PR and push runs and re-runs weekly against latest stable to catch computed-style drift early
