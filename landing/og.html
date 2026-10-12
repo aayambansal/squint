@@ -1,0 +1,67 @@
+<!doctype html>
+<!--
+  The social card. og.png is a 1200x630 capture of this file. To regenerate it:
+    chrome --headless --hide-scrollbars --window-size=1200,630 --virtual-time-budget=3000 \
+      --screenshot=landing/og.png landing/og.html
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1200">
+<meta name="robots" content="noindex">
+<title>squint social card</title>
+<style>
+  @font-face {
+    font-family: "Atkinson Hyperlegible Next";
+    src: url("fonts/atkinson-hyperlegible-next.woff2") format("woff2");
+    font-weight: 200 800; font-display: block;
+  }
+  @font-face {
+    font-family: "Atkinson Hyperlegible Mono";
+    src: url("fonts/atkinson-hyperlegible-mono.woff2") format("woff2");
+    font-weight: 200 800; font-display: block;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    width: 1200px; height: 630px; overflow: hidden; background: #f2f2f2; color: #000;
+    font-family: "Atkinson Hyperlegible Next", system-ui, sans-serif;
+    display: grid; grid-template-columns: 1fr 470px; gap: 56px; padding: 60px 64px; align-items: center;
+  }
+  .name { display: flex; align-items: center; gap: 14px; font-size: 34px; font-weight: 700; }
+  h1 { margin-top: 40px; font-size: 66px; line-height: 1.04; font-weight: 800; letter-spacing: -0.015em; }
+  .cmd { margin-top: 44px; font-family: "Atkinson Hyperlegible Mono", monospace; font-size: 27px; font-weight: 500; }
+  .free { margin-top: 12px; font-size: 25px; color: #444; }
+  .chart {
+    list-style: none; padding: 40px 24px; background: #fff; border-radius: 16px; text-align: center; font-weight: 700;
+    box-shadow: 0 0 0 1px #d6d6d6, 0 36px 60px -44px rgb(0 0 0 / 0.5);
+  }
+  .chart li { line-height: 1.14; padding-block: 0.24em; font-size: calc(46px * pow(0.84, var(--i) - 1)); }
+  .chart .bar { height: 7px; width: 300px; margin: 14px auto; padding: 0; }
+  .green { background: #1d7a3e; }
+  .red { background: #c4262e; }
+</style>
+</head>
+<body>
+  <div>
+    <div class="name">
+      <svg width="52" height="34" viewBox="0 0 34 22" aria-hidden="true"><path d="M2 11Q17 5.1 32 11Q17 16.9 2 11Z" fill="none" stroke="#000" stroke-width="2.2" stroke-linejoin="round"/><ellipse cx="17" cy="11" rx="4.6" ry="2.6"/></svg>
+      squint
+    </div>
+    <h1>squint checks the page your coding agent just built.</h1>
+    <p class="cmd">npx @aayambansal/squint</p>
+    <p class="free">Free and open source. Runs in your terminal.</p>
+  </div>
+  <ol class="chart">
+    <li style="--i:1">The page is blank</li>
+    <li style="--i:2">The build broke</li>
+    <li style="--i:3">An error in the console</li>
+    <li class="bar green"></li>
+    <li style="--i:4">A class with no CSS behind it</li>
+    <li style="--i:5">A focus ring you can't see</li>
+    <li class="bar red"></li>
+    <li style="--i:6">Body text in pale gray</li>
+    <li style="--i:7">Links four pixels apart</li>
+    <li style="--i:8">A div pretending to be a button</li>
+  </ol>
+</body>
+</html>
